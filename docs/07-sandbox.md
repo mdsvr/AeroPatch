@@ -62,8 +62,8 @@ and `--env-file` with keys. The Docker default seccomp profile stays on; don't p
 
 ## 5. Getting code in and results out (no writable host mounts)
 
-- **In**: for each attempt, the harness makes a **scratch copy** of the scenario source (pinned commit) plus the candidate `fix.patch` on WSL
-  ext4 (never the real checkout, never NTFS). It's mounted **read-only** at `/src`, and
+- **In**: for each attempt, the harness makes a **scratch copy** of the scenario source (pinned commit) plus the candidate `fix.patch` in a
+  temp dir (never the real checkout). It's mounted **read-only** at `/src`, and
   `/harness/run.sh` (baked into the image) copies it into the tmpfs `/work` before running anything.
 - Why not `put_archive()` / `docker cp`? Docker can't copy into tmpfs mounts, and a read-only
   root filesystem leaves nowhere else to put the files. The `:ro` mount of a throwaway copy is
