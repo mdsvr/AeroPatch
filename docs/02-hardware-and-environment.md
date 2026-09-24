@@ -12,7 +12,7 @@ Back to the index: [00-overall-plan.md](00-overall-plan.md)
 | OS | Windows 11 Home | No Hyper-V isolation features of Pro; Docker runs via WSL2 |
 | WSL | WSL2, default distro Ubuntu | Primary dev environment; CUDA works inside WSL2 |
 | Docker | 29.7.2 (Docker Desktop) | Good; but no gVisor support on Desktop for Windows |
-| Python | **Not installed** (only the Microsoft Store alias) | Install inside WSL2 via `uv` (below) |
+| Python | `python` resolves to the Store alias, but uv 0.10.2 + uv-managed CPython 3.12.11 exist | Project uses uv's 3.12 (`.python-version`) |
 
 This table should drive the plan. Every choice in the later docs is sized to fit it.
 
@@ -42,20 +42,24 @@ Rule of thumb: **train in the cloud, infer locally, evaluate locally**.
 - Budget: one 50-step pilot (~15 min), then 1–3 full runs of 1–3 hours each. That fits one
   week of Kaggle quota with room to spare.
 
-## 4. Recommended environment layout
+## 4. Environment layout: as set up on 2026-09-24 (Windows-native)
 
-Work entirely inside WSL2 Ubuntu. Keep the repo on the Linux filesystem, not on `F:`.
+This environment was originally planned inside WSL2, but it was set up **Windows-native in
+`F:\AeroPatch`**, because everything the orchestrator needs already runs on Windows:
+- Docker Desktop (Linux containers) works natively, and the Docker SDK talks to it over the named pipe.
+- Ollama for Windows uses the RTX 3050 through CUDA.
+- uv, Python 3.12, git and `gh` are all installed.
 
-- Path: `~/aeropatch` inside Ubuntu. From Windows you can reach it at
-  `\\wsl$\Ubuntu\home\<user>\aeropatch`.
-- Why not `F:\AeroPatch`? Bind mounts from NTFS into Linux containers are slow and cause
-  file-permission and line-ending problems. The `docs/` folder can stay on `F:` or be copied over.
-- Python: install `uv` in WSL2, then pin Python 3.12 per project with `uv python install 3.12`.
-  `uv` covers venvs, lockfiles and tool installs, so no conda is needed.
-- Docker: Docker Desktop with the WSL2 backend and "WSL integration" enabled for Ubuntu.
-  The `docker` CLI inside WSL2 then talks to Desktop's engine.
-- GPU in WSL2: the Windows NVIDIA driver provides CUDA to WSL2. Don't install a Linux NVIDIA
-  driver inside WSL. Check with `nvidia-smi` inside Ubuntu.
+The WSL route was blocked on this machine. Ubuntu's `sudo` needs a password, WSL has no Docker
+socket until Docker Desktop's WSL integration is switched on, and reaching Windows Ollama from
+WSL needs extra networking. Sandboxes are Linux containers either way.
+- Venv: `F:\AeroPatch\.venv` (uv); deps pinned in `uv.lock`; run everything with `uv run ...`.
+- `.gitattributes` forces LF line endings, so patches applied inside Linux containers aren't
+  broken by CRLF.
+- Scratch copies for sandbox runs are small toy apps, so NTFS bind-mount speed is acceptable.
+  Revisit this if Tier B repos get large.
+- Opengrep v1.30.0 is at `.tools\opengrep.exe` (gitignored; not on PATH). Bandit comes from the venv.
+- WSL2 (Ubuntu 24.04) stays available, with `nvidia-smi` working, if you ever need Linux-only tooling.
 - Local model server, two options:
   - **Ollama** (simplest). It runs on Windows or inside WSL2, exposes an HTTP API, and supports
     JSON-schema structured output.
