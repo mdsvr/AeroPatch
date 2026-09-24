@@ -106,7 +106,32 @@ The plan works once these are fixed. If they aren't, Week 3 and Week 4 will fall
 | Benchmark contamination | Medium | High | Your own scenarios + post-March-2026 CVEs |
 | Time overrun | High | Medium | Cut MCP to a thin wrapper; skip LangGraph; skip AWQ |
 
-## 8. How to read the rest of the docs
+## 8. Prior art, and where AeroPatch fits
+
+| System | Who | What it does | What AeroPatch can learn from it |
+|---|---|---|---|
+| Atlantis (1st, AIxCC 2025) | Team Atlanta (Georgia Tech, Samsung, KAIST, POSTECH) | Fuzzing + symbolic execution + LLM agents; finds and patches | Validation by execution matters more than the model |
+| Buttercup (2nd, AIxCC 2025) | Trail of Bits, open source | Finds bugs and deploys patches cost-efficiently (28 found, 19 patched, reported) | Cost-awareness is a design goal, not an afterthought |
+| AIxCC finals overall | DARPA | 7 teams patched 43 of 54 synthetic vulnerabilities (reported) | Synthetic planted vulns are an accepted benchmark style |
+| CodeMender (preview, Jul 2026) | Google DeepMind | Gemini + program analysis, fuzzing, differential testing; human review before upstreaming | Human review stays in the loop even at Google scale |
+| Aardvark | OpenAI | Security researcher agent integrated with Codex; proposes patches | Patch plus evidence plus one-click human review |
+| Copilot Autofix / Agentic Autofix | GitHub | Code-scanning alerts → suggested fixes; agentic preview Jul 2026 | Intake from static-analysis alerts is the mainstream workflow |
+| Agentless | Academic (UIUC) | Fixed localize → repair → validate pipeline, no agent loop | The right pattern for a small model (doc 05) |
+
+**AeroPatch's niche**: none of the systems above asks how much of this a 4B model on a
+laptop GPU can do, or when it must escalate. The framing that sets AeroPatch apart is
+"local-first remediation with measured escalation and cost". That's a research question,
+and it's honest about capability.
+It also avoids competing head-on with Google, OpenAI and GitHub on raw accuracy, a contest
+a 4-week solo project can't win.
+
+What to borrow directly:
+- From AIxCC systems: treat the PoC as the oracle, and patch only once a PoC reproduces the bug.
+- From CodeMender and Aardvark: show evidence (tests before/after) next to every patch.
+- From Agentless: keep the pipeline fixed and let the model do one narrow job.
+- From Copilot Autofix: take scanner alerts as intake, since developers already live there.
+
+## 9. How to read the rest of the docs
 
 Read the docs in number order. Each file is about 150 lines and covers one category.
 [00-overall-plan.md](00-overall-plan.md) has the revised plan on one page, plus the decision table.

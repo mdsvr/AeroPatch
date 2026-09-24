@@ -98,7 +98,35 @@ Scanners play two roles:
   high-severity findings should appear. This is a secondary signal only. Scanner-clean doesn't
   mean secure, and the PoC test (doc 07) is the ground truth.
 
-## 7. Git operations (inside `src/tools/git_ops.py`)
+## 7. Normalized finding format (what every scanner is converted into)
+
+| Field | Example | Notes |
+|---|---|---|
+| `tool` | `opengrep` / `bandit` | Source scanner |
+| `rule_id` | `aeropatch.python.sqli-fstring` / `B608` | Stable ID used for per-rule stats |
+| `cwe` | `CWE-89` | From rule metadata; required for AeroPatch rules |
+| `severity` | `high` | Normalized to low/medium/high |
+| `path`, `line`, `end_line` | `app/db.py`, 42, 42 | Repo-relative only |
+| `message` | "User input in f-string SQL" | Trimmed to 200 chars before it reaches a prompt |
+| `fingerprint` | hash(rule_id, path, normalized snippet) | Lets the re-scan check that *this* finding is gone, even if lines moved |
+
+When both scanners report the same line, merge the two findings and keep both rule IDs.
+
+## 8. Writing your own Opengrep rules (guidance)
+
+- One rule per CWE pattern, with metadata `cwe`, `severity`, and a short `message` written as
+  a fact ("user input reaches SQL string formatting"), not an instruction to the model.
+- Prefer **taint mode** (source → sink) for injection classes: sources are request params,
+  CLI args and file contents; sinks are `cursor.execute`, `subprocess.*`, `open`,
+  `yaml.load`, `pickle.loads`, `requests.get`.
+- Add a `sanitizer` for the correct fix (e.g. parameterized `execute(query, params)`), so the
+  re-scan comes back clean after a proper fix.
+- Every rule gets two fixtures in `tests/rules/`: vulnerable code (must match) and fixed code
+  (must not). Run them with Opengrep's rule-test mode in CI.
+- Keep the ruleset small (10–15 rules). Its job is intake for your scenarios, not coverage
+  of all Python security issues.
+
+## 9. Git operations (inside `src/tools/git_ops.py`)
 
 - For each attempt, create a scratch **git worktree** at the scenario's pinned commit (or a
   fresh copy into the sandbox), so a failed attempt never dirties the source checkout.
@@ -107,7 +135,7 @@ Scanners play two roles:
 - Check that the diff applies with `git apply --check` inside the sandbox before running tests.
 - Commits happen only on the human-invoked `aeropatch submit` path (doc 13).
 
-## 8. Week 1 deliverables for this component
+## 10. Week 1 deliverables for this component
 
 - [ ] `scan(repo)` returns normalized findings from Opengrep and Bandit for 3 sample repos.
 - [ ] `get_context(repo, path, line)` returns ≤ 3k-token context; unit tests on 5 fixtures,

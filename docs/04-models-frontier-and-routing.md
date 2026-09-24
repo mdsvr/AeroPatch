@@ -81,7 +81,7 @@ starting cold.
 
 ```text
 attempts: [local, local, frontier]   # configurable list; the loop walks it
-on refusal or provider error -> skip to the next entry, record the reason
+on refusal or provider error -> skip to the next entry, record the reason (not a numbered attempt)
 stop when: tests pass | list exhausted | per-scenario $ cap hit
 ```
 
@@ -125,7 +125,22 @@ requests will be declined. Expect it and measure it.
 - Keep the API keys in the orchestrator process only; they must never reach a sandbox container.
 - Check each provider's data-retention and training-use terms, and note them in the README.
 
-## 9. What to report from this component
+## 9. Router configuration (one dict, logged in every run header)
+
+| Key | Example | Meaning |
+|---|---|---|
+| `mode` | `"cascade"` | `local` / `frontier` / `cascade` |
+| `attempt_plan` | `["local", "local", "frontier"]` | Route per attempt; the loop walks it |
+| `local_model` | `"aeropatch-4b:q4_k_m"` | Ollama tag or GGUF path; digest logged |
+| `frontier_model` | `"claude-opus-5"` | Default Claude model; a cheaper tier is your choice |
+| `frontier_effort` | `"medium"` | `output_config.effort`; lower means cheaper and faster |
+| `max_usd_per_scenario` | `0.50` | Hard ceiling; the loop stops when it's reached |
+| `local_ctx_budget` | `6000` | Tokens; above this, escalate or trim |
+| `server_side_fallbacks` | `true` | Claude API refusal fallback (beta) |
+
+Changing any of these means a new config name. Results are only compared within a config.
+
+## 10. What to report from this component
 
 Escalation rate, refusal rate (by provider and category), frontier tokens per resolved scenario,
 dollar cost per resolved scenario for each mode, and the accuracy delta cascade vs frontier.

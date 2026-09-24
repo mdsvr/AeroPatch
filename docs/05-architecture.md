@@ -67,7 +67,7 @@ four-week project; no component needs a framework.
 | `Task` | `id`, `repo_path`, `commit`, `cwe`, `finding` (rule id, message, file, line), `description`, `allowed_paths`, `poc_tests`, `regression_tests` |
 | `Context` | `files` (path → scoped snippet with line ranges), `imports`, `callers`, `token_count` |
 | `EditProposal` | `edits` (list of `{path, search, replace}`), `rationale` (≤3 sentences), `model`, `usage` |
-| `GateResult` | `ok`, `violations` (list of codes such as `FORBIDDEN_PATH`, `TOUCHES_TESTS`, `TOO_LARGE`, `SYNTAX_ERROR`) |
+| `GateResult` | `ok`, `violations` (list of codes such as `FORBIDDEN_PATH`, `OUT_OF_SCOPE`, `TOO_LARGE`, `SYNTAX_ERROR`) |
 | `SandboxResult` | `applied`, `poc_passed`, `regressions_passed`, `lint_ok`, `rescan_clean`, `failures` (trimmed), `duration_s`, `timed_out` |
 | `Attempt` | `n`, `route`, `proposal`, `gate`, `sandbox`, `latency_s`, `cost_usd`, `refusal` |
 | `RunResult` | `task_id`, `config`, `attempts`, `resolved`, `final_diff` |
@@ -112,7 +112,29 @@ agent container root-equivalent control of Docker, so during development run the
 **on WSL2 directly**, not in a container. Use compose only for the `llm` service and for the
 one-command demo, and document this trade-off in the README.
 
-## 8. Failure attribution (built in, because it's what reviewers ask about)
+## 8. Walkthrough: one scenario end to end (illustrative)
+
+Scenario `A-089-01`: a Flask endpoint builds SQL with an f-string.
+1. **Intake**: Opengrep rule `aeropatch.python.sqli-fstring` fires at `app/db.py:42`. It becomes
+   a `Task` with CWE-89, `allowed_paths=["app/db.py"]`, and the PoC and regression test IDs.
+2. **Localize**: tree-sitter finds `def find_user(name)` spanning lines 38–47, plus the imports
+   and one caller in `app/routes.py`. The context is ~900 tokens.
+3. **Generate (attempt 1, local)**: the SLM returns one SEARCH/REPLACE block switching to a
+   `?` placeholder. It parses and applies. The gates pass: one file, 1 changed line, no risky imports.
+4. **Validate**: the PoC `test_name_with_quote_is_data` still **fails**. The model changed the
+   query but passed `name` as a string, not a tuple, so sqlite raised a binding error.
+5. **Repair context**: the trimmed failure is 12 lines: the assertion, the `ProgrammingError`
+   message, and the offending line.
+6. **Generate (attempt 2, local)**: the fix now passes `(name,)`. It applies and gates pass.
+7. **Validate**: PoC passes, all 6 regression tests pass, the re-scan is clean. Result: `RESOLVED`
+   at attempt 2, cost $0, 31 s end-to-end.
+8. **Report**: `runs/<id>/A-089-01/report.md` holds the diff and evidence. `aeropatch submit` is
+   available, but nothing happens until you run it.
+
+This trace is exactly what the README demo and the interview story should show. It's
+concrete, it's checkable, and it shows the repair loop earning its keep.
+
+## 9. Failure attribution (built in, because it's what reviewers ask about)
 
 Each failed scenario gets exactly one primary cause, taken from the logs:
 `LOCALIZATION_MISS` (edit outside the ground-truth function), `FORMAT_FAIL` (edit didn't parse

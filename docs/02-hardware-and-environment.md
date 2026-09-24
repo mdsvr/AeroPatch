@@ -112,7 +112,26 @@ some VRAM, and the desktop compositor alone can take a few hundred MB.
 - Stronger option, if needed later: install native Docker Engine inside the WSL2 distro
   (not Desktop) and register gVisor there. Document this as a hardening upgrade, not a Week 1 task.
 
-## 9. Decision summary
+## 9. Troubleshooting (common on Windows + WSL2 + Docker + laptop GPU)
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| `nvidia-smi` missing inside WSL | Old WSL kernel or driver | `wsl --update`; update the Windows NVIDIA driver; don't install a Linux driver |
+| Model loads but runs on CPU | GPU offload failed, VRAM full | Close GPU apps; lower the context; check the logs for "offloaded N/N layers" |
+| Ollama/llama.cpp can't load Qwen3.5 | Build predates Gated DeltaNet support | Upgrade to a current release; pin the version once it works |
+| `docker` not found in Ubuntu | WSL integration disabled | Docker Desktop → Settings → Resources → WSL integration → enable Ubuntu |
+| Very slow container file I/O | Repo on `/mnt/f` (NTFS) | Move the repo to `~/` inside WSL |
+| Containers killed randomly | Docker VM memory limit too low | Raise the Desktop memory limit; keep sandboxes at 2 GB each |
+| `pip install` fails in the sandbox | Run phase has no network (by design) | Install in the build phase (doc 07) |
+| Laptop throttles during long runs | Thermal limits | Run on AC power, use a cooling pad, and record tok/s per attempt to spot throttling |
+| WSL uses too much RAM | Default WSL memory cap | Set `memory=` in `%UserProfile%\.wslconfig` (e.g. 10GB) and restart WSL |
+| Line-ending diffs in patches | Windows editors writing CRLF | `git config core.autocrlf input` inside WSL; edit files in WSL |
+
+Keep the machine as quiet as possible during benchmark runs: no browser tabs with video,
+no games, no other GPU apps. The latency and VRAM numbers go into the README, so they
+should come from a clean machine.
+
+## 10. Decision summary
 
 - Dev environment: WSL2 Ubuntu + `uv` + Python 3.12 + Docker Desktop (WSL2 backend).
 - Local inference: Ollama or llama.cpp, Q4_K_M GGUF, ≤4B parameters.

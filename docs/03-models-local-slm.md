@@ -95,7 +95,38 @@ the "Untuned" row of the final results.
 - Keep temperature low (0.0–0.3) for pass@1 runs. Use 0.6–0.8 for pass@k sampling (doc 12).
 - Never ask the small model for a full unified diff with line numbers. The harness computes the diff.
 
-## 7. Serving settings (starting point, tune in Week 1)
+## 7. What a 4B model can and cannot realistically do here
+
+Set expectations before Week 1, so the results feel informative rather than disappointing:
+
+| Likely good at (after fine-tuning) | Likely weak at |
+|---|---|
+| Textbook single-function fixes: parameterized SQL, `shell=False` + arg lists, `yaml.safe_load` | Fixes needing cross-file reasoning or new helper modules |
+| Emitting the exact edit format consistently | Subtle logic bugs (auth flow ordering, race conditions) |
+| Applying a known fix pattern to a new codebase's style | Fixes requiring library/API knowledge newer than its training data |
+| Repairing a near-miss after a clear test failure | Recovering from a wrong root-cause guess |
+| Running offline, free, with no refusals | Long contexts (quality drops well before the 262k window) |
+
+This split is itself a publishable result. A per-CWE table showing which classes the SLM
+handles and which need escalation is more useful to readers than a single average (doc 12).
+
+## 8. Model-specific gotchas
+
+- **Chat templates**: always format with the tokenizer's own template (`apply_chat_template`)
+  in training *and* serving. A template mismatch between Unsloth training and the Ollama
+  Modelfile is a classic cause of "the fine-tune does nothing".
+- **Thinking tags**: Qwen3.5 in thinking mode emits `<think>…</think>` first. Strip it before
+  parsing edits, and count those tokens in latency. In non-thinking mode, make sure the
+  template actually disables thinking; check the raw output once.
+- **Stop tokens**: set the model's EOS/stop sequences in the server config. A missing stop
+  token produces rambling after the last `>>>>>>> REPLACE`, and the parser should ignore
+  anything after that marker anyway.
+- **Quantized GGUF sources**: use GGUFs from the official org or Unsloth, or convert your own.
+  Record the file's SHA-256 in the run header (doc 13, T10).
+- **Tokenizer counts differ between models.** Budget the context with the serving model's
+  own tokenizer (Ollama/llama.cpp return prompt token counts), not a generic estimate.
+
+## 9. Serving settings (starting point, tune in Week 1)
 
 | Setting | Value |
 |---|---|
