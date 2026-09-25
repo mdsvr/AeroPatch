@@ -1,0 +1,18 @@
+{
+  "id": "A-1333-01",
+  "tier": "A",
+  "cwe": "CWE-1333",
+  "cwe_name": "Inefficient regular expression (ReDoS)",
+  "difficulty": "easy",
+  "split": "dev",
+  "description": "The username pattern nests a quantifier inside a quantified group, so some invalid inputs take exponential time to reject.",
+  "finding": {"tool": "opengrep", "rule_id": "aeropatch.python.redos-nested-quantifier", "path": "app/validate.py", "line": 5, "severity": "high", "message": "Regular expression with a nested quantifier can backtrack exponentially."},
+  "allowed_paths": ["app/validate.py"],
+  "target_function": "is_valid_username",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}

@@ -1,0 +1,17 @@
+diff --git a/app/validate.py b/app/validate.py
+index 5018440..27ab3da 100644
+--- a/app/validate.py
++++ b/app/validate.py
+@@ -2,9 +2,10 @@
+ 
+ import re
+ 
+-USERNAME_RE = re.compile(r"^([a-z0-9]+)+$")
++USERNAME_RE = re.compile(r"^[a-z0-9]+$")
++MAX_LEN = 64
+ 
+ 
+ def is_valid_username(name):
+     """Usernames are lowercase letters and digits."""
+-    return bool(USERNAME_RE.match(name))
++    return len(name) <= MAX_LEN and bool(USERNAME_RE.match(name))

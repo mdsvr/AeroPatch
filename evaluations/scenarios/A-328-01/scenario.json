@@ -1,0 +1,18 @@
+{
+  "id": "A-328-01",
+  "tier": "A",
+  "cwe": "CWE-328",
+  "cwe_name": "Weak password hash",
+  "difficulty": "medium",
+  "split": "dev",
+  "description": "Passwords are stored as an unsalted MD5 hex digest.",
+  "finding": {"tool": "bandit", "rule_id": "B324", "path": "app/users.py", "line": 8, "severity": "high", "message": "Use of weak MD5 hash for security. Consider usedforsecurity=False"},
+  "allowed_paths": ["app/users.py"],
+  "target_function": "hash_password",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}

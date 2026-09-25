@@ -1,0 +1,18 @@
+{
+  "id": "A-209-01",
+  "tier": "A",
+  "cwe": "CWE-209",
+  "cwe_name": "Information exposure through an error message",
+  "difficulty": "easy",
+  "split": "dev",
+  "description": "lookup_order returns the repr of any exception to the API client, exposing internal details.",
+  "finding": {"tool": "opengrep", "rule_id": "aeropatch.python.exception-in-response", "path": "app/api.py", "line": 10, "severity": "high", "message": "Exception details are returned to the client."},
+  "allowed_paths": ["app/api.py"],
+  "target_function": "lookup_order",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}

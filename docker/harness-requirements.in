@@ -1,0 +1,6 @@
+# Tools baked into every sandbox image. Regenerate the lock with:
+#   uv pip compile docker/harness-requirements.in --generate-hashes --python-version 3.12 -o docker/harness-requirements.lock
+pytest==8.4.2
+pytest-timeout==2.4.0
+ruff==0.13.3
+bandit==1.8.6

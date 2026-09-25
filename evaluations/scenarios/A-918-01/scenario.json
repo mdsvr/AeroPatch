@@ -1,0 +1,18 @@
+{
+  "id": "A-918-01",
+  "tier": "A",
+  "cwe": "CWE-918",
+  "cwe_name": "Server-side request forgery",
+  "difficulty": "medium",
+  "split": "dev",
+  "description": "fetch_preview fetches any http(s) URL a user supplies, including ones that resolve to loopback, link-local or private addresses.",
+  "finding": {"tool": "opengrep", "rule_id": "aeropatch.python.ssrf-unvalidated-fetch", "path": "app/preview.py", "line": 15, "severity": "high", "message": "User-supplied URL is fetched without checking the resolved address."},
+  "allowed_paths": ["app/preview.py"],
+  "target_function": "fetch_preview",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}

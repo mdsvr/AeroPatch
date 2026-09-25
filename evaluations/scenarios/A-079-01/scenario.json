@@ -1,0 +1,18 @@
+{
+  "id": "A-079-01",
+  "tier": "A",
+  "cwe": "CWE-79",
+  "cwe_name": "Cross-site scripting",
+  "difficulty": "easy",
+  "split": "dev",
+  "description": "render_comment builds an HTML fragment by interpolating the comment author and text without escaping them.",
+  "finding": {"tool": "opengrep", "rule_id": "aeropatch.python.html-fstring-unescaped", "path": "app/render.py", "line": 6, "severity": "high", "message": "User-supplied values are interpolated into HTML without escaping."},
+  "allowed_paths": ["app/render.py"],
+  "target_function": "render_comment",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}

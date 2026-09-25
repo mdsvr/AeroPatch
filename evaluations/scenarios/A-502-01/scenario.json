@@ -1,0 +1,18 @@
+{
+  "id": "A-502-01",
+  "tier": "A",
+  "cwe": "CWE-502",
+  "cwe_name": "Unsafe deserialization",
+  "difficulty": "medium",
+  "split": "dev",
+  "description": "Preferences round-trip through the client cookie using pickle; load_prefs deserializes client-supplied bytes.",
+  "finding": {"tool": "bandit", "rule_id": "B301", "path": "app/prefs.py", "line": 14, "severity": "high", "message": "Pickle and modules that wrap it can be unsafe when used to deserialize untrusted data, possible security issue."},
+  "allowed_paths": ["app/prefs.py"],
+  "target_function": "load_prefs",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}

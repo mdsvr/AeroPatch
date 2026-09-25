@@ -1,0 +1,21 @@
+diff --git a/app/auth.py b/app/auth.py
+index fb0b2f2..9544665 100644
+--- a/app/auth.py
++++ b/app/auth.py
+@@ -1,5 +1,7 @@
+ """Login helpers."""
+ 
++from urllib.parse import urlparse
++
+ 
+ def redirect_after_login(next_url, default="/home"):
+     """Return where to send the user after a successful login.
+@@ -8,4 +10,8 @@ def redirect_after_login(next_url, default="/home"):
+     """
+     if not next_url:
+         return default
++    parts = urlparse(next_url)
++    if parts.scheme or parts.netloc or not next_url.startswith("/") or next_url.startswith("//") \
++            or "\\" in next_url:
++        return default
+     return next_url

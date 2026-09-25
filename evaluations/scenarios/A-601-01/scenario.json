@@ -1,0 +1,18 @@
+{
+  "id": "A-601-01",
+  "tier": "A",
+  "cwe": "CWE-601",
+  "cwe_name": "Open redirect",
+  "difficulty": "easy",
+  "split": "dev",
+  "description": "redirect_after_login returns the ?next= parameter unchanged, so a login link can send users to another site.",
+  "finding": {"tool": "opengrep", "rule_id": "aeropatch.python.open-redirect", "path": "app/auth.py", "line": 11, "severity": "high", "message": "A redirect target from the request is returned without validation."},
+  "allowed_paths": ["app/auth.py"],
+  "target_function": "redirect_after_login",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}

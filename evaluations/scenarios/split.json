@@ -1,0 +1,16 @@
+{
+  "_note": "Frozen split. dev = prompt/checkpoint selection; test = final runs only (doc 11 \u00a73). Week 2 adds the test scenarios.",
+  "dev": [
+    "A-022-01",
+    "A-078-01",
+    "A-079-01",
+    "A-089-01",
+    "A-1333-01",
+    "A-209-01",
+    "A-328-01",
+    "A-502-01",
+    "A-601-01",
+    "A-918-01"
+  ],
+  "test": []
+}

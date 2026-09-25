@@ -1,0 +1,11 @@
+diff --git a/app/db.py b/app/db.py
+index ccbdec5..6dd9499 100644
+--- a/app/db.py
++++ b/app/db.py
+@@ -15,5 +15,5 @@ def add_user(conn, name):
+ 
+ 
+ def find_user(conn, name):
+-    cur = conn.execute(f"SELECT id, name FROM users WHERE name = '{name}'")
++    cur = conn.execute("SELECT id, name FROM users WHERE name = ?", (name,))
+     return cur.fetchall()
