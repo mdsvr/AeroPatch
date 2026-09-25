@@ -1,0 +1,13 @@
+diff --git a/app/files.py b/app/files.py
+index f5b13b2..44b7cb5 100644
+--- a/app/files.py
++++ b/app/files.py
+@@ -6,6 +6,6 @@ import subprocess
+ def count_lines(directory, filename):
+     """Return the number of lines in `filename` inside `directory`."""
+     out = subprocess.run(
+-        f"wc -l < {filename}", shell=True, cwd=directory, capture_output=True, text=True, check=True
++        ["wc", "-l", "--", filename], cwd=directory, capture_output=True, text=True, check=True
+     )
+-    return int(out.stdout.strip())
++    return int(out.stdout.split()[0])

@@ -22,7 +22,9 @@ FORBIDDEN_GLOBS = [
     "Dockerfile*", "docker-compose*", "pyproject.toml", "setup.py", "setup.cfg",
     "requirements*.txt", "*.lock", ".env*",
 ]
-RISKY_MODULES = ["subprocess", "socket", "requests", "urllib", "ctypes", "pickle", "httpx"]
+# Matched on dotted prefixes: "urllib.request" is risky, "urllib.parse" is not.
+RISKY_MODULES = ["subprocess", "socket", "requests", "urllib.request", "urllib3", "http.client", "ctypes",
+                 "pickle", "marshal", "httpx"]
 RISKY_CALLS = ["os.system", "os.popen", "eval", "exec", "__import__"]
 
 DEFAULTS: dict = {

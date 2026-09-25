@@ -2,23 +2,14 @@
 
 import os
 
-import docker
 import pytest
+from conftest import needs_docker
 
+import docker
 from aeropatch.config import BASE_IMAGE
 from aeropatch.sandbox import sandbox
 
-
-def _docker_ready() -> bool:
-    try:
-        docker.from_env().images.get(BASE_IMAGE)
-        return True
-    except Exception:  # noqa: BLE001
-        return False
-
-
-pytestmark = [pytest.mark.docker,
-              pytest.mark.skipif(not _docker_ready(), reason="Docker or sandbox base image unavailable")]
+pytestmark = needs_docker
 
 
 def py(code: str, timeout: float = 60):
@@ -30,7 +21,7 @@ def count_ours() -> int:
 
 
 def test_no_network():
-    code, logs, _, _ = py(
+    _, logs, _, _ = py(
         "import socket\n"
         "try:\n socket.create_connection(('1.1.1.1', 53), timeout=3); print('CONNECTED')\n"
         "except OSError as e: print('BLOCKED', e)")
@@ -38,7 +29,7 @@ def test_no_network():
 
 
 def test_readonly_root_and_tmp_size_cap():
-    code, logs, _, _ = py(
+    _, logs, _, _ = py(
         "import os\n"
         "for p in ('/usr/x', '/x'):\n"
         "  try: open(p, 'w').write('x'); print('WROTE', p)\n"
@@ -54,7 +45,7 @@ def test_readonly_root_and_tmp_size_cap():
 
 def test_process_count_is_limited():
     # Tries to start far more processes than pids_limit allows; the limit must stop it.
-    code, logs, timed_out, _ = py(
+    _, logs, _, _ = py(
         "import subprocess\n"
         "procs = []\n"
         "try:\n"
@@ -65,13 +56,13 @@ def test_process_count_is_limited():
 
 
 def test_infinite_loop_is_killed_at_timeout():
-    code, logs, timed_out, dur = py("while True: pass", timeout=5)
+    _, _, timed_out, dur = py("while True: pass", timeout=5)
     assert timed_out and dur < 30
 
 
 def test_no_secrets_in_env(monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-should-never-reach-the-sandbox")
-    code, logs, _, _ = py("import os; print(sorted(os.environ)); print(any('sk-ant' in v for v in os.environ.values()))")
+    _, logs, _, _ = py("import os; print(sorted(os.environ)); print(any('sk-ant' in v for v in os.environ.values()))")
     assert "ANTHROPIC_API_KEY" not in logs and logs.strip().endswith("False")
     assert os.environ["ANTHROPIC_API_KEY"]  # still set on the host side
 

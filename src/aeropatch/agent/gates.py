@@ -40,9 +40,10 @@ def _imports_and_calls(tree: ast.AST) -> tuple[set[str], set[str]]:
     mods, calls = set(), set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            mods.update(a.name.split(".")[0] for a in node.names)
+            mods.update(a.name for a in node.names)
         elif isinstance(node, ast.ImportFrom) and node.module:
-            mods.add(node.module.split(".")[0])
+            mods.add(node.module)
+            mods.update(f"{node.module}.{a.name}" for a in node.names)
         elif isinstance(node, ast.Call):
             f = node.func
             if isinstance(f, ast.Name):
@@ -105,7 +106,9 @@ def check(originals: dict[str, str], changed: dict[str, str], allowed_paths: lis
             flag("DELETES_SYMBOL", f"{path} removes {sorted(gone)}")
         old_mods, old_calls = _imports_and_calls(old_tree)
         new_mods, new_calls = _imports_and_calls(new_tree)
-        bad = sorted(((new_mods - old_mods) & risky_mods) | ((new_calls - old_calls) & risky_calls))
+        added_mods = {m for m in new_mods - old_mods
+                      if any(m == r or m.startswith(r + ".") for r in risky_mods)}
+        bad = sorted(added_mods | ((new_calls - old_calls) & risky_calls))
         if bad:
             flag("RISKY_IMPORT", f"{path} adds {bad}")
     if total > cfg["max_changed_lines"]:

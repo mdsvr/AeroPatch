@@ -1,0 +1,14 @@
+diff --git a/app/render.py b/app/render.py
+index aa88298..9608fb4 100644
+--- a/app/render.py
++++ b/app/render.py
+@@ -1,6 +1,8 @@
+ """Render comment cards for the discussion page."""
+ 
++import html
++
+ 
+ def render_comment(author, text):
+     """Return an HTML fragment for one comment."""
+-    return f'<div class="comment"><b>{author}</b><p>{text}</p></div>'
++    return f'<div class="comment"><b>{html.escape(author)}</b><p>{html.escape(text)}</p></div>'

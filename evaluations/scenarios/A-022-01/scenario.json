@@ -1,0 +1,18 @@
+{
+  "id": "A-022-01",
+  "tier": "A",
+  "cwe": "CWE-22",
+  "cwe_name": "Path traversal",
+  "difficulty": "easy",
+  "split": "dev",
+  "description": "read_note joins a caller-supplied name onto the notes directory and opens it without checking that the result stays inside the directory.",
+  "finding": {"tool": "opengrep", "rule_id": "aeropatch.python.path-traversal-open", "path": "app/notes.py", "line": 9, "severity": "high", "message": "User-controlled name reaches open() without a base-directory check."},
+  "allowed_paths": ["app/notes.py"],
+  "target_function": "read_note",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}

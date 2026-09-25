@@ -85,8 +85,9 @@ def summarize(jsonl: Path) -> dict:
         rec = json.loads(line)
         if rec["type"] == "header":
             cfg_name = rec["config"]["name"]
-            model = rec["config"].get("local_model") if rec["config"]["attempt_plan"][0] == "local" \
-                else rec["config"].get("frontier_model")
+            from aeropatch.agent.router import model_name
+
+            model = " + ".join(dict.fromkeys(model_name(r, rec["config"]) for r in rec["config"]["attempt_plan"]))
         elif rec["type"] == "attempt":
             attempts.append(rec)
         elif rec["type"] == "result":

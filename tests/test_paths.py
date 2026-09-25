@@ -21,7 +21,10 @@ def test_symlink_escape_rejected(tmp_path):
     outside.mkdir()
     repo = tmp_path / "repo"
     repo.mkdir()
-    os.symlink(outside, repo / "link")
+    try:
+        os.symlink(outside, repo / "link")
+    except OSError:
+        pytest.skip("symlinks not permitted on this host")
     with pytest.raises(PathError):
         safe_join(repo, "link/x.py")
 

@@ -61,7 +61,9 @@ def test_suppresses_checks():
 def test_risky_import():
     assert "RISKY_IMPORT" in change("import subprocess\n" + GOOD).violations
     assert "RISKY_IMPORT" in change(GOOD + "\nZ = eval('1')\n").violations
+    assert "RISKY_IMPORT" in change("from urllib.request import urlopen\n" + GOOD).violations
     assert "RISKY_IMPORT" not in change("import re\n" + GOOD).violations
+    assert "RISKY_IMPORT" not in change("from urllib.parse import urlparse\n" + GOOD).violations
 
 
 def test_risky_import_allowlisted_per_scenario():

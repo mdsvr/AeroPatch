@@ -1,0 +1,25 @@
+{
+  "id": "A-089-01",
+  "tier": "A",
+  "cwe": "CWE-89",
+  "cwe_name": "SQL injection",
+  "difficulty": "easy",
+  "split": "dev",
+  "description": "find_user builds its SQL query by formatting the user-supplied name into the query string.",
+  "finding": {
+    "tool": "bandit",
+    "rule_id": "B608",
+    "path": "app/db.py",
+    "line": 18,
+    "severity": "medium",
+    "message": "Possible SQL injection vector through string-based query construction."
+  },
+  "allowed_paths": ["app/db.py"],
+  "target_function": "find_user",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}

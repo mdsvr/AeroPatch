@@ -1,0 +1,30 @@
+diff --git a/app/users.py b/app/users.py
+index 5e6ce5e..08613f7 100644
+--- a/app/users.py
++++ b/app/users.py
+@@ -1,12 +1,23 @@
+ """Password storage for local accounts."""
+ 
+ import hashlib
++import hmac
++import os
++
++ITERATIONS = 200_000
+ 
+ 
+ def hash_password(password):
+     """Return the string stored in the users table for `password`."""
+-    return hashlib.md5(password.encode("utf-8")).hexdigest()
++    salt = os.urandom(16)
++    digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, ITERATIONS)
++    return f"pbkdf2_sha256${ITERATIONS}${salt.hex()}${digest.hex()}"
+ 
+ 
+ def verify_password(password, stored):
+-    return hash_password(password) == stored
++    try:
++        _, iterations, salt, digest = stored.split("$")
++    except (AttributeError, ValueError):
++        return False
++    candidate = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), bytes.fromhex(salt), int(iterations))
++    return hmac.compare_digest(candidate.hex(), digest)

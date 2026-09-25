@@ -1,0 +1,152 @@
+# AeroPatch Opengrep ruleset (doc 06 §8). Our own rules, shipped under this repo's license.
+# Messages state facts; they are not instructions to a model.
+rules:
+  - id: aeropatch.python.sqli-string-query
+    languages: [python]
+    severity: ERROR
+    message: User input reaches SQL string formatting.
+    metadata: {cwe: "CWE-89: SQL injection"}
+    pattern-either:
+      - pattern: $C.execute(f"...", ...)
+      - pattern: $C.execute("..." % $X, ...)
+      - pattern: $C.execute("...".format(...), ...)
+      - pattern: $C.execute("..." + $X, ...)
+
+  - id: aeropatch.python.subprocess-shell
+    languages: [python]
+    severity: ERROR
+    message: A command string is run through the shell.
+    metadata: {cwe: "CWE-78: OS command injection"}
+    pattern-either:
+      - pattern: subprocess.$F(..., shell=True, ...)
+      - pattern: os.system(...)
+      - pattern: os.popen(...)
+
+  - id: aeropatch.python.path-traversal-open
+    languages: [python]
+    severity: ERROR
+    message: A caller-supplied name is joined onto a directory and opened without a containment check.
+    metadata: {cwe: "CWE-22: Path traversal"}
+    patterns:
+      - pattern-inside: |
+          def $F(..., $NAME, ...):
+            ...
+      - pattern-either:
+          - pattern: open(os.path.join($BASE, $NAME), ...)
+          - patterns:
+              - pattern-inside: |
+                  $P = os.path.join($BASE, $NAME)
+                  ...
+              - pattern: open($P, ...)
+
+  - id: aeropatch.python.unsafe-deserialization
+    languages: [python]
+    severity: ERROR
+    message: Untrusted bytes are deserialized with pickle or unsafe YAML loading.
+    metadata: {cwe: "CWE-502: Unsafe deserialization"}
+    pattern-either:
+      - pattern: pickle.loads(...)
+      - pattern: pickle.load(...)
+      - patterns:
+          - pattern: yaml.load(...)
+          - pattern-not: yaml.load(..., Loader=yaml.SafeLoader, ...)
+
+  - id: aeropatch.python.ssrf-unvalidated-fetch
+    languages: [python]
+    severity: ERROR
+    message: User-supplied URL is fetched without checking the resolved address.
+    metadata: {cwe: "CWE-918: Server-side request forgery"}
+    patterns:
+      - pattern-inside: |
+          def $F(..., $URL, ...):
+            ...
+      - pattern-inside: |
+          $PARTS = urlparse($URL)
+          ...
+      - pattern-not-inside: |
+          $A = ipaddress.ip_address(...)
+          ...
+      - pattern-either:
+          - pattern: $FETCH($URL)
+          - pattern: $M.$FETCH($URL, ...)
+      - metavariable-regex:
+          metavariable: $FETCH
+          regex: ^(fetch|get|post|urlopen|request)$
+
+  - id: aeropatch.python.html-fstring-unescaped
+    languages: [python]
+    severity: WARNING
+    message: User-supplied values are interpolated into HTML without escaping.
+    metadata: {cwe: "CWE-79: Cross-site scripting"}
+    patterns:
+      - pattern-inside: |
+          def $F(..., $X, ...):
+            ...
+      - pattern-either:
+          - pattern-regex: f'[^'\n]*<[a-zA-Z][^'\n]*\{[a-zA-Z_][a-zA-Z0-9_]*\}
+          - pattern-regex: f"[^"\n]*<[a-zA-Z][^"\n]*\{[a-zA-Z_][a-zA-Z0-9_]*\}
+
+  - id: aeropatch.python.open-redirect
+    languages: [python]
+    severity: WARNING
+    message: A redirect target from the request is returned without validation.
+    metadata: {cwe: "CWE-601: Open redirect"}
+    patterns:
+      - pattern-inside: |
+          def $F(..., $NEXT, ...):
+            ...
+      - pattern-not-inside: |
+          $P = urlparse($NEXT)
+          ...
+      - pattern: return $NEXT
+      - metavariable-regex:
+          metavariable: $F
+          regex: (?i).*redirect.*
+      - metavariable-regex:
+          metavariable: $NEXT
+          regex: (?i).*(next|url|target|dest).*
+
+  - id: aeropatch.python.redos-nested-quantifier
+    languages: [python]
+    severity: WARNING
+    message: Regular expression with a nested quantifier can backtrack exponentially.
+    metadata: {cwe: "CWE-1333: Inefficient regular expression"}
+    patterns:
+      - pattern-either:
+          - pattern: re.compile("$R", ...)
+          - pattern: re.match("$R", ...)
+          - pattern: re.search("$R", ...)
+          - pattern: re.fullmatch("$R", ...)
+      - metavariable-regex:
+          metavariable: $R
+          regex: .*\([^()]*[+*]\)[+*{].*
+
+  - id: aeropatch.python.weak-password-hash
+    languages: [python]
+    severity: ERROR
+    message: A fast unsalted digest is used for password storage.
+    metadata: {cwe: "CWE-328: Weak hash"}
+    patterns:
+      - pattern-inside: |
+          def $F(...):
+            ...
+      - metavariable-regex:
+          metavariable: $F
+          regex: (?i).*passw.*
+      - pattern-either:
+          - pattern: hashlib.md5(...)
+          - pattern: hashlib.sha1(...)
+          - pattern: hashlib.sha256(...)
+
+  - id: aeropatch.python.exception-in-response
+    languages: [python]
+    severity: WARNING
+    message: Exception details are returned to the client.
+    metadata: {cwe: "CWE-209: Information exposure through an error message"}
+    patterns:
+      - pattern-inside: |
+          try:
+            ...
+          except $T as $E:
+            ...
+      - pattern: return <... $E ...>

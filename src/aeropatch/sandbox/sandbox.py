@@ -85,7 +85,7 @@ def hardened_kwargs(cfg: dict | None = None) -> dict:
     return {
         "network_mode": "none",
         "read_only": True,
-        "tmpfs": {"/work": "rw,exec,size=512m", "/tmp": "rw,size=256m"},
+        "tmpfs": {"/work": "rw,exec,size=512m,mode=1777", "/tmp": "rw,noexec,size=256m,mode=1777"},
         "cap_drop": ["ALL"],
         "security_opt": ["no-new-privileges"],
         "pids_limit": cfg["sandbox_pids"],

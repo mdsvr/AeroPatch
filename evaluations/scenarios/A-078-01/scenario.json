@@ -1,0 +1,18 @@
+{
+  "id": "A-078-01",
+  "tier": "A",
+  "cwe": "CWE-78",
+  "cwe_name": "OS command injection",
+  "difficulty": "easy",
+  "split": "dev",
+  "description": "count_lines runs a shell command built by formatting the file name into the command string.",
+  "finding": {"tool": "bandit", "rule_id": "B602", "path": "app/files.py", "line": 8, "severity": "high", "message": "subprocess call with shell=True identified, security issue."},
+  "allowed_paths": ["app/files.py"],
+  "target_function": "count_lines",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}

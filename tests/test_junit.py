@@ -26,13 +26,11 @@ def test_summarize_caps_length():
 
 
 def test_parse_logs_labels():
-    ok = XML.replace('<failure message="AssertionError: assert 2 == 0">', "<system-out>").replace(
-        "E   AssertionError</failure>", "</system-out>")
-    logs = "\n".join(["===AEROPATCH-RC-poc===", "1", "===AEROPATCH-JUNIT-poc===", XML,
+    logs = "\n".join([  # noqa: FLY002 - one marker per line reads better
+"===AEROPATCH-RC-poc===", "1", "===AEROPATCH-JUNIT-poc===", XML,
                       "===AEROPATCH-RC-regression===", "0", "===AEROPATCH-JUNIT-regression===",
                       '<testsuites><testsuite><testcase classname="r" name="t"/></testsuite></testsuites>',
                       "===AEROPATCH-END==="])
     res = sandbox.parse_logs(logs)
     assert not res.poc_passed and res.regressions_passed and res.label == "TIMEOUT"
-    assert ok  # silence unused
     assert sandbox.parse_logs("garbage").label == "SANDBOX_ERROR"

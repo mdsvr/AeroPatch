@@ -1,0 +1,28 @@
+diff --git a/app/prefs.py b/app/prefs.py
+index 5072552..ac20da2 100644
+--- a/app/prefs.py
++++ b/app/prefs.py
+@@ -1,17 +1,20 @@
+ """User preferences, stored as bytes in the session cookie."""
+ 
+-import pickle
++import json
+ 
+ DEFAULTS = {"theme": "light", "page_size": 20}
+ 
+ 
+ def dump_prefs(prefs):
+-    return pickle.dumps(prefs)
++    return json.dumps(prefs).encode("utf-8")
+ 
+ 
+ def load_prefs(blob):
+     """Decode preferences sent back by the client and merge them over the defaults."""
+-    data = pickle.loads(blob)
++    try:
++        data = json.loads(blob.decode("utf-8"))
++    except (UnicodeDecodeError, json.JSONDecodeError) as e:
++        raise ValueError("preferences are not valid JSON") from e
+     if not isinstance(data, dict):
+         raise ValueError("preferences must be an object")
+     return {**DEFAULTS, **data}

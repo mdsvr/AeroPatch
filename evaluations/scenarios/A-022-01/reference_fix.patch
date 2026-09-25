@@ -1,0 +1,15 @@
+diff --git a/app/notes.py b/app/notes.py
+index 634181c..08d7f59 100644
+--- a/app/notes.py
++++ b/app/notes.py
+@@ -5,6 +5,9 @@ import os
+ 
+ def read_note(base_dir, name):
+     """Return the text of note `name` stored under `base_dir`."""
+-    path = os.path.join(base_dir, name)
++    base = os.path.realpath(base_dir)
++    path = os.path.realpath(os.path.join(base, name))
++    if os.path.commonpath([base, path]) != base:
++        raise PermissionError(f"note outside the notes directory: {name}")
+     with open(path, encoding="utf-8") as f:
+         return f.read()

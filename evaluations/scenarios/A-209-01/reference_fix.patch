@@ -1,0 +1,28 @@
+diff --git a/app/api.py b/app/api.py
+index c8552fb..3afd21e 100644
+--- a/app/api.py
++++ b/app/api.py
+@@ -1,13 +1,21 @@
+ """JSON handler for the order-lookup endpoint."""
+ 
++import logging
++
++log = logging.getLogger(__name__)
++
+ 
+ def lookup_order(order_id, conn):
+     """Return (status_code, body) for GET /orders/<order_id>."""
+     try:
+         oid = int(order_id)
++    except (TypeError, ValueError):
++        return 400, {"error": "invalid order id"}
++    try:
+         row = conn.execute("SELECT id, item FROM orders WHERE id = ?", (oid,)).fetchone()
+-    except Exception as exc:
+-        return 500, {"error": f"lookup failed: {exc!r}"}
++    except Exception:
++        log.exception("order lookup failed")
++        return 500, {"error": "internal error"}
+     if row is None:
+         return 404, {"error": "not found"}
+     return 200, {"id": row[0], "item": row[1]}

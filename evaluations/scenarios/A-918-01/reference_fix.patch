@@ -1,0 +1,19 @@
+diff --git a/app/preview.py b/app/preview.py
+index 038c68c..12737bc 100644
+--- a/app/preview.py
++++ b/app/preview.py
+@@ -1,5 +1,6 @@
+ """Link previews: fetch the page behind a URL a user pasted into a chat message."""
+ 
++import ipaddress
+ import socket
+ from urllib.parse import urlparse
+ 
+@@ -12,4 +13,7 @@ def fetch_preview(url, fetch, resolve=socket.gethostbyname):
+     parts = urlparse(url)
+     if parts.scheme not in ("http", "https") or not parts.hostname:
+         raise ValueError("only http(s) URLs can be previewed")
++    address = ipaddress.ip_address(resolve(parts.hostname))
++    if not address.is_global:
++        raise ValueError("URL points to a non-public address")
+     return fetch(url)

@@ -34,4 +34,4 @@ markers = ["docker: needs a running Docker daemon and the sandbox base image"]
 
 [tool.ruff]
 line-length = 120
-extend-exclude = ["evaluations/scenarios"]
+extend-exclude = ["evaluations/scenarios", "tests/fixtures"]
