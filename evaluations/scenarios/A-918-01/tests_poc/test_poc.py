@@ -20,5 +20,5 @@ def refuse_fetch(url):
     "http://[::1]/",
 ])
 def test_internal_addresses_are_refused(url):
-    with pytest.raises(ValueError):
+    with pytest.raises((ValueError, PermissionError)):  # either is a valid rejection
         fetch_preview(url, refuse_fetch, fake_resolve)

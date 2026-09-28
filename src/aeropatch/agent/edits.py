@@ -13,7 +13,7 @@ from dataclasses import dataclass
 
 from aeropatch.contracts import Edit, EditProposal
 
-SEARCH_RE = re.compile(r"^\s*<{5,9} SEARCH\s+(?P<path>\S+)\s*$")
+SEARCH_RE = re.compile(r"^\s*<{5,9} SEARCH(?:\s+(?P<path>\S+))?\s*$")
 DIVIDER_RE = re.compile(r"^\s*={5,9}\s*$")
 REPLACE_RE = re.compile(r"^\s*>{5,9} REPLACE\s*$")
 THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL)
@@ -36,8 +36,12 @@ class ApplyError(Exception):
         self.message = message
 
 
-def parse(text: str) -> EditProposal:
-    """Parse model output. Text after the last REPLACE marker is ignored."""
+def parse(text: str, default_path: str | None = None) -> EditProposal:
+    """Parse model output. Text after the last REPLACE marker is ignored.
+
+    A SEARCH line without a path uses `default_path` (the single editable file), else it is a
+    format error: small models often drop the path when only one file is shown.
+    """
     text = THINK_RE.sub("", text.replace("\r\n", "\n"))
     rationale = ""
     edits: list[Edit] = []
@@ -46,7 +50,11 @@ def parse(text: str) -> EditProposal:
         if state == "out":
             m = SEARCH_RE.match(line)
             if m:
-                state, path, search, replace = "search", m["path"].strip("`"), [], []
+                path = (m["path"] or "").strip("`") or default_path
+                if not path:
+                    return EditProposal(edits=[], rationale=rationale[:600],
+                                        parse_error="FORMAT_ERROR: SEARCH line has no file path")
+                state, search, replace = "search", [], []
             elif not rationale and line.strip().upper().startswith("RATIONALE:"):
                 rationale = line.split(":", 1)[1].strip()
         elif state == "search":
@@ -60,6 +68,11 @@ def parse(text: str) -> EditProposal:
                 state = "out"
             else:
                 replace.append(line)
+    if state == "replace":
+        # ponytail: EOF closes the last block. Qwen3.5 often stops right before the REPLACE
+        # marker; a truncated edit still has to pass the AST gate and the sandbox tests.
+        edits.append(Edit(path=path, search="\n".join(search), replace="\n".join(replace).rstrip("\n")))
+        state = "out"
     error = ""
     if state != "out":
         error = "FORMAT_ERROR: unterminated SEARCH/REPLACE block"

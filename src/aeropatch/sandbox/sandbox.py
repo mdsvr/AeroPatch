@@ -46,7 +46,8 @@ def _build_cmd(dockerfile: Path, context: Path, tag: str, build_args: dict | Non
 
 def _run_build(cmd: list[str], log_path: Path | None) -> None:
     env = {**os.environ, "DOCKER_BUILDKIT": "1"}
-    proc = subprocess.run(cmd, capture_output=True, text=True, env=env, check=False)
+    proc = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8",
+                          errors="replace", env=env, check=False)
     if log_path:
         log_path.parent.mkdir(parents=True, exist_ok=True)
         log_path.write_text(proc.stdout + proc.stderr)
