@@ -71,7 +71,7 @@ def run(task: Task, cfg: dict, run_dir: Path | None = None) -> RunResult:
             _save(adir, "raw_output.txt", gen.text)
             att = Attempt(n=n, route=route, model=gen.model, latency_s=round(gen.latency_s, 2),
                           cost_usd=gen.cost_usd)
-            proposal = edits.parse(gen.text)
+            proposal = edits.parse(gen.text, task.allowed_paths[0] if len(task.allowed_paths) == 1 else None)
             proposal.model, proposal.usage = gen.model, gen.usage
             att.proposal = proposal
             feedback = ""

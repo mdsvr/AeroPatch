@@ -19,6 +19,7 @@ def generate(messages: list[dict], system: str, cfg: dict, temperature: float) -
             "temperature": temperature,
             "top_p": 0.9,
             "num_ctx": cfg["local_num_ctx"],
+            "num_gpu": cfg.get("local_num_gpu", -1),
             "num_predict": cfg["max_tokens_local"],
         },
     }

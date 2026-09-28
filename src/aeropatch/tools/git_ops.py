@@ -69,10 +69,13 @@ class Workspace:
         """git apply a patch; returns an error message, or '' on success."""
         if not patch.strip():
             return ""
-        chk = self._git("apply", "--check", "-", input=patch, check=False)
+        # Via a file, not stdin: text-mode stdin on Windows turns "\n" into "\r\n".
+        pf = self.tmp / "patch.diff"
+        pf.write_text(patch, encoding="utf-8", newline="\n")
+        chk = self._git("apply", "--check", str(pf), check=False)
         if chk.returncode != 0:
             return chk.stderr.strip()[:2000] or "git apply --check failed"
-        self._git("apply", "-", input=patch)
+        self._git("apply", str(pf))
         self._record_changed()
         return ""
 

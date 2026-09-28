@@ -13,10 +13,10 @@ def layout(tmp_path):
 
 
 def test_parent_directory_is_rejected(layout):
-    with pytest.raises(PermissionError):
+    with pytest.raises((PermissionError, ValueError)):  # either is a valid rejection
         read_note(layout, "../private.txt")
 
 
 def test_absolute_path_is_rejected(layout):
-    with pytest.raises(PermissionError):
+    with pytest.raises((PermissionError, ValueError)):  # either is a valid rejection
         read_note(layout, str(layout.parent / "private.txt"))

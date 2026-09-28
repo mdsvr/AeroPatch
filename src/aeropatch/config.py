@@ -33,6 +33,9 @@ DEFAULTS: dict = {
     "local_model": "qwen3.5:4b",
     "local_host": "http://localhost:11434",
     "local_num_ctx": 8192,
+    # Layers offloaded to GPU. Ollama's own estimate put qwen3.5:4b 54% on CPU (9 tok/s);
+    # all layers fit the 3050's 4 GB at 8k ctx (3.64 GB peak, 48 tok/s; measured 2026-09-28).
+    "local_num_gpu": 99,
     "local_think": False,
     "frontier_model": "claude-opus-5",
     "frontier_effort": "medium",

@@ -53,7 +53,7 @@ def test_rules_fire_on_vulnerable_and_not_on_fixed(sid, tmp_path):
     assert any(f.path == task.finding.path and f.cwe == task.cwe for f in before), before
     fixed = tmp_path / "repo"
     shutil.copytree(task.repo_path, fixed)
-    patch = (SCENARIOS_DIR / sid / "reference_fix.patch").read_text()
-    subprocess.run(["git", "apply", "-"], cwd=fixed, input=patch, text=True, check=True)
+    patch = (SCENARIOS_DIR / sid / "reference_fix.patch").read_bytes()  # bytes: no CRLF on Windows
+    subprocess.run(["git", "apply", "-"], cwd=fixed, input=patch, check=True)
     after = scanners.run_opengrep(fixed)
     assert not [f for f in after if f.cwe == task.cwe], after

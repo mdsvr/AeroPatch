@@ -31,8 +31,15 @@ def test_parse_rationale_blocks_and_trailing_text_ignored():
 
 
 def test_parse_unterminated_and_empty():
-    assert "unterminated" in edits.parse("<<<<<<< SEARCH a.py\nx\n=======\ny").parse_error
+    assert edits.parse("<<<<<<< SEARCH a.py\nx\n=======\ny\n").edits == [Edit("a.py", "x", "y")]
+    assert "unterminated" in edits.parse("<<<<<<< SEARCH a.py\nx\n").parse_error
     assert "no SEARCH" in edits.parse("just prose").parse_error
+
+
+def test_parse_missing_path_uses_single_editable_file():
+    text = "<<<<<<< SEARCH\nx = 1\n=======\nx = 2\n>>>>>>> REPLACE"
+    assert edits.parse(text, default_path="a.py").edits == [Edit("a.py", "x = 1", "x = 2")]
+    assert "no file path" in edits.parse(text).parse_error
 
 
 def test_exact_match():
