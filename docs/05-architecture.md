@@ -87,15 +87,20 @@ place if you want JSON-schema export for the MCP tool signatures, which the MCP 
 
 ## 6. Revised repository structure (differences from the original plan)
 
-| Original path | Revised | Reason |
+As built in Week 1, everything lives in one package, `src/aeropatch/`, so `uv run aeropatch`
+works as an installed script. `mcp_server/` (Week 2) and `training/` (Week 3) don't exist yet.
+
+| Original path | Revised (as built) | Reason |
 |---|---|---|
 | `docker/vllm.Dockerfile` | **drop**; use the official Ollama or llama.cpp server image in compose | No vLLM on 4 GB |
-| `mcp_server/tools/` | `src/tools/` (real code) + `mcp_server/server.py` (thin wrapper) | One implementation, two front doors |
-| `src/agent/graph.py` | `src/agent/loop.py` | Plain state machine, no LangGraph |
-| — | `src/agent/edits.py`, `src/agent/gates.py` | Edit parsing/diffing and safety gates are core logic |
-| `src/sandbox/manager.py` + `runner.py` | may merge into `src/sandbox/sandbox.py` | Two files for ~200 LOC is optional |
+| `mcp_server/tools/` | `src/aeropatch/tools/` (real code) + `mcp_server/server.py` (thin wrapper, Week 2) | One implementation, two front doors |
+| `src/agent/graph.py` | `src/aeropatch/agent/loop.py` | Plain state machine, no LangGraph |
+| — | `src/aeropatch/agent/edits.py`, `gates.py`, `prompts.py`, `router.py` | Edit parsing/diffing and safety gates are core logic |
+| — | `src/aeropatch/models/`: local (Ollama), API, Claude Code and oracle clients | One small module per route |
+| `src/sandbox/manager.py` + `runner.py` | merged: `src/aeropatch/sandbox/sandbox.py` + `junit.py` | Two files for ~200 LOC was unnecessary |
 | `training/finetune_qlora.py` | `training/finetune.py` | Qwen3.5 uses LoRA 16-bit, not QLoRA |
 | `evaluations/dataset/` | `evaluations/scenarios/<id>/` with `scenario.json` + repo | One folder per scenario |
+| `evaluations/run_benchmark.py` | `src/aeropatch/bench.py` (`aeropatch bench`) | Same code path as the CLI |
 | — | `runs/` (gitignored) | JSONL logs and raw outputs |
 | — | `docs/` | These planning docs |
 
@@ -103,18 +108,20 @@ place if you want JSON-schema export for the MCP tool signatures, which the MCP 
 
 | Service | Image | GPU | Network |
 |---|---|---|---|
-| `llm` | Ollama or llama.cpp server (pinned version) | yes (WSL2 GPU) | internal only |
+| `llm` | Ollama or llama.cpp server (pinned version); in dev, Ollama runs natively on Windows | yes | internal only |
 | `agent` | Python 3.12 + the `aeropatch` package | no | internal + egress to the frontier API |
 | sandboxes | `aeropatch-sandbox:<scenario>` built on demand | no | **none** |
 
 The agent starts sandbox containers through the Docker socket. Mounting the socket gives the
 agent container root-equivalent control of Docker, so during development run the agent
-**on WSL2 directly**, not in a container. Use compose only for the `llm` service and for the
+**on the Windows host directly** (`uv run aeropatch`), not in a container. Use compose only for the `llm` service and for the
 one-command demo, and document this trade-off in the README.
 
 ## 8. Walkthrough: one scenario end to end (illustrative)
 
-Scenario `A-089-01`: a Flask endpoint builds SQL with an f-string.
+Scenario `A-089-01`: `find_user` in a small sqlite3 app builds SQL with an f-string (Week 1
+scenarios are stdlib-only). In the real Week 1 run Qwen3.5-4B fixed it at attempt 1 in 13 s; the
+trace below is illustrative and shows the repair path.
 1. **Intake**: Opengrep rule `aeropatch.python.sqli-fstring` fires at `app/db.py:42`. It becomes
    a `Task` with CWE-89, `allowed_paths=["app/db.py"]`, and the PoC and regression test IDs.
 2. **Localize**: tree-sitter finds `def find_user(name)` spanning lines 38–47, plus the imports

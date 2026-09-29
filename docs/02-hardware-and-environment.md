@@ -2,17 +2,18 @@
 
 Back to the index: [00-overall-plan.md](00-overall-plan.md)
 
-## 1. What this machine actually has (checked 2026-09-24)
+## 1. What this machine actually has (checked 2026-09-24, updated 2026-09-29)
 
 | Component | Value | Consequence |
 |---|---|---|
 | GPU | NVIDIA RTX 3050 Laptop, **4 GB VRAM**, driver 616.92 | Inference of ≤4B models at Q4 only; no local 3–4B training |
 | RAM | ~15.7 GB | Tight for checkpoint conversion of 4B models (Unsloth advises ~32 GB) |
 | CPU | Intel i5-12450H (8 cores / 12 threads) | Fine for 1–2 parallel sandbox containers |
-| OS | Windows 11 Home | No Hyper-V isolation features of Pro; Docker runs via WSL2 |
-| WSL | WSL2, default distro Ubuntu | Primary dev environment; CUDA works inside WSL2 |
-| Docker | 29.7.2 (Docker Desktop) | Good; but no gVisor support on Desktop for Windows |
-| Python | `python` resolves to the Store alias, but uv 0.10.2 + uv-managed CPython 3.12.11 exist | Project uses uv's 3.12 (`.python-version`) |
+| OS | Windows 11 Home | No Hyper-V isolation features of Pro; Docker Desktop's VM runs on WSL2 |
+| WSL | WSL2, default distro Ubuntu | Installed but **not** the dev environment (§4) |
+| Docker | 29.8.0 (Docker Desktop) | Good; but no gVisor support on Desktop for Windows |
+| Ollama | 0.34.4 for Windows, models on `F:\.ollama\models` | Uses the 3050 through CUDA |
+| Python | `python` resolves to the Store alias, but uv 0.10.2 + uv-managed CPython 3.12.11 exist | Project uses uv's 3.12 (`.python-version`); always `uv run` |
 
 This table should drive the plan. Every choice in the later docs is sized to fit it.
 
@@ -67,19 +68,21 @@ WSL needs extra networking. Sandboxes are Linux containers either way.
     KV-cache settings). Qwen3.5 needs a recent build that supports the Gated DeltaNet layers;
     older builds fail to load it.
 
-## 5. One-time setup checklist (about 1 hour)
+## 5. One-time setup checklist (as done on Windows, about 1 hour)
 
-1. Update WSL: `wsl --update` (PowerShell), then reboot WSL with `wsl --shutdown`.
-2. In Ubuntu: install `git`, `build-essential`, and `curl`. Install `uv` from its official installer.
-3. In Docker Desktop settings: enable the WSL2 engine and integration for Ubuntu, and set the
-   resource limits (e.g. 8 GB RAM, 6 CPUs) so the sandbox can't starve the model server.
-4. Check `docker run --rm hello-world` from inside Ubuntu.
-5. Install Ollama (or build llama.cpp with CUDA), pull a 3–4B Q4 model, and check GPU offload
-   in the logs. Before loading, VRAM should show about 3.5 GB free.
-6. Create accounts (you do this yourself): Kaggle, Hugging Face, and the API consoles for your
-   chosen frontier provider(s). Keep keys in an `.env` file in the repo root, listed in
-   `.gitignore`, and never mounted into sandboxes.
-7. Clone the scenario repos into `~/aeropatch/evaluations/dataset/` at pinned commits.
+1. Install `uv`, git and Docker Desktop (Linux containers). Give the Docker VM enough memory
+   (e.g. 8 GB) that sandboxes can't starve the model server.
+2. `uv sync` in `F:\AeroPatch`; put `opengrep.exe` in `.tools\`.
+3. Install Ollama for Windows; `ollama pull qwen3.5:4b` and
+   `ollama pull qwen2.5-coder:3b-instruct-q4_K_M`. Before loading, ~3.9 GB of VRAM is free.
+4. `uv run aeropatch build-base`, `uv run aeropatch validate --all`, `uv run pytest -q`.
+   These prove Docker, the sandbox hardening and the scanners work on this machine.
+5. Frontier access: either an Anthropic API key in `.env` (gitignored, never mounted into
+   sandboxes), or Claude Code logged in on a subscription (`claude` on PATH; doc 04 §3).
+6. Accounts you create yourself for Week 3: Kaggle and Hugging Face.
+7. Tier B repos (Week 2) are cloned at pinned commits under `evaluations/`.
+8. In a git worktree, set `AEROPATCH_OPENGREP=F:\AeroPatch\.tools\opengrep.exe`: `.tools\` is
+   gitignored, so worktrees don't get a copy.
 
 ## 6. VRAM budget for local inference (approximate)
 
@@ -90,15 +93,17 @@ WSL needs extra networking. Sandboxes are Linux containers either way.
 | CUDA/runtime overhead | ~0.3–0.5 GB | ~0.3 GB | ~0.3 GB |
 | Fits in 4 GB? | Yes, with limited context | Easily | Yes |
 
-These are estimates. Measure peak VRAM in Week 1 and record it, because it becomes a reported
-metric in doc 12. Close browsers and other GPU apps during benchmark runs: Windows itself holds
-some VRAM, and the desktop compositor alone can take a few hundred MB.
+**Measured 2026-09-29** (Ollama, 8k context, all layers on GPU, D6 dev run): Qwen3.5-4B peaks
+at **3,787 MiB** total (3,643 MiB above the ~145 MiB idle), leaving ~300 MiB on the card.
+Qwen2.5-Coder-3B peaks at 2,440 MiB. Qwen3.5-4B fits, but a larger context needs re-measuring.
+Close browsers and other GPU apps during benchmark runs: the desktop compositor holds VRAM too.
 
 ## 7. Throughput expectations
 
-- A laptop 3050 decodes a 3–4B Q4 model at tens of tokens per second (measure it; don't assume).
-  A 400-token edit therefore takes roughly 5–20 s, and prompt processing of a 3–6k-token
-  context adds a few seconds.
+- Measured 2026-09-29: Qwen3.5-4B decodes at **48 tok/s** and Qwen2.5-Coder-3B at 75 tok/s,
+  with p50 latencies of 4.4 s and 1.4 s per single-attempt edit. A sandbox run takes ~1.5–2 s.
+  With Ollama's default layer estimate, Qwen3.5-4B ran 54% on CPU at 9 tok/s; `num_gpu: 99`
+  fixed that (doc 03 §9).
 - A 40-scenario run with up to 3 repair turns means ≈120 generations and ≈120 sandbox runs.
   Plan on 1–2 hours of wall time per configuration, and run overnight where you can.
 - Use sequential generation and at most two parallel sandboxes. The GPU is the bottleneck,
@@ -116,20 +121,22 @@ some VRAM, and the desktop compositor alone can take a few hundred MB.
 - Stronger option, if needed later: install native Docker Engine inside the WSL2 distro
   (not Desktop) and register gVisor there. Document this as a hardening upgrade, not a Week 1 task.
 
-## 9. Troubleshooting (common on Windows + WSL2 + Docker + laptop GPU)
+## 9. Troubleshooting (Windows + Docker Desktop + laptop GPU)
+
+The first four rows were hit and fixed in Week 1.
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `nvidia-smi` missing inside WSL | Old WSL kernel or driver | `wsl --update`; update the Windows NVIDIA driver; don't install a Linux driver |
-| Model loads but runs on CPU | GPU offload failed, VRAM full | Close GPU apps; lower the context; check the logs for "offloaded N/N layers" |
+| Qwen3.5-4B at ~9 tok/s, half on CPU | Ollama's own offload estimate is conservative | `num_gpu: 99` (in `config.py`); all layers fit at 8k |
+| No patch applies on Windows | Patch piped through text-mode stdin became CRLF | Write the patch to an LF file and apply that (`git_ops.py`) |
+| `docker build` output crash (`None`) | cp1252 decoding of BuildKit output | Decode as UTF-8 (`sandbox.py`) |
+| `TemporaryDirectory` cleanup error after `claude -p` | `claude.exe` still holds the dir briefly | `ignore_cleanup_errors=True` |
+| Model loads but runs on CPU | GPU offload failed, VRAM full | Close GPU apps; lower the context; check `ollama ps` for "100% GPU" |
 | Ollama/llama.cpp can't load Qwen3.5 | Build predates Gated DeltaNet support | Upgrade to a current release; pin the version once it works |
-| `docker` not found in Ubuntu | WSL integration disabled | Docker Desktop → Settings → Resources → WSL integration → enable Ubuntu |
-| Very slow container file I/O | Repo on `/mnt/f` (NTFS) | Move the repo to `~/` inside WSL |
-| Containers killed randomly | Docker VM memory limit too low | Raise the Desktop memory limit; keep sandboxes at 2 GB each |
+| Containers killed randomly | Docker VM memory limit too low | Raise the Desktop memory limit (`.wslconfig` `memory=`); keep sandboxes at 2 GB each |
 | `pip install` fails in the sandbox | Run phase has no network (by design) | Install in the build phase (doc 07) |
 | Laptop throttles during long runs | Thermal limits | Run on AC power, use a cooling pad, and record tok/s per attempt to spot throttling |
-| WSL uses too much RAM | Default WSL memory cap | Set `memory=` in `%UserProfile%\.wslconfig` (e.g. 10GB) and restart WSL |
-| Line-ending diffs in patches | Windows editors writing CRLF | `git config core.autocrlf input` inside WSL; edit files in WSL |
+| Line-ending diffs in patches | Windows editors writing CRLF | `.gitattributes` forces LF; don't disable it |
 
 Keep the machine as quiet as possible during benchmark runs: no browser tabs with video,
 no games, no other GPU apps. The latency and VRAM numbers go into the README, so they
@@ -137,8 +144,8 @@ should come from a clean machine.
 
 ## 10. Decision summary
 
-- Dev environment: WSL2 Ubuntu + `uv` + Python 3.12 + Docker Desktop (WSL2 backend).
-- Local inference: Ollama or llama.cpp, Q4_K_M GGUF, ≤4B parameters.
+- Dev environment: Windows-native `F:\AeroPatch` + `uv` + Python 3.12 + Docker Desktop.
+- Local inference: Ollama (used in Week 1) or llama.cpp, Q4_K_M GGUF, ≤4B parameters, all layers on GPU.
 - Training: Kaggle T4 (primary), Colab T4 (backup); Unsloth + TRL; LoRA 16-bit for Qwen3.5,
   QLoRA only for Qwen2.5-Coder models.
 - Evaluation: local, sequential generation, ≤2 parallel sandboxes, Python-only scenarios.

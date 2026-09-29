@@ -1,6 +1,6 @@
 # 08 — Orchestration and Self-Correction Loop, Part 1: State Machine and Edit Format (Week 2)
 
-Maps to: `src/agent/loop.py`, `src/agent/edits.py`. Continues in [08-orchestration-part2.md](08-orchestration-part2.md).
+Maps to: `src/aeropatch/agent/loop.py`, `src/aeropatch/agent/edits.py`. Continues in [08-orchestration-part2.md](08-orchestration-part2.md).
 Back to the index: [00-overall-plan.md](00-overall-plan.md)
 
 ## 1. LangGraph vs plain Python
@@ -115,6 +115,10 @@ For each block, in order:
 
 These apply failures turn into feedback at the `GENERATE` step, so the model gets a
 cheap retry without a sandbox run.
+
+Two parser leniencies were added after the first laptop runs (2026-09-28): a SEARCH line
+without a path uses the task's single editable file, and end-of-output closes an open REPLACE
+block (Qwen3.5 often stops just before the marker). The sandbox still judges every edit.
 
 ## 7. Temperature and sampling per attempt
 

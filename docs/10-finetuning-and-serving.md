@@ -1,6 +1,6 @@
 # 10 — Fine-Tuning and Quantized Local Serving (Week 3, days 3–5)
 
-Maps to: `training/finetune.py`, `training/configs/`, `src/models/local_client.py`.
+Maps to: `training/finetune.py`, `training/configs/`, `src/aeropatch/models/local_client.py`.
 Back to the index: [00-overall-plan.md](00-overall-plan.md)
 
 ## 1. Method: LoRA or QLoRA depends on the base model
@@ -83,8 +83,9 @@ does 4-bit cost on a narrow task?" with your own measurements.
 ## 8. Local serving
 
 - **Ollama**: a `Modelfile` with `FROM ./aeropatch-q4_k_m.gguf`, the base model's chat
-  template, `num_ctx 8192`, `temperature 0.2`, and the stop sequence after `>>>>>>> REPLACE`
-  blocks. Run `ollama create aeropatch -f Modelfile`.
+  template, `num_ctx 8192`, `num_gpu 99`, `temperature 0.2`, and the stop sequence after
+  `>>>>>>> REPLACE` blocks. Run `ollama create aeropatch -f Modelfile`. Without `num_gpu 99`,
+  Ollama put the untuned Qwen3.5-4B 54% on CPU (9 vs 48 tok/s; doc 02 §7).
 - **llama.cpp `llama-server`**: `-m model.gguf -ngl 99 -c 8192 --jinja` (uses the embedded
   chat template), plus an optional `--grammar-file edits.gbnf` to constrain the output to the
   edit format.

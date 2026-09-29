@@ -1,6 +1,7 @@
 # 04 — Frontier API Fallback and Routing
 
-Maps to: `src/models/fallback_client.py`, `src/agent/router.py`. Back to: [00-overall-plan.md](00-overall-plan.md)
+Maps to: `src/aeropatch/models/fallback_client.py` (API), `src/aeropatch/models/claude_code_client.py`
+(subscription), `src/aeropatch/agent/router.py`. Back to: [00-overall-plan.md](00-overall-plan.md)
 
 ## 1. Gemini 2.0 Flash has been retired
 
@@ -12,13 +13,14 @@ shouldn't start on 2.5 either.
 
 ## 2. Price table (per 1M tokens, USD)
 
-Claude prices come from Anthropic's model table (cached 2026-06-24). Gemini prices come from
-third-party trackers (Sep 2026) and change often. Re-check both before publishing numbers.
+Claude prices come from Anthropic's model table (cached 2026-06-24; re-checked 2026-09-29
+against the 2026-09-25 table, unchanged). Gemini prices come from third-party trackers
+(Sep 2026) and change often. Re-check both before publishing numbers.
 
 | Provider | Model ID | Input | Output | Context | Notes |
 |---|---|---|---|---|---|
-| Anthropic | `claude-opus-5` | $5.00 | $25.00 | 1M | Default Claude model for new code |
-| Anthropic | `claude-opus-5-5` | $4.00 | $20.00 | 1M | Launching; use only if you choose it by name |
+| Anthropic | `claude-opus-5` | $5.00 | $25.00 | 1M | AeroPatch's frontier model (config default, D6 baseline) |
+| Anthropic | `claude-opus-5-5` | $4.00 | $20.00 | 1M | Newest Opus, cheaper; decide at D13 whether to switch |
 | Anthropic | `claude-sonnet-5` | $2.00 | $10.00 | 1M | Cheaper tier (your call) |
 | Anthropic | `claude-haiku-4-5` | $1.00 | $5.00 | 200K | Cheapest Claude tier (your call) |
 | Anthropic | `claude-fable-5-1` | $10.00 | $50.00 | 1M | Most capable; overkill for this task |
@@ -39,6 +41,13 @@ Thinking tokens are billed as output tokens on both providers. Budget for them.
 - **Benchmark references: up to two.** Run the frontier reference (Claude) and, optionally,
   one cheap Gemini Flash model. That gives two points on the cost/accuracy curve for the
   final chart without making Gemini a production dependency.
+- **Two ways to reach Claude.** The `frontier` route uses the API (`anthropic` SDK, key in
+  `.env`). The `claude-code` route runs the same model through headless Claude Code
+  (`claude -p`) on a subscription, with all tools disabled, AeroPatch's system prompt, no
+  settings/MCP/sessions and the API key stripped, so the model stays a pure function. It adds
+  a fixed ~250-token prefix; no server-side fallbacks or refusal category. The Week 1 D6
+  baseline used it (`baseline-claude-code`). Free Ollama cloud models are not an option:
+  `glm-5.1:cloud` and `qwen3.5:cloud` were retired on 2026-09-25, and the rest need credits.
 
 ## 4. Cost estimate per scenario (rough; replace with measured numbers)
 
@@ -52,6 +61,10 @@ and at most 3 attempts.
 | `claude-haiku-4-5` | ~$0.012 | ~$0.035 | ~$2–7 |
 | `gemini-3.7-flash` | ~$0.004 | ~$0.012 | ~$1–3 |
 | Local Qwen3.5-4B | $0 (electricity) | $0 | $0; costs wall-clock hours instead |
+
+**Measured (D6, 2026-09-29, `claude-opus-5`, API-equivalent):** the 10 small dev scenarios used
+0.86–1.0k input and 130–1,010 output tokens per attempt, **$0.018 per attempt**, $0.18 for the
+run. The estimate above is ~3× high for Tier A; keep it for Tier B, whose contexts are larger.
 
 **Prompt caching** cuts input cost. The system prompt, edit-format spec and examples are identical
 across scenarios, so put them first and mark them cacheable. Check `cache_read_input_tokens` > 0
@@ -138,6 +151,7 @@ requests will be declined. Expect it and measure it.
 | `local_ctx_budget` | `6000` | Tokens; above this, escalate or trim |
 | `server_side_fallbacks` | `true` | Claude API refusal fallback (beta) |
 
+`attempt_plan` entries are `local`, `frontier` (API) or `claude-code` (subscription CLI).
 Changing any of these means a new config name. Results are only compared within a config.
 
 ## 10. What to report from this component
