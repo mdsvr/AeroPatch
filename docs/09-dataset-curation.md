@@ -62,8 +62,9 @@ Target ~1,000–2,000 verified synthetic examples. On free or cheap inference th
 
 ## 5. Example format (must equal inference format exactly)
 
-- `prepare_dataset.py` must import and reuse **the same** `get_context()` (doc 06) and
-  `build_prompt()` (doc 08) as inference. Train/inference skew is the most common silent
+- `prepare_dataset.py` must import and reuse **the same** `aeropatch.tools.context.get_context()`
+  (doc 06) and `aeropatch.agent.prompts` (`SYSTEM_PROMPT`, `first_user_message()`,
+  `repair_message()`; doc 08) as inference. Train/inference skew is the most common silent
   fine-tuning bug.
 - Render the examples with the base model's own chat template
   (`tokenizer.apply_chat_template`).
@@ -78,7 +79,7 @@ Target ~1,000–2,000 verified synthetic examples. On free or cheap inference th
 2. Build the context from the pre-fix file at the changed function (same `get_context`).
 3. For each diff hunk: SEARCH is the removed lines plus enough unchanged context lines to be
    unique in the file, and REPLACE is the added lines with the same context.
-4. **Verify**: apply the blocks with the real `edits.py` to the pre-fix file and require a
+4. **Verify**: apply the blocks with the real `aeropatch.agent.edits` to the pre-fix file and require a
    byte-exact match with the post-fix file. Drop the example if it doesn't match.
 5. Write the rationale from the CVE summary or commit message, trimmed to at most 2 sentences.
 

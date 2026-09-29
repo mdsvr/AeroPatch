@@ -10,10 +10,11 @@ threat model is part of the product and belongs in the README.
 
 | Asset | Where it lives | Worst case if lost |
 |---|---|---|
-| Host machine (Windows + WSL2) | Your laptop | Malware, persistence, data theft |
+| Host machine (Windows 11; dev runs Windows-native) | Your laptop | Malware, persistence, data theft |
 | API keys (Anthropic/Google/HF/Kaggle) | `.env` in the orchestrator process | Billing abuse, account compromise |
+| Claude Code login (subscription) | The `claude` CLI's own config | Usage charged to your plan |
 | GitHub credentials (`gh` token) | Host keychain / `gh` config | Pushes or PRs made in your name |
-| Scenario and target repos | WSL2 filesystem | Tampered benchmark, bad published numbers |
+| Scenario and target repos | `F:\AeroPatch\evaluations\` (NTFS) | Tampered benchmark, bad published numbers |
 | Your reputation | Public repo, PRs, model card | Spam PRs to maintainers, overstated claims |
 
 ## 2. Threats and mitigations
@@ -23,10 +24,10 @@ threat model is part of the product and belongs in the README.
 | T1 | Malicious code runs during tests | Repo code, `conftest.py`, fixtures, model-written code | Hardened container, no network, read-only root, caps dropped, limits, non-root | 07 |
 | T2 | **Prompt injection** from repository text | Comments, docstrings, READMEs, issue/CVE text telling the model to do something else | Model has no tools; output is only edits; gates reject scope and risky imports; tests; human review | 05, 08 |
 | T3 | Model proposes a backdoored or weakening patch | Injection or plain model error ("fix" that disables auth) | `RISKY_IMPORT`, `SUPPRESSES_CHECKS`, `DELETES_SYMBOL`, size limits; regression tests; diff shown at submit | 08 |
-| T4 | Secrets sent to an API provider | Keys hard-coded in repos, `.env` files in context, tracebacks with env dumps | Never include `.env`/config files in context; regex secret scan on every outgoing prompt, blocking on a hit; path scrubbing | 04, 06 |
+| T4 | Secrets sent to an API provider | Keys hard-coded in repos, `.env` files in context, tracebacks with env dumps | Never include `.env`/config files in context; regex secret scan (`check_no_secrets`) on every outgoing prompt before any route, blocking on a hit; path scrubbing. The `claude-code` route runs with no tools, so it can't read files itself, and never sees `ANTHROPIC_API_KEY` | 04, 06 |
 | T5 | Secrets reach a sandbox | Env inheritance, mounted home directory | Explicit empty env for containers; no home mounts; test asserts no keys in `os.environ` | 07 |
 | T6 | Supply-chain compromise at build time | Malicious or typosquatted dependency | Hash-pinned lockfiles, base image pinned by digest, only your own scenario lockfiles | 07 |
-| T7 | Docker socket abuse | Socket mounted into the agent container gives root-equivalent access | Dev: agent runs on WSL2 directly. If containerized, put a socket proxy in front that allows only create/start/logs/remove | 05 |
+| T7 | Docker socket abuse | Socket mounted into the agent container gives root-equivalent access | Dev: agent runs on the Windows host directly. If containerized, put a socket proxy in front that allows only create/start/logs/remove | 05 |
 | T8 | MCP server misuse by an external agent | Client passes arbitrary paths, or tries to write real branches | Path allowlist, traversal/symlink checks, size caps, no commit/push/PR tools | 06 |
 | T9 | Unwanted outward actions | Auto-created PRs, pushes to upstream | Human `submit` gate with interactive confirmation, draft PRs, your fork only, never auto-merge | 08 |
 | T10 | Malicious model weights | Pickle-based checkpoints can execute code when loaded | Only `safetensors`/GGUF; official orgs (`Qwen/`, `google/`, `unsloth/`); record the SHA-256 of served GGUFs | 10 |
@@ -126,7 +127,7 @@ demonstration of the architecture.
 - [ ] The README contains the isolation statement, dual-use boundaries, and limitations.
 - [ ] Model card states intended use (defensive, human-reviewed) and known failure modes.
 
-## 7. What to say in interviews
+## 10. What to say in interviews
 
 In short: "The model is untrusted and so is the repo. The only thing the model can produce is
 a text edit. Deterministic gates, a network-less sandbox and a human approval step sit between

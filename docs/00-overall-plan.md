@@ -1,7 +1,10 @@
 # 00 — AeroPatch: Overall Plan (Revised after Deep Review, 2026-09-24)
 
 This is the entry point. It gives the verdict, the decisions, the revised 4-week plan on one
-page, and an index of every category document. Each category doc is about 150 lines. Topics
+page, and an index of every category document.
+
+**Status (2026-09-29): Week 1 complete.** Qwen3.5-4B is confirmed as the primary SLM (5/10 on
+the dev split vs Claude Opus 5's 9/10; doc 03 §5). Details, evidence and deviations: `NOTES.md`. Each category doc is about 150 lines. Topics
 too big for one file are split into `-part1` / `-part2`.
 
 ## 1. Verdict
@@ -29,7 +32,7 @@ Buttercup). The plan needs **five corrections** to be feasible and credible:
 | Primary local model | **Qwen3.5-4B**, LoRA 16-bit (Unsloth advises against QLoRA on Qwen3.5) | Newest Apache-2.0 small model; fits 4 GB at Q4 (03) |
 | Laptop-trainable demo | Qwen2.5-Coder-1.5B-Instruct, QLoRA | Only credible "trained on a 4 GB GPU" claim (03, 10) |
 | Fallback model | Qwen2.5-Coder-3B-Instruct, QLoRA (note non-commercial license) | If Qwen3.5 tooling fails (03) |
-| Frontier fallback | One provider in the router; default Claude model `claude-opus-5`; cheaper tier is your choice | Less code; refusal-aware routing (04) |
+| Frontier fallback | One provider in the router; default Claude model `claude-opus-5`; cheaper tier is your choice. Reached via the API or, with no key, headless Claude Code on a subscription | Less code; refusal-aware routing (04) |
 | Gemini | Optional *benchmark reference* only (current Flash, e.g. 3.7/3.8) | 2.0 Flash retired (04) |
 | Training compute | Kaggle T4 (≈30 GPU-h/week), Colab as backup | 4 GB VRAM locally (02, 10) |
 | Serving | llama.cpp `llama-server` or Ollama, GGUF Q4_K_M (Q5/Q8 ablation) | Runs on the 4 GB laptop GPU; vLLM needs far more memory (10) |
@@ -47,7 +50,7 @@ Buttercup). The plan needs **five corrections** to be feasible and credible:
 
 | Week | Focus | Exit criteria |
 |---|---|---|
-| **W1** | Environment (WSL2, `uv`, Docker, Ollama), hardened sandbox, 10 dev scenarios, context extraction + scanners, edit engine, single-shot pipeline, **baselines** for 2–3 models | One command resolves a scenario; baseline table exists; sandbox security tests pass |
+| **W1** ✅ | Environment (Windows-native `uv`, Docker Desktop, Ollama), hardened sandbox, 10 dev scenarios, context extraction + scanners, edit engine, single-shot pipeline, **baselines** for 2–3 models | One command resolves a scenario; baseline table exists; sandbox security tests pass |
 | **W2** | Repair loop, full gates, router modes, **40–50 validated scenarios** (split frozen), benchmark runner + metrics v1, thin MCP wrapper, **full baselines with repair** | Unattended resumable benchmark; baseline table with CIs; failure attribution |
 | **W3** | Dataset (synthetic CWE injection + MoreFixes + SWE-smith/Gym, repair turns, leakage checks), Kaggle LoRA (pilot → full), GGUF export, local serving, dev eval | Fine-tuned Q4 model served locally; dev delta vs untuned |
 | **W4** | Final test runs, pass@5, ablations (quant, grammar, localization, thinking), charts/stats, compose, README, MCP demo, security checklist, resume bullets from measured numbers | Every number traceable to a run file; repo safe to publish |
@@ -56,29 +59,29 @@ Critical path: **environment → sandbox → scenarios → baseline → dataset 
 If you slip, use the cut list in [14-timeline-part2.md](14-timeline-part2.md). Never cut the
 sandbox tests, the gates, the scenario validator, the baselines, or traceable numbers.
 
-## 4. Document index (line counts measured on 2026-09-24)
+## 4. Document index (line counts measured on 2026-09-29)
 
 | # | File | Category | What it covers | Lines |
 |---|---|---|---|---|
-| 00 | [00-overall-plan.md](00-overall-plan.md) | Overall plan | Verdict, decisions, 4-week summary, this index | 108 |
+| 00 | [00-overall-plan.md](00-overall-plan.md) | Overall plan | Verdict, decisions, 4-week summary, this index | 112 |
 | 01 | [01-plan-review.md](01-plan-review.md) | Planning review | Section-by-section scorecard, outdated/unrealistic/missing items, prior art | 137 |
-| 02 | [02-hardware-and-environment.md](02-hardware-and-environment.md) | Environment | What fits on a 3050 4 GB, WSL2/Docker/uv setup, free GPUs, troubleshooting | 141 |
-| 03 | [03-models-local-slm.md](03-models-local-slm.md) | Models: local | SLM candidates, licenses, VRAM, bake-off, prompting and serving settings | 141 |
-| 04 | [04-models-frontier-and-routing.md](04-models-frontier-and-routing.md) | Models: frontier | Gemini retirement, price table, cascade routing, refusal handling | 149 |
-| 05 | [05-architecture.md](05-architecture.md) | Architecture | Deterministic pipeline, components, data contracts, repo layout, walkthrough | 144 |
-| 06 | [06-mcp-server-and-static-analysis.md](06-mcp-server-and-static-analysis.md) | Week 1: tools | MCP 2026-07-28, tool surface, input validation, tree-sitter, Opengrep/Bandit | 146 |
-| 07 | [07-sandbox.md](07-sandbox.md) | Week 1: sandbox | Two-phase build, hardening flags, I/O, test parser, isolation statement | 149 |
-| 08a | [08-orchestration-part1.md](08-orchestration-part1.md) | Week 2: loop | Plain state machine, "resolved" definition, budgets, search/replace format | 145 |
-| 08b | [08-orchestration-part2.md](08-orchestration-part2.md) | Week 2: loop | Prompts, safety gates, refusals in the loop, human PR gate, defaults | 141 |
-| 09 | [09-dataset-curation.md](09-dataset-curation.md) | Week 3: data | Sources, synthetic CWE injection, format parity, filters, contamination | 145 |
-| 10 | [10-finetuning-and-serving.md](10-finetuning-and-serving.md) | Week 3: training | LoRA vs QLoRA, hyperparameters, pilot, export, GGUF serving, troubleshooting | 140 |
-| 11 | [11-evaluation-benchmark.md](11-evaluation-benchmark.md) | Week 4: eval | Benchmark fit, tiers, CWE coverage, scenario anatomy, validation | 141 |
-| 12 | [12-metrics-and-reporting.md](12-metrics-and-reporting.md) | Week 4: metrics | pass@k vs resolve@k, catalogue, statistics, report layout | 139 |
-| 13 | [13-security-threat-model.md](13-security-threat-model.md) | Security | Threats T1–T13, injection defence, adversarial scenarios, checklist | 135 |
-| 14a | [14-timeline-part1.md](14-timeline-part1.md) | Timeline | Weeks 1–2 day by day, exit criteria, detailed risky-day checklists | 128 |
-| 14b | [14-timeline-part2.md](14-timeline-part2.md) | Timeline | Weeks 3–4, weekly reviews, budget, risk register, cut list, definition of done | 134 |
-| 15 | [15-resume-and-deliverables.md](15-resume-and-deliverables.md) | Outcomes | Resume claim fixes, bullet templates, deliverables, README outline, demo | 138 |
-| 16 | [16-sources.md](16-sources.md) | References | All sources, claim→source confidence map, open verification items | 139 |
+| 02 | [02-hardware-and-environment.md](02-hardware-and-environment.md) | Environment | What fits on a 3050 4 GB, measured VRAM/tok/s, Windows-native setup, troubleshooting | 152 |
+| 03 | [03-models-local-slm.md](03-models-local-slm.md) | Models: local | SLM candidates, licenses, VRAM, bake-off **and its result**, prompting and serving settings | 160 |
+| 04 | [04-models-frontier-and-routing.md](04-models-frontier-and-routing.md) | Models: frontier | Gemini retirement, price table, API vs Claude Code routes, measured cost, refusal handling | 163 |
+| 05 | [05-architecture.md](05-architecture.md) | Architecture | Deterministic pipeline, components, data contracts, repo layout, walkthrough | 151 |
+| 06 | [06-mcp-server-and-static-analysis.md](06-mcp-server-and-static-analysis.md) | Week 1: tools | MCP 2026-07-28, tool surface, input validation, tree-sitter, Opengrep/Bandit | 151 |
+| 07 | [07-sandbox.md](07-sandbox.md) | Week 1: sandbox | Two-phase build, hardening flags, I/O, test parser, isolation statement | 151 |
+| 08a | [08-orchestration-part1.md](08-orchestration-part1.md) | Week 2: loop | Plain state machine, "resolved" definition, budgets, search/replace format | 149 |
+| 08b | [08-orchestration-part2.md](08-orchestration-part2.md) | Week 2: loop | Prompts, safety gates, refusals in the loop, human PR gate, defaults | 149 |
+| 09 | [09-dataset-curation.md](09-dataset-curation.md) | Week 3: data | Sources, synthetic CWE injection, format parity, filters, contamination | 146 |
+| 10 | [10-finetuning-and-serving.md](10-finetuning-and-serving.md) | Week 3: training | LoRA vs QLoRA, hyperparameters, pilot, export, GGUF serving, troubleshooting | 141 |
+| 11 | [11-evaluation-benchmark.md](11-evaluation-benchmark.md) | Week 4: eval | Benchmark fit, tiers, CWE coverage, scenario anatomy, validation | 145 |
+| 12 | [12-metrics-and-reporting.md](12-metrics-and-reporting.md) | Week 4: metrics | pass@k vs resolve@k, catalogue, statistics, report layout | 140 |
+| 13 | [13-security-threat-model.md](13-security-threat-model.md) | Security | Threats T1–T13, injection defence, adversarial scenarios, checklist | 136 |
+| 14a | [14-timeline-part1.md](14-timeline-part1.md) | Timeline | Weeks 1–2 day by day, exit criteria, detailed risky-day checklists | 133 |
+| 14b | [14-timeline-part2.md](14-timeline-part2.md) | Timeline | Weeks 3–4, weekly reviews, budget, risk register, cut list, definition of done | 135 |
+| 15 | [15-resume-and-deliverables.md](15-resume-and-deliverables.md) | Outcomes | Resume claim fixes, bullet templates, deliverables, README outline, demo | 141 |
+| 16 | [16-sources.md](16-sources.md) | References | All sources, claim→source confidence map, open verification items | 152 |
 
 Suggested reading order: 00 → 01 → 02 → 03/04 → 05 → 14a/14b, then each week's docs as you
 reach that week.
@@ -98,7 +101,8 @@ reach that week.
 - Python share of PatchEval-Verified's 230 cases (not stated in the sources checked).
 - Live Claude and Gemini prices (tables are dated), and the current Gemini Flash model.
 - Licenses of SWE-smith, SWE-Gym, MoreFixes and any teacher model.
-- Exact MCP Python SDK / FastMCP versions, and the llama.cpp build with Qwen3.5 support. Pin them.
+- Exact MCP Python SDK / FastMCP versions, and the llama.cpp build with Qwen3.5 support (Ollama
+  0.34.4 already serves it). Pin them.
 
 ## 7. One-line summary for the README
 

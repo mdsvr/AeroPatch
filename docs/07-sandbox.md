@@ -1,6 +1,6 @@
 # 07 — Ephemeral Docker Sandbox and Test Runner (Week 1)
 
-Maps to: `src/sandbox/`, `docker/sandbox.Dockerfile`. Back to the index: [00-overall-plan.md](00-overall-plan.md)
+Maps to: `src/aeropatch/sandbox/`, `docker/sandbox-base.Dockerfile`, `docker/scenario.Dockerfile`, `docker/run.sh`. Back to the index: [00-overall-plan.md](00-overall-plan.md)
 
 ## 1. Threat being handled
 
@@ -22,12 +22,12 @@ privilege escalation to the container host.
 Build the images in Week 1 and tag them `aeropatch-sandbox:<scenario_id>`. After that, runs
 start in about a second, because nothing is installed at run time.
 
-## 3. Base image (`docker/sandbox.Dockerfile`, outline)
+## 3. Base image (`docker/sandbox-base.Dockerfile`, as built)
 
 - `FROM python:3.12-slim` pinned **by digest**, not by tag, so benchmark runs are reproducible.
 - Create an unprivileged user (`uid 10001`) and `WORKDIR /work`.
-- Preinstall the harness tools: `git` (the slim image lacks it; `run.sh` uses `git apply`),
-  `pytest`, `pytest-timeout`, `opengrep`/`bandit`, and a linter (`ruff`). Pin versions.
+- Preinstall the harness tools, hash-pinned from `docker/harness-requirements.lock`: `pytest`,
+  `pytest-timeout`, `bandit` and `ruff`. No `git`: the patch is applied on the host (§6).
 - Per-scenario layer: `COPY requirements.lock` and run `pip install --require-hashes`.
 - No compilers or package managers beyond what the scenario's dependencies require.
 
@@ -36,7 +36,7 @@ start in about a second, because nothing is installed at run time.
 ```text
 docker run --rm --network none --read-only \
   -v <scratch_copy>:/src:ro \
-  --tmpfs /work:rw,exec,size=512m --tmpfs /tmp:rw,size=256m \
+  --tmpfs /work:rw,exec,size=512m,mode=1777 --tmpfs /tmp:rw,noexec,size=256m,mode=1777 \
   --cap-drop ALL --security-opt no-new-privileges \
   --pids-limit 256 --memory 2g --memory-swap 2g --cpus 2 \
   --user 10001:10001 --ulimit nofile=1024 --stop-timeout 5 \
@@ -79,19 +79,21 @@ and `--env-file` with keys. The Docker default seccomp profile stays on; don't p
 
 ## 6. What a run executes (in order)
 
-1. `git apply --check` then `git apply` on the diff. If this fails, the result is `applied=false`,
-   and the rest is skipped.
+1. Before any container starts, the harness applies the patch **on the host** to a scratch copy
+   (doc 06 §9). If it doesn't apply, the result is `applied=false` and no container runs. In the
+   container, `run.sh` copies `/src/repo` and the image's pristine tests into `/work`.
 2. **PoC tests**: the vulnerability test. It must fail on the original code and pass on the fix.
 3. **Regression tests**: the project's relevant tests. They must pass both before and after.
 4. **Lint**: `ruff check` on the changed files only. Style warnings are informational; syntax
    errors fail the run.
-5. **Re-scan**: Opengrep/Bandit on the changed files. The original finding should be gone.
+5. **Re-scan**: Bandit on the changed files (medium/high findings fail `rescan_clean`). The
+   original finding should be gone. Scanner-clean is a secondary signal, never "resolved".
 
 Run the unpatched baseline once at build time and cache it. Confirm the PoC fails and the
 regressions pass on the vulnerable code. A scenario that doesn't show this pattern is broken
 and must not enter the benchmark (doc 11).
 
-## 7. Test-output parser (`runner.py`)
+## 7. Test-output parser (`sandbox/junit.py`)
 
 Small models get lost in 300-line tracebacks. The parser turns raw output into a compact
 repair context:

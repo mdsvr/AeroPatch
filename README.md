@@ -5,7 +5,9 @@ do. It fixes Python vulnerabilities locally, proves each fix in a network-less s
 with test feedback, and escalates to a frontier model only when needed. Every claim is measured
 on a contamination-controlled benchmark.
 
-Status: **Week 1** (see [NOTES.md](NOTES.md) and the plan in [docs/](docs/00-overall-plan.md)).
+Status: **Week 1 complete** (see [NOTES.md](NOTES.md) and the plan in [docs/](docs/00-overall-plan.md)).
+Dev-split single-attempt baseline (n = 10, so wide intervals): Qwen3.5-4B resolves 5/10 locally at
+$0, Claude Opus 5 resolves 9/10. Qwen3.5-4B is the chosen primary SLM.
 Outputs are **candidate fixes that need human review**.
 
 ## Pipeline
@@ -38,6 +40,7 @@ uv run aeropatch remediate A-089-01 --config baseline-qwen3.5-4b
 uv run aeropatch bench --config baseline-qwen3.5-4b --split dev
 uv run aeropatch bench --config baseline-qwen2.5-coder-3b --split dev
 uv run aeropatch bench --config baseline-frontier --split dev   # needs ANTHROPIC_API_KEY; costs money
+uv run aeropatch bench --config baseline-claude-code --split dev   # same model via `claude -p` on a subscription
 uv run aeropatch report runs/*.jsonl
 ```
 
@@ -49,7 +52,7 @@ Other commands: `aeropatch scan <repo>`, `aeropatch context <repo> <path> <line>
 | Path | What |
 |---|---|
 | `src/aeropatch/agent/` | `loop.py` state machine, `edits.py`, `gates.py`, `prompts.py`, `router.py` |
-| `src/aeropatch/models/` | Ollama client, Claude client, oracle (reference-fix replay) |
+| `src/aeropatch/models/` | Ollama client, Claude API client, Claude Code (`claude -p`) client, oracle (reference-fix replay) |
 | `src/aeropatch/sandbox/` | hardened Docker runner, JUnit parser |
 | `src/aeropatch/tools/` | tree-sitter context, scanners, scratch workspaces, path validation |
 | `src/aeropatch/scenario.py` | scenario loader and the 4-check validator |

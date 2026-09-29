@@ -1,6 +1,7 @@
 # 12 — Metrics Definitions, Statistics and Reporting (Week 4)
 
-Maps to: `evaluations/metrics.py`. Back to the index: [00-overall-plan.md](00-overall-plan.md)
+Maps to: `src/aeropatch/metrics.py` (planned, D12). Until then `aeropatch report` (`bench.py`)
+prints the Week 1 baseline table without CIs. Back to the index: [00-overall-plan.md](00-overall-plan.md)
 
 ## 1. The plan's "Pass@3" means two different things. Split it.
 
@@ -53,12 +54,12 @@ for pass@k, and report greedy (temperature ≤ 0.2) results separately as "pass@
 **Efficiency and cost**
 | Metric | Definition |
 |---|---|
-| $ per resolved scenario | Total API $ (from `usage` logs × price table) / resolved count |
+| $ per resolved scenario | Total API $ (from `usage` logs × price table) / resolved count. On the `claude-code` route, the CLI's API-equivalent cost |
 | Tokens per resolved scenario | Input, output and cache-read tokens, reported separately |
 | Wall-clock per resolved scenario | End-to-end seconds, including sandbox time |
 | Latency per attempt | p50 / p95 generation seconds; sandbox seconds separately |
 | Throughput | Prompt-processing tok/s and decode tok/s (local) |
-| Peak VRAM / RAM | Measured during runs (`nvidia-smi` sampling at 1 Hz) |
+| Peak VRAM / RAM | Measured during runs (`nvidia-smi` sampling; Week 1 used 2 Hz, minus the ~145 MiB idle) |
 
 **Routing and behaviour**
 | Metric | Definition |

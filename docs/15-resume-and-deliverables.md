@@ -16,6 +16,8 @@ Back to the index: [00-overall-plan.md](00-overall-plan.md)
 | "lowered manual debugging overhead" | Unmeasurable as written | Drop it, or replace it with a measured proxy |
 
 Rule: **every number on the resume comes from a run file.** Write the bullets on D28, not before.
+The Week 1 numbers (Qwen3.5-4B 5/10, Opus 9/10) are *not* resume material: they come from the dev
+split, n = 10, on 6–19-line apps, with 95% intervals ~50 points wide.
 
 ## 2. Bullet templates (fill the brackets from measured results)
 
@@ -71,7 +73,8 @@ with the evaluation and security design; those hold up regardless of the numbers
 
 1. One-paragraph summary + headline result table (doc 12, section 7).
 2. Architecture diagram (doc 05) + the five-layer prompt-injection walkthrough (doc 13).
-3. Quick start: WSL2 prerequisites → `uv sync` → `docker compose up llm` → one scenario.
+3. Quick start: prerequisites (Docker, Ollama, `uv`; Windows-native or Linux) → `uv sync` →
+   `aeropatch build-base` → one scenario with `aeropatch remediate`.
 4. How it works: localization, edit format, gates, sandbox, repair loop, routing.
 5. Benchmark: tiers, CWE coverage, scenario anatomy, validation checks, dev/test split.
 6. Results: headline, delta with CIs, cost–accuracy chart, repair curve, failure attribution,
@@ -97,7 +100,7 @@ with the evaluation and security design; those hold up regardless of the numbers
 
 ## 7. The 60-second demo (storyboard)
 
-1. (0–10 s) Terminal: a vulnerable Flask app; the Opengrep finding shown in one line.
+1. (0–10 s) Terminal: a vulnerable Python app on your demo repo; the Opengrep finding shown in one line.
 2. (10–25 s) Claude Code (or another MCP client) is asked to "remediate this finding with
    AeroPatch"; the `remediate` tool call is visible.
 3. (25–40 s) The attempt timeline: local attempt 1 fails the PoC, attempt 2 passes; the

@@ -58,7 +58,7 @@ over a tuned-on-test positive one.
 | Focused hours | ~160 (28 days × ~6 h) | Buffers on D7, D14, D21, D28 |
 | Unattended overnight runs | ~8 nights | D6, D13, D15, D16, D22–D24 (+1 spare) |
 | Kaggle GPU hours | ~6–10 of the 30/week quota | Pilot + 1–2 full runs + export |
-| Frontier API spend | ~$20–60 total | Baselines, cascade runs, pass@5 on one frontier model; depends on the tier chosen |
+| Frontier spend | ~$20–60 total via the API, or $0 extra via Claude Code on a subscription | Week 1 measured $0.018 per Tier A attempt on `claude-opus-5` ($0.18 for the D6 run, run through Claude Code). Tier B costs more |
 | Teacher inference for data | ~$0–20 | Free tiers or a cheap hosted open-weights model |
 | Disk | ~40–60 GB | Scenario images, GGUFs, runs |
 
@@ -75,7 +75,8 @@ greedily only once. Don't skip the frontier baseline entirely; the delta story n
 | R4 | Too few verified training examples | Medium | High | < 800 verified by D16 | Lean on MoreFixes pairs + SWE-smith; lower the target to 1.5k |
 | R5 | Scenario authoring slower than planned | High | High | < 25 scenarios by D11 | Accept 30 scenarios; drop Tier C; fewer CWEs, keep two variants each |
 | R6 | Deps need network at run time | High | Medium | pip errors in the sandbox | Two-phase build (doc 07); vendor wheels |
-| R7 | Frontier refusals distort baselines | Medium | Low | Refusal rate > 10% | Neutral prompts; server-side fallback; report the rate |
+| R7 | Frontier refusals distort baselines | Medium | Low | Refusal rate > 10% | Neutral prompts; server-side fallback (API route only); report the rate. None in the Week 1 D6 run |
+| R13 | Subscription usage limits on the `claude-code` route | Medium | Low | Rate-limit errors mid-run | `aeropatch bench` resumes; spread runs; switch to the API route if needed |
 | R8 | Benchmark contamination | Medium | High | Pre/post-release gap on Tier B | Tier A is your own; report tiers separately |
 | R9 | Fine-tuned model not better | Medium | Medium | Flat dev results | Parity checks (section 1); report the honest null result |
 | R10 | Laptop thermal throttling on long runs | Medium | Low | tok/s drops over time | Record tok/s per attempt; run overnight on AC power; cooling pad |
@@ -84,7 +85,7 @@ greedily only once. Don't skip the frontier baseline entirely; the delta story n
 
 ## 6. Cut list (what to drop, in order, if behind schedule)
 
-1. Gemma 4 baseline (keep two local models at most).
+1. Gemma 4 baseline (keep two local models at most). **Cut in Week 1.**
 2. Tier C held-out synthetic scenarios.
 3. Thinking-mode ablation, then the grammar ablation.
 4. The second training run (keep the first if dev improved at all).

@@ -67,6 +67,8 @@ CONFIGS: dict[str, dict] = {
         "attempt_plan": ["local"], "local_model": "qwen2.5-coder:3b-instruct-q4_K_M",
     },
     "baseline-frontier": {"mode": "frontier", "attempt_plan": ["frontier"]},
+    # Same model through headless Claude Code on a subscription instead of an API key.
+    "baseline-claude-code": {"mode": "frontier", "attempt_plan": ["claude-code"]},
     # Harness self-check: replays each scenario's reference fix. Must resolve 100%.
     "oracle": {"mode": "oracle", "attempt_plan": ["oracle"]},
     "repair-local": {"attempt_plan": ["local", "local", "local"]},

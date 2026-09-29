@@ -1,6 +1,6 @@
 # 08 — Orchestration and Self-Correction Loop, Part 2: Prompts, Safety Gates, PR Gate (Week 2)
 
-Maps to: `src/agent/prompts.py`, `src/agent/gates.py`, CLI `submit`. Part 1: [08-orchestration-part1.md](08-orchestration-part1.md)
+Maps to: `src/aeropatch/agent/prompts.py`, `src/aeropatch/agent/gates.py`, CLI `submit` (not built yet). Part 1: [08-orchestration-part1.md](08-orchestration-part1.md)
 Back to the index: [00-overall-plan.md](00-overall-plan.md)
 
 ## 1. Prompt structure (`prompts.py`)
@@ -44,7 +44,7 @@ attempt independent, so a bad attempt can't compound into the next one.
 | `SYNTAX_ERROR` | The patched file fails `ast.parse` | reject |
 | `DELETES_SYMBOL` | A top-level or class-level `def`/`class` that existed is gone (compare the `ast` symbol sets) | reject |
 | `SUPPRESSES_CHECKS` | Adds `nosec`, `noqa`, `nosemgrep`, `pytest.skip`, `pytest.mark.skip`, `xfail` | reject |
-| `RISKY_IMPORT` | Adds an import of `subprocess`, `socket`, `requests`, `urllib`, `ctypes`, `pickle`, or `os.system`/`eval`/`exec` calls not present before | reject (allowlist per scenario if a fix really needs one) |
+| `RISKY_IMPORT` | Adds an import of `subprocess`, `socket`, `requests`, `urllib.request`, `urllib3`, `http.client`, `httpx`, `ctypes`, `pickle`, `marshal`, or `os.system`/`os.popen`/`eval`/`exec`/`__import__` calls not present before. Matched on dotted prefixes, so `urllib.parse` (needed by the open-redirect fix) is allowed | reject (allowlist per scenario if a fix really needs one) |
 | `NO_CHANGE` | The edits produce an empty diff | reject |
 
 Gate rejections feed back to the model as a short message naming the rule, and they count as
@@ -99,16 +99,24 @@ the project's security policy and write the PR yourself.
 - A single `aeropatch show <run_id> <task_id>` command prints the attempt timeline.
   That covers what a tracing UI would give, without adding a dependency.
 
-## 7. Week 2 deliverables for the loop
+## 7. Week 2 deliverables for the loop (status 2026-09-29)
 
-- [ ] `loop.py` runs one scenario end-to-end with each route (`local`, `frontier`, `cascade`).
-- [ ] The edit engine passes tests for: exact match, whitespace-tolerant match, not found (with
+Much of this was built early, in Week 1. The loop already walks multi-attempt plans with repair
+feedback; D8 measures it.
+
+- [ ] `loop.py` runs one scenario end-to-end with each route. `local` and `claude-code` done
+      (D6); `frontier` (API) needs a key; `cascade` runs in D8.
+- [x] The edit engine passes tests for: exact match, whitespace-tolerant match, not found (with
       closest-lines feedback), ambiguous match, multiple blocks in one file, blocks across two files.
-- [ ] Every gate rule has one passing and one failing test.
-- [ ] Repair feedback is capped at ~1.5k tokens, checked on a scenario with a huge traceback.
+- [ ] Every gate rule has one passing and one failing test. `tests/test_gates.py` (17 cases) has a
+      rejecting test for all 8 rules, but rule-specific passing cases only for `FORBIDDEN_PATH`
+      and `RISKY_IMPORT` (plus one shared clean edit).
+- [ ] Repair feedback is capped at ~1.5k tokens: unit-tested (`test_summarize_caps_length`);
+      still to check on a scenario with a huge traceback.
 - [ ] Identical-edit detection stops a stuck run early.
 - [ ] `submit` refuses to run without an interactive confirmation (no `--yes` flag in v1).
-- [ ] Resuming a killed benchmark run skips completed tasks and produces the same totals.
+- [x] Resuming a killed benchmark run skips completed tasks (done again on 2026-09-29 after a
+      crash mid-run).
 
 ## 8. Default configuration values (single source of truth)
 

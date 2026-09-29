@@ -1,6 +1,6 @@
 # 06 — MCP Server, AST Context Extraction and Static Analysis (Week 1)
 
-Maps to: `mcp_server/server.py`, `src/tools/`. Back to the index: [00-overall-plan.md](00-overall-plan.md)
+Maps to: `mcp_server/server.py` (Week 2, D12), `src/aeropatch/tools/`. Back to the index: [00-overall-plan.md](00-overall-plan.md)
 
 ## 1. MCP in September 2026: what changed
 
@@ -23,7 +23,7 @@ Claude Desktop and similar local clients need.
 
 ## 2. Role of the MCP server (thin wrapper)
 
-- Real logic lives in `src/tools/*.py` as plain functions. The agent loop calls them directly,
+- Real logic lives in `src/aeropatch/tools/*.py` as plain functions. The agent loop calls them directly,
   in-process, with no protocol overhead.
 - `mcp_server/server.py` just registers those functions as MCP tools (~80 LOC). Each function
   therefore has one implementation and two callers: the loop, and external agents via MCP.
@@ -126,21 +126,26 @@ When both scanners report the same line, merge the two findings and keep both ru
 - Keep the ruleset small (10–15 rules). Its job is intake for your scenarios, not coverage
   of all Python security issues.
 
-## 9. Git operations (inside `src/tools/git_ops.py`)
+## 9. Git operations (inside `src/aeropatch/tools/git_ops.py`, as built)
 
-- For each attempt, create a scratch **git worktree** at the scenario's pinned commit (or a
-  fresh copy into the sandbox), so a failed attempt never dirties the source checkout.
+- For each attempt, create a **scratch workspace**: a copy of the scenario repo with its own
+  git dir kept outside the sandbox mount, so a failed attempt never dirties the source checkout.
 - Compute the diff with `git diff --no-color` after the edit engine applies edits. The model
   never writes the diff (doc 08).
-- Check that the diff applies with `git apply --check` inside the sandbox before running tests.
+- The patch is applied **on the host** to the scratch copy (from an LF file, so Windows never
+  turns it into CRLF). Only the patched tree is mounted read-only into the sandbox, and the
+  sandbox image has no git (doc 07 §5).
 - Commits happen only on the human-invoked `aeropatch submit` path (doc 13).
 
-## 10. Week 1 deliverables for this component
+## 10. Week 1 deliverables for this component (status 2026-09-29)
 
-- [ ] `scan(repo)` returns normalized findings from Opengrep and Bandit for 3 sample repos.
-- [ ] `get_context(repo, path, line)` returns ≤ 3k-token context; unit tests on 5 fixtures,
-      including a nested function, a decorated method, and a file with a syntax error.
+- [x] `scan(repo)` returns normalized findings; the validator's check 4 confirms the finding
+      fires on all 10 dev scenarios (`opengrep.exe` + the 10-rule ruleset).
+- [x] `get_context(repo, path, line)` returns ≤ 3k-token context; `tests/test_context.py` covers
+      a nested function, a decorated method, and a file with a syntax error.
 - [ ] MCP server lists the tools; one successful call from MCP Inspector or Claude Code.
-- [ ] Path-validation tests: traversal, symlink escape, and non-allowlisted repo are all rejected.
+      **Moved to D12** (doc 14), as the timeline already planned.
+- [x] Path-validation tests (`tests/test_paths.py`): traversal, symlink escape, and
+      non-allowlisted repo are all rejected.
 
 Next: [07-sandbox.md](07-sandbox.md)

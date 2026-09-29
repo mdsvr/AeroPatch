@@ -1,7 +1,7 @@
 # 16 — Sources and Verification Notes
 
 Back to the index: [00-overall-plan.md](00-overall-plan.md)
-All sources were accessed 2026-09-24. "Reported" means the figure came from a secondary source
+All sources were accessed 2026-09-24; additions from the Week 1 close-out are dated 2026-09-29. "Reported" means the figure came from a secondary source
 or summarizer and should be checked against the primary source before you publish it.
 
 ## 1. Hardware facts (measured on this machine)
@@ -9,6 +9,9 @@ or summarizer and should be checked against the primary source before you publis
 - `nvidia-smi`: NVIDIA GeForce RTX 3050 Laptop GPU, 4096 MiB, driver 616.92.
 - System RAM ~15.7 GB; CPU Intel Core i5-12450H; Windows 11 Home; WSL2 default distro Ubuntu.
 - Docker 29.7.2 present; `python` resolves only to the Microsoft Store alias (not installed).
+- 2026-09-29: Docker 29.8.0, Ollama 0.34.4, uv 0.10.2 + CPython 3.12.11, Opengrep 1.30.0,
+  Claude Code CLI 2.1.239. D6 measurements (VRAM via `nvidia-smi`, tok/s, latency) are in
+  `NOTES.md`; raw logs in `runs/20260929-*-dev.jsonl` (gitignored).
 
 ## 2. Models and fine-tuning
 
@@ -42,6 +45,13 @@ or summarizer and should be checked against the primary source before you publis
 - Gemini pricing trackers (reported, volatile): https://pricepertoken.com/pricing-page/model/google-gemini-3.7-flash ,
   https://pricepertoken.com/pricing-page/model/google-gemini-3.5-flash , https://costgoat.com/pricing/gemini-api
 - Official Gemini pricing (check here before quoting): https://ai.google.dev/gemini-api/docs/pricing
+- 2026-09-29: Claude table re-checked against the Claude API skill's table cached 2026-09-25
+  (`claude-opus-5` $5/$25 and the `server-side-fallback-2026-07-01` beta unchanged).
+- Claude Code headless flags (`-p`, `--tools ""`, `--system-prompt-file`, `--output-format json`):
+  `claude --help` for CLI 2.1.239.
+- Ollama cloud models: `glm-5.1` and `qwen3.5:397b` return "retired at 2026-09-25";
+  `kimi-k2.6:cloud` and `minimax-m2.7:cloud` return "not included in your free usage"
+  (Ollama API error responses, 2026-09-29).
 
 ## 4. Protocols and frameworks
 
@@ -121,9 +131,11 @@ or summarizer and should be checked against the primary source before you publis
 | PatchEval-Verified: 230 CVEs, Docker, ~500 GB, leaderboard 80%+ | PatchEval repo README | High (primary) |
 | PatchEval paper best at release ≈ 23% | arXiv paper | High (primary) |
 | OpenAI stopped using SWE-bench Verified | OpenAI post | High (primary) |
-| Opengrep v1.27.1 (Aug 2026), LGPL-2.1 | Third-party review | Medium |
+| Opengrep LGPL-2.1; v1.30.0 installed and used | Third-party review; `opengrep --version` | Medium (license) / Measured (version) |
 | Kaggle ~30 GPU-h/week | Kaggle docs, forum | Medium (quotas change) |
-| Claude prices | Anthropic model table (cached 2026-06-24) | High, but re-check live |
+| Claude prices | Anthropic model table (cached 2026-06-24; re-checked vs 2026-09-25 cache) | High, but re-check live |
+| Qwen3.5-4B fits 4 GB at 8k: 3,787 MiB peak, 48 tok/s | D6 run, `nvidia-smi` sampling | Measured |
+| Free Ollama cloud models unavailable | Ollama API errors, 2026-09-29 | Measured |
 | Gemini Flash prices | Third-party trackers | Low-medium (volatile) |
 
 Anything rated "Medium" or lower should carry a "(reported)" tag or a link wherever it appears
@@ -133,7 +145,8 @@ in the public README.
 
 - [ ] Per-language count of PatchEval-Verified cases (Python share); it isn't in the sources checked.
 - [ ] Current price of `gemini-3.8-flash` and whether Google's recommended replacement has changed.
-- [ ] Claude prices on the live pricing page (the skill table is cached from 2026-06-24).
+- [ ] Claude prices on the live pricing page (skill tables cached 2026-06-24 and 2026-09-25 agree).
 - [ ] Licenses of SWE-smith, SWE-Gym, MoreFixes, and the chosen teacher model.
 - [ ] Current FastMCP / MCP Python SDK version numbers at project start; pin them.
-- [ ] llama.cpp/Ollama minimum version for Qwen3.5 (Gated DeltaNet) support.
+- [x] Ollama version for Qwen3.5 (Gated DeltaNet): 0.34.4 loads and serves it (minimum not
+      determined). llama.cpp is still unchecked.

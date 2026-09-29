@@ -1,6 +1,6 @@
 # 03 — Local Small Language Model (SLM) Selection
 
-Maps to: `src/models/local_client.py`, `training/`. Back to the index: [00-overall-plan.md](00-overall-plan.md)
+Maps to: `src/aeropatch/models/local_client.py`, `training/` (Week 3). Back to the index: [00-overall-plan.md](00-overall-plan.md)
 All scores are "(reported)" from model cards or vendor blogs as of 2026-09-24. Verify before quoting.
 
 ## 1. Requirements for the local model
@@ -58,7 +58,7 @@ so don't describe it as a "3B model" on the resume.
 |---|---|---|
 | **Primary fine-tune target** | **Qwen3.5-4B** (LoRA 16-bit on Kaggle T4) | Newest Apache-2.0 small model; fits 4 GB at Q4; long context |
 | Local-training demo / ablation | Qwen2.5-Coder-1.5B-Instruct (QLoRA on the 3050) | Only credible way to say "trained on a 4 GB laptop GPU" |
-| Untuned baselines | Qwen3.5-4B, Qwen2.5-Coder-3B-Instruct, Gemma 4 E4B | Shows what fine-tuning adds; covers two families |
+| Untuned baselines | Qwen3.5-4B, Qwen2.5-Coder-3B-Instruct (run in Week 1); Gemma 4 E4B not run (first on the cut list) | Shows what fine-tuning adds |
 | Open-weights ceiling (optional) | Qwen3-Coder-Next via a hosted provider | "Best open model" reference point |
 | Frontier reference | See [04](04-models-frontier-and-routing.md) | Upper bound and fallback |
 
@@ -83,6 +83,23 @@ Decision rule: pick the highest (PoC-fixed AND regression-free) rate among model
 apply rate and p50 latency under 30 s. If two are within one scenario of each other, prefer the
 Apache-2.0 model with the longer context. Record the result as a table in the README; it becomes
 the "Untuned" row of the final results.
+
+**Result (D6/D7, 2026-09-29; full table and CIs in `NOTES.md`):**
+
+| Model | Apply | Resolved | p50 | tok/s | Peak VRAM |
+|---|---|---|---|---|---|
+| **Qwen3.5-4B** | 80% (100% on 09-28) | **5/10** (same 5 both days) | 4.4 s | 48 | 3,787 MiB |
+| Qwen2.5-Coder-3B | 60% (80% on 09-28) | 0/10 | 1.4 s | 75 | 2,440 MiB |
+| Claude Opus 5 (reference) | 100% | 9/10 | 8.7 s | - | - |
+
+VRAM: "3.8 GB" is read as GiB (3,891 MiB), the unit the 4 GB card is labelled in; read as decimal
+GB (3,624 MiB), Qwen3.5-4B's 3,787 MiB peak is over. Either way the fix would be a smaller
+context, not another model.
+
+**Decision: Qwen3.5-4B stays the primary model and fine-tune target.** Coder-3B failed the apply
+filter on 09-29 and resolved nothing on either day, so it remains only the documented fallback.
+Apply-rate swings are all `SEARCH_NOT_FOUND` (SEARCH text not copied verbatim), which the repair
+loop targets in Week 2.
 
 ## 6. Prompting a small model (applies to all candidates)
 
@@ -126,13 +143,15 @@ handles and which need escalation is more useful to readers than a single averag
 - **Tokenizer counts differ between models.** Budget the context with the serving model's
   own tokenizer (Ollama/llama.cpp return prompt token counts), not a generic estimate.
 
-## 9. Serving settings (starting point, tune in Week 1)
+## 9. Serving settings (tuned in Week 1)
+
+Server: Ollama 0.34.4 on Windows; tags `qwen3.5:4b` and `qwen2.5-coder:3b-instruct-q4_K_M`.
 
 | Setting | Value |
 |---|---|
 | Quant | Q4_K_M (Q5_K_M if VRAM allows; compare apply rate) |
-| Context | 8192 (raise only if scenarios need it) |
-| GPU layers | all (`-ngl 99`); verify no CPU offload in the logs |
+| Context | 8192 (only ~300 MiB headroom at this size; re-measure before raising) |
+| GPU layers | all: `num_gpu: 99` in Ollama, `-ngl 99` in llama.cpp. Ollama's default put Qwen3.5-4B 54% on CPU (9 tok/s) |
 | Batch / parallel slots | 1 (single user, sequential) |
 | Temperature / top_p | 0.2 / 0.9 for pass@1 |
 | Max new tokens | 1024 (edits are short; stop runaway generations) |
