@@ -108,7 +108,9 @@ feedback; D8 measures it.
       (D6); `frontier` (API) needs a key; `cascade` runs in D8.
 - [x] The edit engine passes tests for: exact match, whitespace-tolerant match, not found (with
       closest-lines feedback), ambiguous match, multiple blocks in one file, blocks across two files.
-- [x] Every gate rule has one passing and one failing test (`tests/test_gates.py`).
+- [ ] Every gate rule has one passing and one failing test. `tests/test_gates.py` (17 cases) has a
+      rejecting test for all 8 rules, but rule-specific passing cases only for `FORBIDDEN_PATH`
+      and `RISKY_IMPORT` (plus one shared clean edit).
 - [ ] Repair feedback is capped at ~1.5k tokens: unit-tested (`test_summarize_caps_length`);
       still to check on a scenario with a huge traceback.
 - [ ] Identical-edit detection stops a stuck run early.

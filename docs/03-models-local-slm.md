@@ -77,7 +77,7 @@ temperature 0.2, non-thinking mode, and the same prompt template. Record:
 | PoC-fixed rate | Does the vulnerability test pass? |
 | Regression-free rate | Did it break anything else? |
 | Latency p50 (s) and decode tok/s | Real cost on this laptop |
-| Peak VRAM | Must stay < 3.8 GiB (3,891 MiB) |
+| Peak VRAM (GB) | Must stay < 3.8 GB |
 
 Decision rule: pick the highest (PoC-fixed AND regression-free) rate among models with ≥80%
 apply rate and p50 latency under 30 s. If two are within one scenario of each other, prefer the
@@ -91,6 +91,10 @@ the "Untuned" row of the final results.
 | **Qwen3.5-4B** | 80% (100% on 09-28) | **5/10** (same 5 both days) | 4.4 s | 48 | 3,787 MiB |
 | Qwen2.5-Coder-3B | 60% (80% on 09-28) | 0/10 | 1.4 s | 75 | 2,440 MiB |
 | Claude Opus 5 (reference) | 100% | 9/10 | 8.7 s | - | - |
+
+VRAM: "3.8 GB" is read as GiB (3,891 MiB), the unit the 4 GB card is labelled in; read as decimal
+GB (3,624 MiB), Qwen3.5-4B's 3,787 MiB peak is over. Either way the fix would be a smaller
+context, not another model.
 
 **Decision: Qwen3.5-4B stays the primary model and fine-tune target.** Coder-3B failed the apply
 filter on 09-29 and resolved nothing on either day, so it remains only the documented fallback.

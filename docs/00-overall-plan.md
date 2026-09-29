@@ -66,19 +66,19 @@ sandbox tests, the gates, the scenario validator, the baselines, or traceable nu
 | 00 | [00-overall-plan.md](00-overall-plan.md) | Overall plan | Verdict, decisions, 4-week summary, this index | 112 |
 | 01 | [01-plan-review.md](01-plan-review.md) | Planning review | Section-by-section scorecard, outdated/unrealistic/missing items, prior art | 137 |
 | 02 | [02-hardware-and-environment.md](02-hardware-and-environment.md) | Environment | What fits on a 3050 4 GB, measured VRAM/tok/s, Windows-native setup, troubleshooting | 152 |
-| 03 | [03-models-local-slm.md](03-models-local-slm.md) | Models: local | SLM candidates, licenses, VRAM, bake-off **and its result**, prompting and serving settings | 156 |
+| 03 | [03-models-local-slm.md](03-models-local-slm.md) | Models: local | SLM candidates, licenses, VRAM, bake-off **and its result**, prompting and serving settings | 160 |
 | 04 | [04-models-frontier-and-routing.md](04-models-frontier-and-routing.md) | Models: frontier | Gemini retirement, price table, API vs Claude Code routes, measured cost, refusal handling | 163 |
 | 05 | [05-architecture.md](05-architecture.md) | Architecture | Deterministic pipeline, components, data contracts, repo layout, walkthrough | 151 |
 | 06 | [06-mcp-server-and-static-analysis.md](06-mcp-server-and-static-analysis.md) | Week 1: tools | MCP 2026-07-28, tool surface, input validation, tree-sitter, Opengrep/Bandit | 151 |
 | 07 | [07-sandbox.md](07-sandbox.md) | Week 1: sandbox | Two-phase build, hardening flags, I/O, test parser, isolation statement | 151 |
 | 08a | [08-orchestration-part1.md](08-orchestration-part1.md) | Week 2: loop | Plain state machine, "resolved" definition, budgets, search/replace format | 149 |
-| 08b | [08-orchestration-part2.md](08-orchestration-part2.md) | Week 2: loop | Prompts, safety gates, refusals in the loop, human PR gate, defaults | 147 |
-| 09 | [09-dataset-curation.md](09-dataset-curation.md) | Week 3: data | Sources, synthetic CWE injection, format parity, filters, contamination | 145 |
+| 08b | [08-orchestration-part2.md](08-orchestration-part2.md) | Week 2: loop | Prompts, safety gates, refusals in the loop, human PR gate, defaults | 149 |
+| 09 | [09-dataset-curation.md](09-dataset-curation.md) | Week 3: data | Sources, synthetic CWE injection, format parity, filters, contamination | 146 |
 | 10 | [10-finetuning-and-serving.md](10-finetuning-and-serving.md) | Week 3: training | LoRA vs QLoRA, hyperparameters, pilot, export, GGUF serving, troubleshooting | 141 |
 | 11 | [11-evaluation-benchmark.md](11-evaluation-benchmark.md) | Week 4: eval | Benchmark fit, tiers, CWE coverage, scenario anatomy, validation | 145 |
 | 12 | [12-metrics-and-reporting.md](12-metrics-and-reporting.md) | Week 4: metrics | pass@k vs resolve@k, catalogue, statistics, report layout | 140 |
 | 13 | [13-security-threat-model.md](13-security-threat-model.md) | Security | Threats T1–T13, injection defence, adversarial scenarios, checklist | 136 |
-| 14a | [14-timeline-part1.md](14-timeline-part1.md) | Timeline | Weeks 1–2 day by day, exit criteria, detailed risky-day checklists | 132 |
+| 14a | [14-timeline-part1.md](14-timeline-part1.md) | Timeline | Weeks 1–2 day by day, exit criteria, detailed risky-day checklists | 133 |
 | 14b | [14-timeline-part2.md](14-timeline-part2.md) | Timeline | Weeks 3–4, weekly reviews, budget, risk register, cut list, definition of done | 135 |
 | 15 | [15-resume-and-deliverables.md](15-resume-and-deliverables.md) | Outcomes | Resume claim fixes, bullet templates, deliverables, README outline, demo | 141 |
 | 16 | [16-sources.md](16-sources.md) | References | All sources, claim→source confidence map, open verification items | 152 |

@@ -78,9 +78,10 @@ or the scenario validator.
 - [x] `scenario.json` schema written down (doc 11) and a loader that validates required fields.
 - [x] Validator implementing all 4 checks (vulnerable baseline, reference fix, destructive
       fix caught, finding detected).
-- [x] 5 scenarios, each: a ~50–150-line app, 1–2 PoC tests, 3–6 regression tests,
-      reference fix, lockfile. **As built the apps are only 6–19 lines** (stdlib-only), so
-      contexts are tiny and flatter every model. Make the Week 2 scenarios closer to the plan.
+- [ ] 5 scenarios, each: a ~50–150-line app, 1–2 PoC tests, 3–6 regression tests,
+      reference fix, lockfile. **Not met as specified:** 10 scenarios exist and pass the
+      validator, but the apps are only 6–19 lines (stdlib-only), so contexts are tiny and flatter
+      every model. Make the Week 2 scenarios closer to the plan.
 - Tip: write the reference fix and the "delete the body" check first. They tell you whether
   your regression tests are strong enough before you invest in the rest.
 
