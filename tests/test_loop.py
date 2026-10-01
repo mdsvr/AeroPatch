@@ -49,6 +49,23 @@ def test_refusal_is_not_a_numbered_attempt(monkeypatch, tmp_path):
     assert res.attempts[1].n == 1
 
 
+def test_secret_prompt_is_blocked_and_recorded(monkeypatch, tmp_path):
+    task = scenario.load("A-089-01")
+    task.description = 'password="sensitive-placeholder-value"'
+
+    def should_not_call_model(*args, **kwargs):
+        raise AssertionError("the model must not receive a prompt containing a secret")
+
+    monkeypatch.setattr(router, "generate", should_not_call_model)
+    cfg = load_config("repair-local", attempt_plan=["local", "frontier"])
+    result = loop.run(task, cfg, tmp_path)
+
+    assert not result.resolved
+    assert result.label == "SECRET_BLOCKED"
+    assert [a.label for a in result.attempts] == ["SECRET_BLOCKED"]
+    assert "sensitive-placeholder-value" not in (tmp_path / task.id / "report.md").read_text()
+
+
 @needs_docker[0]
 @needs_docker[1]
 def test_repair_after_failing_poc(monkeypatch, tmp_path):

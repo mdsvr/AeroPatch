@@ -77,3 +77,37 @@ def test_cleanup_after_crash(monkeypatch):
     with pytest.raises(RuntimeError):
         py("print('hi')")
     assert count_ours() == before == 0
+
+
+def test_scenario_tests_are_read_only_in_image():
+    from aeropatch import scenario
+
+    image = scenario.ensure_image("A-089-01")
+    _, logs, timed_out, _ = sandbox.run_container(
+        image,
+        [
+            "python",
+            "-c",
+            (
+                "from pathlib import Path; p=next(Path('/opt/scenario/tests_poc').rglob('*.py')); "
+                "exec(\"try: p.write_text('tampered')\\nexcept OSError: print('READ_ONLY')\\n"
+                "else: print('WRITTEN')\")"
+            ),
+        ],
+    )
+    assert not timed_out
+    assert "READ_ONLY" in logs and "WRITTEN" not in logs
+
+
+def test_candidate_sitecustomize_is_not_loaded_before_pytest():
+    from aeropatch import scenario
+    from aeropatch.tools.git_ops import Workspace
+
+    task = scenario.load("A-089-01")
+    image = scenario.ensure_image(task.id)
+    with Workspace(task.repo_path) as ws:
+        (ws.repo / "sitecustomize.py").write_text(
+            "print('AEROPATCH_CANDIDATE_STARTUP_HOOK_RAN')\n", encoding="utf-8")
+        _, logs, timed_out, _ = sandbox.run_container(image, None, ws.src)
+    assert not timed_out
+    assert "AEROPATCH_CANDIDATE_STARTUP_HOOK_RAN" not in logs

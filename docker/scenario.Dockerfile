@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Per-scenario sandbox image (doc 07 §2, build phase). Build context: the scenario directory.
 #   uv run aeropatch build <scenario_id>
-# Tests are baked in from the pristine scenario, so a patch can never change the tests it is judged by.
+# Tests are baked from the pristine scenario and remain in root-owned, read-only image paths.
 ARG BASE=aeropatch-sandbox-base:latest
 FROM ${BASE}
 

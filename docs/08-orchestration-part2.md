@@ -76,6 +76,9 @@ no effect.
 
 ## 5. Human approval gate and PR submission (`aeropatch submit`)
 
+This is the planned Week 2 interface. The current Week 1 CLI does not implement `submit` or any
+commit, push, or PR action.
+
 Nothing leaves the machine automatically. The flow:
 1. `aeropatch remediate <task>` runs the loop and writes `runs/<id>/report.md`, containing the
    finding, the diff, the test evidence before/after, the model used, attempts and cost.

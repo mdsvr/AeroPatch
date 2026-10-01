@@ -14,6 +14,7 @@ from aeropatch.agent import edits, gates, prompts, router
 from aeropatch.contracts import Attempt, RunResult, Task
 from aeropatch.sandbox import junit, sandbox
 from aeropatch.scenario import scenario_dir
+from aeropatch.tools import scanners
 from aeropatch.tools.context import get_context
 from aeropatch.tools.git_ops import Workspace
 from aeropatch.tools.paths import PathError
@@ -24,6 +25,7 @@ ATTRIBUTION = {
     "UNKNOWN_FILE": "FORMAT_FAIL", "EMPTY_SEARCH": "FORMAT_FAIL", "GATE_REJECT": "GATE_REJECT",
     "POC_FAIL": "POC_STILL_FAILS", "REGRESSION": "REGRESSION", "TIMEOUT": "TIMEOUT",
     "REFUSAL": "REFUSAL", "PROVIDER_ERROR": "PROVIDER_ERROR", "BUDGET_EXHAUSTED": "BUDGET_EXHAUSTED",
+    "SECRET_BLOCKED": "SECRET_BLOCKED",
     "SYNTAX_ERROR": "REGRESSION", "IMPORT_ERROR": "REGRESSION", "COLLECTION_ERROR": "REGRESSION",
     "SANDBOX_ERROR": "SANDBOX_ERROR",
 }
@@ -55,7 +57,11 @@ def run(task: Task, cfg: dict, run_dir: Path | None = None) -> RunResult:
             temperature = cfg["temperature_first"] if n == 0 else cfg["temperature_repair"]
             prompt_text = prompts.SYSTEM_PROMPT + "\n\n" + "\n\n".join(m["content"] for m in messages)
             if route != "oracle":
-                prompts.check_no_secrets(prompt_text)
+                try:
+                    prompts.check_no_secrets(prompt_text)
+                except prompts.SecretInPrompt as e:
+                    attempts.append(Attempt(n=0, route=route, label="SECRET_BLOCKED", apply_error=str(e)))
+                    break
             gen = router.generate(route, messages, prompts.SYSTEM_PROMPT, cfg, temperature, sdir)
             spent += gen.cost_usd
             if gen.refusal or gen.error:
@@ -100,6 +106,7 @@ def run(task: Task, cfg: dict, run_dir: Path | None = None) -> RunResult:
                         _save(adir, "diff.patch", att.diff)
                         att.sandbox = sandbox.run_tests(
                             task.image, ws.src, cfg, adir / "sandbox_raw.log" if adir else None)
+                        att.sandbox.original_rule_present = scanners.original_rule_present(ws.repo, task.finding)
                         _save(adir, "sandbox.json", att.sandbox.to_json())
                         att.label = att.sandbox.label
                         feedback = junit.summarize(att.sandbox.failures, cfg["feedback_token_cap"] * 4)
@@ -137,7 +144,13 @@ def report_md(task: Task, result: RunResult) -> str:
     for a in result.attempts:
         sb = a.sandbox
         tests = f" poc={sb.poc_passed} regressions={sb.regressions_passed}" if sb else ""
-        lines.append(f"- #{a.n} {a.route} ({a.model}): {a.label}{tests}, {a.latency_s}s")
+        scan = ""
+        if sb:
+            if sb.original_rule_present is None:
+                scan = "; original rule scan unavailable"
+            else:
+                scan = "; original rule still present" if sb.original_rule_present else "; original rule not found"
+        lines.append(f"- #{a.n} {a.route} ({a.model}): {a.label}{tests}{scan}, {a.latency_s}s")
     if result.final_diff:
         lines += ["", "## Diff", "", "```diff", result.final_diff.rstrip(), "```"]
     return "\n".join(lines) + "\n"

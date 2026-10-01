@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import re
+from collections import Counter
+from math import log2
 
 from aeropatch.agent.edits import FORMAT_EXAMPLE
 from aeropatch.contracts import Context, Task
@@ -31,21 +33,55 @@ part is the new text. Output nothing else. Example:
 # Secrets must never leave the machine in a prompt (doc 13, T4). A hit blocks the request.
 SECRET_PATTERNS = [
     re.compile(r"sk-ant-[A-Za-z0-9_\-]{20,}"),
+    re.compile(r"sk-(?:proj-)?[A-Za-z0-9_\-]{20,}"),
+    re.compile(r"AIza[0-9A-Za-z_\-]{35}"),
     re.compile(r"AKIA[0-9A-Z]{16}"),
     re.compile(r"gh[pousr]_[A-Za-z0-9]{30,}"),
+    re.compile(r"github_pat_[A-Za-z0-9_]{20,}"),
     re.compile(r"hf_[A-Za-z0-9]{30,}"),
     re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
 ]
+SECRET_ASSIGNMENT_RE = re.compile(
+    r"\b(?:password|passwd|secret|api[_-]?key|access[_-]?token|auth[_-]?token)\b\s*[:=]\s*"
+    r"(?:[\"'](?P<quoted>[^\"'\r\n]{6,})[\"']|(?P<unquoted>[A-Za-z0-9/+_=.-]{8,})(?=\s|[,;#}]|$))",
+    re.IGNORECASE,
+)
+KEY_CONTEXT_RE = re.compile(
+    r"\b(?:[a-z0-9]+[_-])*(?:key|token|secret|password|credential|auth)\b", re.IGNORECASE
+)
+LONG_TOKEN_RE = re.compile(r"[A-Za-z0-9/+_=-]{32,}")
+PLACEHOLDERS = {"changeme", "example", "dummy", "fake", "placeholder", "replace_me", "your_api_key"}
 
 
 class SecretInPrompt(ValueError):
     pass
 
 
-def check_no_secrets(text: str) -> None:
+def _entropy(value: str) -> float:
+    counts = Counter(value)
+    return -sum((count / len(value)) * log2(count / len(value)) for count in counts.values())
+
+
+def _secret_reason(text: str) -> str | None:
     for pat in SECRET_PATTERNS:
         if pat.search(text):
-            raise SecretInPrompt(f"prompt blocked: matches secret pattern {pat.pattern[:20]}...")
+            return "recognized credential pattern"
+    for match in SECRET_ASSIGNMENT_RE.finditer(text):
+        value = (match.group("quoted") or match.group("unquoted") or "").rstrip(".}")
+        if value.lower().strip("_.- ") not in PLACEHOLDERS:
+            return "literal credential assignment"
+    for line in text.splitlines():
+        if KEY_CONTEXT_RE.search(line) and any(
+            _entropy(match.group()) >= 4.0 for match in LONG_TOKEN_RE.finditer(line)
+        ):
+            return "high-entropy value near a credential name"
+    return None
+
+
+def check_no_secrets(text: str) -> None:
+    reason = _secret_reason(text)
+    if reason:
+        raise SecretInPrompt(f"prompt blocked: {reason}")
 
 
 def first_user_message(task: Task, context: Context) -> str:

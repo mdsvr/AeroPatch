@@ -12,7 +12,7 @@ AeroPatch doesn't need any of them:
 | LangGraph feature | Needed here? | Plain alternative |
 |---|---|---|
 | Durable checkpointing | Only to resume benchmark runs | Skip task IDs that already have a `RunResult` in the JSONL |
-| Human-in-the-loop interrupts | Only before a PR | A separate CLI command, `aeropatch submit` |
+| Human-in-the-loop interrupts | Planned before any PR | A future separate CLI command, `aeropatch submit` (not in Week 1) |
 | Parallel branches | No; one edit at a time on a 4 GB GPU | — |
 | Multi-agent graphs | No; the pipeline is fixed (doc 05) | — |
 

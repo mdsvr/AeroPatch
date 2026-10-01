@@ -74,20 +74,24 @@ and `--env-file` with keys. The Docker default seccomp profile stays on; don't p
 - **Cleanup**: `--rm`, plus `remove(force=True)` in a `finally` block so a crash doesn't leave
   containers running; delete the scratch copy afterwards. Label containers `aeropatch=1` and
   prune any leftovers at startup.
-- The **tests come from the image** (copied from the pristine scenario at build time), not from
-  `/src`, so a patch can't change the tests it's judged by (doc 08 part 2).
+- The **tests come from root-owned, read-only image paths**, not from `/src`. This prevents edits
+  to their on-disk files. Candidate code still runs in pytest's process and could deliberately
+  tamper with the interpreter or test runner; this harness is not an adversarial proof system
+  (doc 08 part 2).
 
 ## 6. What a run executes (in order)
 
 1. Before any container starts, the harness applies the patch **on the host** to a scratch copy
    (doc 06 §9). If it doesn't apply, the result is `applied=false` and no container runs. In the
-   container, `run.sh` copies `/src/repo` and the image's pristine tests into `/work`.
+   container, `run.sh` copies `/src/repo` into `/work` and executes the tests at their read-only
+   image paths.
 2. **PoC tests**: the vulnerability test. It must fail on the original code and pass on the fix.
 3. **Regression tests**: the project's relevant tests. They must pass both before and after.
 4. **Lint**: `ruff check` on the changed files only. Style warnings are informational; syntax
    errors fail the run.
-5. **Re-scan**: Bandit on the changed files (medium/high findings fail `rescan_clean`). The
-   original finding should be gone. Scanner-clean is a secondary signal, never "resolved".
+5. **Re-scan**: Bandit on changed files and the original finding's scanner on the patched
+   workspace. The original rule status is recorded when that scanner is available. Scanner-clean
+   is a secondary signal, never "resolved".
 
 Run the unpatched baseline once at build time and cache it. Confirm the PoC fails and the
 regressions pass on the vulnerable code. A scenario that doesn't show this pattern is broken

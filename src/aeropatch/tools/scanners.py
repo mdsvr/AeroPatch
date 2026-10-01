@@ -73,13 +73,13 @@ def run_opengrep(repo: Path, rules: Path = RULES_DIR) -> list[Finding] | None:
     return out
 
 
-def run_bandit(repo: Path) -> list[Finding]:
+def run_bandit(repo: Path) -> list[Finding] | None:
     proc = subprocess.run([sys.executable, "-m", "bandit", "-q", "-r", "-f", "json", "."],
                           cwd=repo, capture_output=True, text=True, encoding="utf-8", check=False)
     try:
         data = json.loads(proc.stdout or "{}")
     except json.JSONDecodeError:
-        return []
+        return None
     out = []
     for r in data.get("results", []):
         path = Path(r["filename"]).as_posix().removeprefix("./")
@@ -93,10 +93,23 @@ def run_bandit(repo: Path) -> list[Finding]:
     return out
 
 
+def original_rule_present(repo: Path, original: Finding) -> bool | None:
+    """Re-run the scanner that produced the finding and conservatively match its rule and file."""
+    if original.tool == "opengrep":
+        findings = run_opengrep(repo)
+    elif original.tool == "bandit":
+        findings = run_bandit(repo)
+    else:
+        return None
+    if findings is None:
+        return None
+    return any(f.rule_id == original.rule_id and f.path == original.path for f in findings)
+
+
 def scan(repo: Path) -> dict:
     """Returns {"findings": [...], "opengrep": bool}. Findings on the same line are both kept."""
     repo = repo.resolve()
     og = run_opengrep(repo)
-    findings = (og or []) + run_bandit(repo)
+    findings = (og or []) + (run_bandit(repo) or [])
     findings.sort(key=lambda f: (f.path, f.line, f.tool))
     return {"findings": findings, "opengrep": og is not None}

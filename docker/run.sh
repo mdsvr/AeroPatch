@@ -5,18 +5,17 @@
 #   /src/changed.txt   repo-relative paths the patch touched (may be empty)
 # Output: sections on stdout between ===AEROPATCH-<NAME>=== markers, parsed by sandbox.py.
 set -u
-export PYTHONPATH=/work/repo HOME=/tmp
+export HOME=/tmp PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
 MAX=400000
 
 cp -r /src/repo /work/repo
 chmod -R u+w /work/repo
-# Tests come from the image, never from the patched tree.
-cp -r /opt/scenario/tests_poc /work/tests_poc
-cp -r /opt/scenario/tests_regression /work/tests_regression
+# Tests stay at their root-owned, read-only image paths. Isolated Python startup prevents
+# sitecustomize.py in the candidate repository from running before the trusted runner starts.
 
 for suite in poc regression; do
-    timeout 240 python -m pytest -q -p no:cacheprovider --timeout=30 \
-        --rootdir=/work --junitxml=/tmp/$suite.xml /work/tests_$suite >/tmp/$suite.log 2>&1
+    timeout 240 python -I /harness/pytest_runner.py -q -p no:cacheprovider -p pytest_timeout --timeout=30 \
+        -c /dev/null --rootdir=/work --junitxml=/tmp/$suite.xml /opt/scenario/tests_$suite >/tmp/$suite.log 2>&1
     rc=$?
     echo "===AEROPATCH-RC-$suite==="
     echo "$rc"

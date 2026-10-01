@@ -92,6 +92,7 @@ class SandboxResult(_Json):
     regression_total: int = 0
     lint_ok: bool = True
     rescan_clean: bool | None = None
+    original_rule_present: bool | None = None
     failures: list[Failure] = field(default_factory=list)
     label: str = ""  # RESOLVED | POC_FAIL | REGRESSION | IMPORT_ERROR | SYNTAX_ERROR | TIMEOUT | ...
     duration_s: float = 0.0

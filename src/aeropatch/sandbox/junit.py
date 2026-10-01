@@ -8,7 +8,7 @@ import xml.etree.ElementTree as ET  # nosec B405 - parses our own sandbox output
 from aeropatch.contracts import Failure
 
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
-WORK_RE = re.compile(r"/work/(repo/|tests_poc/|tests_regression/)?")
+WORK_RE = re.compile(r"/work/(repo/|tests_poc/|tests_regression/)?|/opt/scenario/")
 
 
 def clean(text: str) -> str:

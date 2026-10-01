@@ -21,7 +21,9 @@ finding (Opengrep/Bandit) -> Task -> scoped context (tree-sitter)
 ```
 
 The model is a pure function from context to edits. It has no tools and no shell. Tests are
-baked into the sandbox image, so a patch can never change the tests it is judged by.
+baked into the sandbox image and exposed through root-owned, read-only paths. Candidate code still
+runs in pytest's process, so this is not a defense against code deliberately tampering with the
+interpreter or test runner; use the sandbox for your own scenarios and pinned public repos.
 
 ## Quick start
 
@@ -32,6 +34,10 @@ uv run aeropatch validate --all          # 4 checks per scenario; builds scenari
 uv run aeropatch bench --config oracle   # harness self-check: must resolve 10/10
 uv run pytest -q                         # unit + sandbox containment tests
 ```
+
+`uv run` does not load `.env` automatically. To pass `ANTHROPIC_API_KEY`, for example, use
+`uv run --env-file .env aeropatch bench --config baseline-frontier --split dev`. `OLLAMA_HOST`
+in that file overrides the local model endpoint.
 
 Local model (Ollama running, model pulled):
 

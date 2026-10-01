@@ -9,6 +9,7 @@ import pytest
 from aeropatch import scenario
 from aeropatch.agent.gates import check
 from aeropatch.config import SCENARIOS_DIR
+from aeropatch.contracts import Finding
 from aeropatch.tools import scanners
 from aeropatch.tools.context import function_span
 from aeropatch.tools.git_ops import Workspace
@@ -20,6 +21,19 @@ def test_split_covers_every_scenario_once():
     split = json.loads((SCENARIOS_DIR / "split.json").read_text())
     assert sorted(split["dev"] + split["test"]) == IDS
     assert len(split["dev"]) == 10
+
+
+def test_original_rule_rescan_reports_present_absent_or_unavailable(monkeypatch, tmp_path):
+    original = Finding(tool="opengrep", rule_id="aeropatch.python.test", path="app.py", line=10)
+    finding = Finding(tool="opengrep", rule_id="aeropatch.python.test", path="app.py", line=12)
+    monkeypatch.setattr(scanners, "run_opengrep", lambda repo: [finding])
+    assert scanners.original_rule_present(tmp_path, original) is True
+
+    monkeypatch.setattr(scanners, "run_opengrep", lambda repo: [])
+    assert scanners.original_rule_present(tmp_path, original) is False
+
+    monkeypatch.setattr(scanners, "run_opengrep", lambda repo: None)
+    assert scanners.original_rule_present(tmp_path, original) is None
 
 
 @pytest.mark.parametrize("sid", IDS)

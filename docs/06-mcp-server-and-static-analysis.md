@@ -135,7 +135,7 @@ When both scanners report the same line, merge the two findings and keep both ru
 - The patch is applied **on the host** to the scratch copy (from an LF file, so Windows never
   turns it into CRLF). Only the patched tree is mounted read-only into the sandbox, and the
   sandbox image has no git (doc 07 §5).
-- Commits happen only on the human-invoked `aeropatch submit` path (doc 13).
+- A human-invoked `aeropatch submit` path is planned; it is not implemented in Week 1.
 
 ## 10. Week 1 deliverables for this component (status 2026-09-29)
 

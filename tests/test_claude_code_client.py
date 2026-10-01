@@ -19,7 +19,8 @@ def fake_cli(monkeypatch):
 def runner(payload: dict, seen: dict):
     def run(cmd, **kw):
         seen.update(cmd=cmd, **kw)
-        seen["system"] = open(cmd[cmd.index("--system-prompt-file") + 1], encoding="utf-8").read()
+        with open(cmd[cmd.index("--system-prompt-file") + 1], encoding="utf-8") as prompt_file:
+            seen["system"] = prompt_file.read()
         return SimpleNamespace(stdout=json.dumps(payload), stderr="", returncode=0)
     return run
 
