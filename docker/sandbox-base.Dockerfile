@@ -19,7 +19,8 @@ RUN --mount=type=secret,id=ca,required=false \
 
 RUN useradd --uid 10001 --no-create-home --home-dir /tmp sandbox
 COPY docker/run.sh /harness/run.sh
-RUN chmod 555 /harness/run.sh
+COPY docker/pytest_runner.py /harness/pytest_runner.py
+RUN chmod 555 /harness/run.sh /harness/pytest_runner.py
 
 USER 10001:10001
 WORKDIR /work

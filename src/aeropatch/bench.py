@@ -44,22 +44,88 @@ def header(cfg: dict, split: str, ids: list[str]) -> dict:
 def done_ids(path: Path) -> set[str]:
     if not path.exists():
         return set()
-    out = set()
-    for line in path.read_text(encoding="utf-8").splitlines():
-        rec = json.loads(line)
-        if rec.get("type") == "result":
-            out.add(rec["task_id"])
-    return out
+    raw = path.read_bytes()
+    lines = raw.splitlines(keepends=True)
+    records: list[tuple[dict, int]] = []
+    offset = 0
+    truncate_at: int | None = None
+    for index, line in enumerate(lines):
+        start = offset
+        offset += len(line)
+        if not line.strip():
+            continue
+        try:
+            rec = json.loads(line.rstrip(b"\r\n"))
+        except (json.JSONDecodeError, UnicodeDecodeError) as e:
+            if index == len(lines) - 1:
+                truncate_at = start
+                break
+            raise ValueError(f"corrupt benchmark JSONL at line {index + 1}") from e
+        if not isinstance(rec, dict):
+            raise TypeError(f"benchmark JSONL line {index + 1} is not an object")
+        records.append((rec, start))
+
+    if truncate_at is not None:
+        raw = raw[:truncate_at]
+        records = [(rec, start) for rec, start in records if start < truncate_at]
+
+    completed = {rec["task_id"] for rec, _ in records if rec.get("type") == "result" and "task_id" in rec}
+    task_starts: dict[str, int] = {}
+    for rec, start in records:
+        if rec.get("type") == "attempt" and isinstance(rec.get("task_id"), str):
+            task_starts.setdefault(rec["task_id"], start)
+    unfinished = next((sid for sid in task_starts if sid not in completed), None)
+    if unfinished is not None:
+        raw = raw[:task_starts[unfinished]]
+        records = [(rec, start) for rec, start in records if start < task_starts[unfinished]]
+        completed = {rec["task_id"] for rec, _ in records if rec.get("type") == "result" and "task_id" in rec}
+
+    if not records:
+        raw = b""
+    if raw and not raw.endswith(b"\n"):
+        raw += b"\n"
+    if raw != path.read_bytes():
+        path.write_bytes(raw)
+    return completed
+
+
+def _validate_resume_header(path: Path, cfg: dict, split: str, ids: list[str]) -> None:
+    raw = path.read_bytes()
+    lines = raw.splitlines()
+    if not lines:
+        return
+    try:
+        record = json.loads(lines[0])
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        if len(lines) == 1 and not raw.endswith(b"\n"):
+            return
+        raise ValueError("benchmark run has no valid header; choose a new --run-id") from e
+    if not isinstance(record, dict) or record.get("type") != "header":
+        raise ValueError("benchmark run has no valid header; choose a new --run-id")
+    tasks = record.get("tasks")
+    if not isinstance(tasks, list) or any(not isinstance(task, str) for task in tasks):
+        raise ValueError("benchmark run has an invalid task list in its header; choose a new --run-id")
+    matches = (
+        record.get("config") == cfg
+        and record.get("split") == split
+        and set(tasks) == set(ids)
+    )
+    if not matches:
+        raise ValueError("run_id already belongs to a different config, split, or task set")
 
 
 def run_benchmark(cfg: dict, split: str = "dev", run_id: str | None = None,
                   ids: list[str] | None = None) -> Path:
-    ids = ids or scenario.list_ids(split)
+    ids = sorted(set(ids or scenario.list_ids(split)))
     run_id = run_id or f"{time.strftime('%Y%m%d-%H%M%S')}-{cfg['name']}-{split}"
     run_dir = RUNS_DIR / run_id
     jsonl = RUNS_DIR / f"{run_id}.jsonl"
     RUNS_DIR.mkdir(parents=True, exist_ok=True)
+    if jsonl.exists() and jsonl.stat().st_size:
+        _validate_resume_header(jsonl, cfg, split, ids)
     finished = done_ids(jsonl)
+    if jsonl.exists() and jsonl.stat().st_size:
+        _validate_resume_header(jsonl, cfg, split, ids)
     with jsonl.open("a", encoding="utf-8") as out:
         if not jsonl.stat().st_size:
             out.write(json.dumps(header(cfg, split, ids), default=str) + "\n")
@@ -81,8 +147,16 @@ def run_benchmark(cfg: dict, split: str = "dev", run_id: str | None = None,
 
 def summarize(jsonl: Path) -> dict:
     cfg_name, attempts, results = "", [], []
-    for line in jsonl.read_text(encoding="utf-8").splitlines():
-        rec = json.loads(line)
+    lines = jsonl.read_bytes().splitlines()
+    for index, line in enumerate(lines):
+        if not line.strip():
+            continue
+        try:
+            rec = json.loads(line)
+        except (json.JSONDecodeError, UnicodeDecodeError) as e:
+            if index == len(lines) - 1:
+                break
+            raise ValueError(f"corrupt benchmark JSONL at line {index + 1}") from e
         if rec["type"] == "header":
             cfg_name = rec["config"]["name"]
             from aeropatch.agent.router import model_name
@@ -92,6 +166,8 @@ def summarize(jsonl: Path) -> dict:
             attempts.append(rec)
         elif rec["type"] == "result":
             results.append(rec)
+    completed_ids = {rec.get("task_id") for rec in results}
+    attempts = [rec for rec in attempts if rec.get("task_id") in completed_ids]
     numbered = [a for a in attempts if a["n"] > 0]
     first = [a for a in numbered if a["n"] == 1]
     n = len(results) or 1

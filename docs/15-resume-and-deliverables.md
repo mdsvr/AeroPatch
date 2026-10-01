@@ -105,7 +105,7 @@ with the evaluation and security design; those hold up regardless of the numbers
    AeroPatch"; the `remediate` tool call is visible.
 3. (25–40 s) The attempt timeline: local attempt 1 fails the PoC, attempt 2 passes; the
    diff is shown; the PoC goes red → green; the regressions stay green.
-4. (40–50 s) `aeropatch submit` asks for confirmation; a draft PR appears on your demo repo.
+4. (40–50 s) Planned future work: a human-confirmed submit command opens a draft PR on your demo repo.
 5. (50–60 s) Cut to the README results table and the cost–accuracy chart.
 Record it at 1080p, with no audio needed, and burn in captions. A GIF version goes at the
 top of the README.

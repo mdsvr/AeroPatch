@@ -7,6 +7,7 @@ config name: results are only compared within a config.
 from __future__ import annotations
 
 import copy
+import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -90,6 +91,8 @@ def load_config(name: str = "baseline-qwen3.5-4b", **overrides) -> dict:
         raise KeyError(f"unknown config {name!r}; known: {sorted(CONFIGS)}")
     cfg = copy.deepcopy(DEFAULTS)
     cfg.update(copy.deepcopy(CONFIGS[name]))
+    if os.environ.get("OLLAMA_HOST") and "local_host" not in overrides:
+        cfg["local_host"] = os.environ["OLLAMA_HOST"]
     cfg.update({k: v for k, v in overrides.items() if v is not None})
     cfg["name"] = name
     return cfg

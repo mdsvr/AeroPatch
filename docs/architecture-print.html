@@ -530,8 +530,8 @@ evaluability (every step is logged and replayable) and cost (one generation per 
     <text x="310" y="412" text-anchor="middle" font-size="10">diff + before/after test evidence + cost</text>
 
     <rect x="170" y="444" width="280" height="44" rx="6" fill="#e3f3e9" stroke="#2e7d4f" stroke-dasharray="4 3"/>
-    <text x="310" y="462" text-anchor="middle" font-weight="600">HUMAN: aeropatch submit</text>
-    <text x="310" y="478" text-anchor="middle" font-size="10">y/N confirm → draft PR on own fork only</text>
+    <text x="310" y="462" text-anchor="middle" font-weight="600">HUMAN REVIEW (submit planned)</text>
+    <text x="310" y="478" text-anchor="middle" font-size="10">No commit, push, or PR command is implemented</text>
 
     <!-- repair box -->
     <rect x="500" y="218" width="170" height="74" rx="6" fill="#f8e3e1" stroke="#a8322d"/>
@@ -998,7 +998,7 @@ anything that matters.</p>
     <text x="230" y="191">--network none blocks the call; the container holds no secrets.</text>
     <rect x="10" y="212" width="660" height="40" rx="5" fill="#e3f3e9" stroke="#2e7d4f"/>
     <text x="24" y="237" font-weight="600">5 · Human review</text>
-    <text x="230" y="237">aeropatch submit shows the full diff and needs y/N before anything leaves the machine.</text>
+    <text x="230" y="237">A future submit command will require review and explicit confirmation before external actions.</text>
   </g>
 </svg>
 <figcaption>Figure 5. Defence in depth. Layers 2–5 are deterministic, so the design holds even though small models are easy to prompt-inject.</figcaption>
@@ -1137,8 +1137,8 @@ Week 1 build was done in a Linux cloud container without a GPU. Model baselines 
 <tr><td>D3 scenario format, validator, first 5</td><td><span class="tag done">DONE</span></td><td>CWE-89, 78, 22, 502, 918</td></tr>
 <tr><td>D4 context, scanners, 5 more scenarios</td><td><span class="tag done">DONE</span></td><td>CWE-79, 601, 1333, 328, 209; 10-rule Opengrep ruleset</td></tr>
 <tr><td>D5 edit engine, gates, prompt v1, clients</td><td><span class="tag done">DONE</span></td><td>All 8 gates (the plan needed only 3 by D5)</td></tr>
-<tr><td>D6 single-attempt baselines</td><td><span class="tag pend">PENDING</span></td><td>Needs Ollama + GPU on the laptop, plus an API key</td></tr>
-<tr><td>D7 bake-off decision</td><td><span class="tag pend">PENDING</span></td><td>Needs the D6 numbers</td></tr>
+<tr><td>D6 single-attempt baselines</td><td><span class="tag done">DONE</span></td><td>10 dev scenarios; results recorded in NOTES.md</td></tr>
+<tr><td>D7 bake-off decision</td><td><span class="tag done">DONE</span></td><td>Qwen3.5-4B selected as the primary SLM</td></tr>
 </tbody></table>
 </div>
 

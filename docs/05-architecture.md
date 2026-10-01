@@ -135,8 +135,8 @@ trace below is illustrative and shows the repair path.
 6. **Generate (attempt 2, local)**: the fix now passes `(name,)`. It applies and gates pass.
 7. **Validate**: PoC passes, all 6 regression tests pass, the re-scan is clean. Result: `RESOLVED`
    at attempt 2, cost $0, 31 s end-to-end.
-8. **Report**: `runs/<id>/A-089-01/report.md` holds the diff and evidence. `aeropatch submit` is
-   available, but nothing happens until you run it.
+8. **Report**: `runs/<id>/A-089-01/report.md` holds the diff and evidence. A human-controlled
+   submit command is planned; no commit, push, or PR path is implemented yet.
 
 This trace is exactly what the README demo and the interview story should show. It's
 concrete, it's checkable, and it shows the repair loop earning its keep.
