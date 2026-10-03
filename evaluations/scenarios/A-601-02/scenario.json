@@ -1,0 +1,18 @@
+{
+  "id": "A-601-02",
+  "tier": "A",
+  "cwe": "CWE-601",
+  "cwe_name": "Open redirect",
+  "difficulty": "medium",
+  "split": "test",
+  "description": "post_login_redirect accepts the ?next= target when it starts with a slash or with the site's https address, which also lets through //host, /\\host and look-alike hosts.",
+  "finding": {"tool": "opengrep", "rule_id": "aeropatch.python.open-redirect", "path": "app/login.py", "line": 50, "severity": "medium", "message": "A redirect target from the request is returned without validation."},
+  "allowed_paths": ["app/login.py"],
+  "target_function": "post_login_redirect",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}

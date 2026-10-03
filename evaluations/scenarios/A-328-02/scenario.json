@@ -1,0 +1,18 @@
+{
+  "id": "A-328-02",
+  "tier": "A",
+  "cwe": "CWE-328",
+  "cwe_name": "Weak hash",
+  "difficulty": "medium",
+  "split": "test",
+  "description": "Accounts.set_password stores an unsalted SHA-1 digest of the password, and check_password compares against the same digest.",
+  "finding": {"tool": "opengrep", "rule_id": "aeropatch.python.weak-password-hash", "path": "app/accounts.py", "line": 36, "severity": "high", "message": "A fast unsalted digest is used for password storage."},
+  "allowed_paths": ["app/accounts.py"],
+  "target_function": "Accounts.set_password",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}

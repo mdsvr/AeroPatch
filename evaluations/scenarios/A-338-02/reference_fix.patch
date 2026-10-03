@@ -1,0 +1,23 @@
+diff --git a/app/apikeys.py b/app/apikeys.py
+index 64bd0cd..cc559d0 100644
+--- a/app/apikeys.py
++++ b/app/apikeys.py
+@@ -1,7 +1,7 @@
+ """API keys for the developer portal. Only a digest of each key is kept."""
+ 
+ import hashlib
+-import random
++import secrets
+ import time
+ 
+ KEY_PREFIX = "dp_"
+@@ -10,8 +10,7 @@ MAX_KEYS_PER_OWNER = 5
+ 
+ def new_api_key(owner_id, clock=time.time):
+     """A fresh API key for the account `owner_id`; it is shown to the developer once."""
+-    rng = random.Random(f"{owner_id}:{int(clock())}")
+-    return KEY_PREFIX + "%032x" % rng.getrandbits(128)
++    return KEY_PREFIX + secrets.token_hex(16)
+ 
+ 
+ def digest(api_key):

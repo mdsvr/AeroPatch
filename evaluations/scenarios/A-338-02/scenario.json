@@ -1,0 +1,18 @@
+{
+  "id": "A-338-02",
+  "tier": "A",
+  "cwe": "CWE-338",
+  "cwe_name": "Cryptographically weak pseudo-random number generator",
+  "difficulty": "medium",
+  "split": "test",
+  "description": "new_api_key seeds random.Random with the owner id and the current second, so anyone who knows roughly when a key was issued can recompute it.",
+  "finding": {"tool": "opengrep", "rule_id": "aeropatch.python.insecure-random-secret", "path": "app/apikeys.py", "line": 13, "severity": "high", "message": "A security code is generated with the non-cryptographic random module."},
+  "allowed_paths": ["app/apikeys.py"],
+  "target_function": "new_api_key",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}

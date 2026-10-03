@@ -44,8 +44,9 @@ or the scenario validator.
 ## 3. Week 2: repair loop, gates, full scenario set, full baselines
 
 **Status (2026-10-01): D8 and D9 done and measured on the dev split** (`NOTES.md`, Week 2).
-D10 started: 3 larger scenarios added to dev (13 dev, 0 test; 13 of 40–50). D11 onwards not
-started.
+D10 started: 3 larger scenarios added to dev (13 dev, 0 test; 13 of 40–50). **2026-10-03:** the
+dev runs were repeated on the merged commit, and 20 Tier A test scenarios were added (13 dev, 20
+test; 33 of 40–50; split not frozen). Tier B and D12 onwards not started.
 
 | Day | Work | Output / acceptance check |
 |---|---|---|

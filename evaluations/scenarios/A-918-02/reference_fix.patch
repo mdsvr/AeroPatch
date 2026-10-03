@@ -1,0 +1,25 @@
+diff --git a/app/webhooks.py b/app/webhooks.py
+index 3e07197..97f7f23 100644
+--- a/app/webhooks.py
++++ b/app/webhooks.py
+@@ -1,5 +1,6 @@
+ """Outgoing webhooks: POST event payloads to the URLs customers register."""
+ 
++import ipaddress
+ import json
+ import socket
+ from urllib.parse import urlparse
+@@ -46,6 +47,13 @@ def deliver(url, event, payload, session, resolve=socket.gethostbyname):
+         raise WebhookError("webhook URLs must be http(s) URLs with a host")
+     if parts.hostname.lower() in BLOCKED_HOSTS:
+         raise WebhookError("webhooks cannot target this server")
++    try:
++        resolved = resolve(parts.hostname)
++    except OSError as exc:
++        raise WebhookError("webhook host cannot be resolved") from exc
++    address = ipaddress.ip_address(resolved)
++    if not address.is_global:
++        raise WebhookError("webhooks cannot target internal addresses")
+     body = json.dumps({"event": event, "data": payload}, sort_keys=True)
+     if len(body.encode("utf-8")) > MAX_PAYLOAD_BYTES:
+         raise WebhookError("payload too large")

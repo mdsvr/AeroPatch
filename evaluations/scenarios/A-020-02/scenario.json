@@ -1,0 +1,18 @@
+{
+  "id": "A-020-02",
+  "tier": "A",
+  "cwe": "CWE-20",
+  "cwe_name": "Improper input validation",
+  "difficulty": "medium",
+  "split": "test",
+  "description": "transfer converts the amount from the gift page to an integer and books it without a range check: a negative amount moves money the other way, and the recipient can go over the card limit.",
+  "finding": {"tool": "opengrep", "rule_id": "aeropatch.python.unchecked-quantity", "path": "app/giftcards.py", "line": 41, "severity": "medium", "message": "A quantity parsed from request input is used without a range check."},
+  "allowed_paths": ["app/giftcards.py"],
+  "target_function": "transfer",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}

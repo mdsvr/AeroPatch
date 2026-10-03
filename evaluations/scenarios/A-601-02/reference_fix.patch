@@ -1,0 +1,24 @@
+diff --git a/app/login.py b/app/login.py
+index e09ae95..dd139df 100644
+--- a/app/login.py
++++ b/app/login.py
+@@ -44,11 +44,15 @@ def post_login_redirect(next_url, site_host, default=DEFAULT_LANDING):
+     followed: site-relative paths and absolute https URLs on `site_host`. Anything else
+     falls back to `default`.
+     """
+-    if not next_url:
++    if not next_url or "\\" in next_url or any(ch < " " for ch in next_url):
+         return default
+-    if next_url.startswith("/") or next_url.startswith(f"https://{site_host}"):
+-        return next_url
+-    return default
++    parts = urlparse(next_url)
++    if parts.scheme or parts.netloc:
++        if parts.scheme != "https" or parts.netloc.lower() != site_host.lower():
++            return default
++    elif not next_url.startswith("/"):
++        return default
++    return next_url
+ 
+ 
+ def finish_login(session, user_id, issued_at, next_url, site_host):

@@ -1,0 +1,13 @@
+diff --git a/app/cart.py b/app/cart.py
+index 128fd04..3204f56 100644
+--- a/app/cart.py
++++ b/app/cart.py
+@@ -19,6 +19,8 @@ def add_item(cart, sku, quantity, catalogue):
+     if sku not in cart and len(cart) >= MAX_LINES:
+         raise CartError("the cart is full")
+     count = int(quantity)
++    if not 1 <= count <= MAX_PER_LINE or cart.get(sku, 0) + count > MAX_PER_LINE:
++        raise CartError(f"quantity must be between 1 and {MAX_PER_LINE} per product")
+     cart[sku] = cart.get(sku, 0) + count
+     return cart[sku]
+ 

@@ -1,0 +1,22 @@
+diff --git a/app/invoices.py b/app/invoices.py
+index 06ed66b..1b6dc5d 100644
+--- a/app/invoices.py
++++ b/app/invoices.py
+@@ -2,7 +2,6 @@
+ 
+ import logging
+ import sqlite3
+-import traceback
+ 
+ log = logging.getLogger("billing.invoices")
+ 
+@@ -66,6 +65,6 @@ def export_invoice(request, conn):
+         if row is None:
+             return 404, {"error": "invoice not found"}
+         return 200, _render(row, fmt)
+-    except Exception as exc:
+-        log.error("export failed: %s", exc)
+-        return 500, {"error": "export failed", "detail": repr(exc), "trace": traceback.format_exc()}
++    except Exception:
++        log.exception("export failed")
++        return 500, {"error": "export failed"}

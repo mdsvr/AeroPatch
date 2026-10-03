@@ -1,0 +1,18 @@
+{
+  "id": "A-352-01",
+  "tier": "A",
+  "cwe": "CWE-352",
+  "cwe_name": "Cross-site request forgery",
+  "difficulty": "easy",
+  "split": "test",
+  "description": "change_email changes the logged-in user's e-mail address on any POST; unlike update_display_name it never checks the session's CSRF token.",
+  "finding": {"tool": "opengrep", "rule_id": "aeropatch.python.csrf-missing-check", "path": "app/settings.py", "line": 41, "severity": "medium", "message": "A state-changing POST view does not check the CSRF token."},
+  "allowed_paths": ["app/settings.py"],
+  "target_function": "change_email",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}

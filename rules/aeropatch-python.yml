@@ -150,3 +150,98 @@ rules:
           except $T as $E:
             ...
       - pattern: return <... $E ...>
+
+  - id: aeropatch.python.tar-extract-unfiltered
+    languages: [python]
+    severity: ERROR
+    message: Archive entries are extracted without checking that their paths stay inside the destination.
+    metadata: {cwe: "CWE-22: Path traversal"}
+    patterns:
+      - pattern-either:
+          - pattern: $TAR.extractall(...)
+          - pattern: $TAR.extract(...)
+      - pattern-not: $TAR.extractall(..., filter=$FILTER, ...)
+      - pattern-not: $TAR.extract(..., filter=$FILTER, ...)
+
+  - id: aeropatch.python.xxe-external-entities
+    languages: [python]
+    severity: ERROR
+    message: The XML parser is set to resolve external entities.
+    metadata: {cwe: "CWE-611: XML external entity reference"}
+    pattern-either:
+      - pattern: $P.setFeature(xml.sax.handler.feature_external_ges, True)
+      - pattern: $P.setFeature(xml.sax.handler.feature_external_pes, True)
+      - pattern: $P.setFeature(feature_external_ges, True)
+      - pattern: $P.setFeature(feature_external_pes, True)
+
+  - id: aeropatch.python.hardcoded-credential
+    languages: [python]
+    severity: ERROR
+    message: A credential is assigned from a string literal in the source.
+    metadata: {cwe: "CWE-798: Hard-coded credentials"}
+    patterns:
+      - pattern: $NAME = "..."
+      - pattern-not: $NAME = ""
+      - metavariable-regex:
+          metavariable: $NAME
+          regex: (?i)^\w*(password|passwd|secret|api_?key|token)\w*$
+
+  - id: aeropatch.python.csrf-missing-check
+    languages: [python]
+    severity: WARNING
+    message: A state-changing POST view does not check the CSRF token.
+    metadata: {cwe: "CWE-352: Cross-site request forgery"}
+    patterns:
+      - pattern: |
+          def $VIEW($REQUEST, $SESSION, ...):
+              ...
+              if $REQUEST["method"] != "POST":
+                  ...
+              ...
+      - pattern-not-regex: (?i)csrf
+
+  - id: aeropatch.python.csrf-check-skippable
+    languages: [python]
+    severity: WARNING
+    message: The CSRF token is only checked when the request sends one.
+    metadata: {cwe: "CWE-352: Cross-site request forgery"}
+    patterns:
+      - pattern: |
+          if $KEY in $FORM and $REST:
+              ...
+      - metavariable-regex:
+          metavariable: $KEY
+          regex: (?i).*csrf.*
+
+  - id: aeropatch.python.unchecked-quantity
+    languages: [python]
+    severity: WARNING
+    message: A quantity parsed from request input is used without a range check.
+    metadata: {cwe: "CWE-20: Improper input validation"}
+    patterns:
+      - pattern: $X = int($SRC)
+      - metavariable-regex:
+          metavariable: $SRC
+          regex: (?i)^\w*(quantity|qty|amount)\w*$
+      - pattern-not-inside: |
+          $X = int($SRC)
+          ...
+          if <... $X ...>:
+              ...
+
+  - id: aeropatch.python.insecure-random-secret
+    languages: [python]
+    severity: ERROR
+    message: A security code is generated with the non-cryptographic random module.
+    metadata: {cwe: "CWE-338: Cryptographically weak PRNG"}
+    patterns:
+      - pattern-inside: |
+          def $F(...):
+            ...
+      - metavariable-regex:
+          metavariable: $F
+          regex: (?i).*(token|secret|passw|otp|nonce|_code|_key).*
+      - pattern: random.$FN(...)
+      - metavariable-regex:
+          metavariable: $FN
+          regex: ^(Random|choice|choices|randint|random|randrange|getrandbits|sample|shuffle)$

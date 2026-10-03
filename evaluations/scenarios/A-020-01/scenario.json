@@ -1,0 +1,18 @@
+{
+  "id": "A-020-01",
+  "tier": "A",
+  "cwe": "CWE-20",
+  "cwe_name": "Improper input validation",
+  "difficulty": "medium",
+  "split": "test",
+  "description": "add_item converts the quantity typed on the product page to an integer and adds it to the cart without checking its range, so zero, negative and oversized quantities are accepted.",
+  "finding": {"tool": "opengrep", "rule_id": "aeropatch.python.unchecked-quantity", "path": "app/cart.py", "line": 21, "severity": "medium", "message": "A quantity parsed from request input is used without a range check."},
+  "allowed_paths": ["app/cart.py"],
+  "target_function": "add_item",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}

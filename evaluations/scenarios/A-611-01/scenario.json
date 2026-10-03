@@ -1,0 +1,18 @@
+{
+  "id": "A-611-01",
+  "tier": "A",
+  "cwe": "CWE-611",
+  "cwe_name": "XML external entity reference",
+  "difficulty": "easy",
+  "split": "test",
+  "description": "parse_feed turns on external general entities in the SAX parser, so a supplier's feed can pull local files into the parsed items through a SYSTEM entity.",
+  "finding": {"tool": "opengrep", "rule_id": "aeropatch.python.xxe-external-entities", "path": "app/feeds.py", "line": 50, "severity": "high", "message": "The XML parser is set to resolve external entities."},
+  "allowed_paths": ["app/feeds.py"],
+  "target_function": "parse_feed",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}

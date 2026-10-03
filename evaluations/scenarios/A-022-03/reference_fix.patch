@@ -1,0 +1,18 @@
+diff --git a/app/restore.py b/app/restore.py
+index e9b91ee..a6b1ec4 100644
+--- a/app/restore.py
++++ b/app/restore.py
+@@ -47,7 +47,12 @@ def restore_backup(archive_path, dest_dir):
+             raise RestoreError(f"backup has more than {MAX_MEMBERS} entries")
+         if sum(m.size for m in members) > MAX_TOTAL_BYTES:
+             raise RestoreError("backup is too large to restore")
+-        tar.extractall(dest_dir, members=members)
++        root = os.path.realpath(dest_dir)
++        for m in members:
++            target = os.path.realpath(os.path.join(root, m.name))
++            if os.path.commonpath([root, target]) != root:
++                raise RestoreError(f"backup entry leaves the restore folder: {m.name}")
++        tar.extractall(dest_dir, members=members, filter="data")
+     return sorted(m.name for m in members if m.isfile())
+ 
+ 

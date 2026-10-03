@@ -44,6 +44,7 @@ Status 2026-09-29: the 10 dev scenarios are recorded; the test IDs are added in 
 Change 2026-10-01: **dev is now 13.** The first three larger scenarios (A-022-02, A-078-02,
 A-089-02) were used to check the context builder and parser on files over 60 lines, so they
 cannot be test scenarios. Every scenario added from here on goes to test.
+Status 2026-10-03: 20 Tier A test scenarios exist (33 in total); Tier B and C are still to come.
 
 ## 4. CWE coverage for Tier A (Python-relevant)
 

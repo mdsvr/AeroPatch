@@ -1,0 +1,18 @@
+{
+  "id": "A-1333-02",
+  "tier": "A",
+  "cwe": "CWE-1333",
+  "cwe_name": "Inefficient regular expression",
+  "difficulty": "medium",
+  "split": "test",
+  "description": "FULL_NAME_RE repeats a group that itself ends in two unbounded repeats, so matching a long name that ends in an invalid character takes exponential time. is_valid_full_name runs it on the full-name field of the sign-up form.",
+  "finding": {"tool": "opengrep", "rule_id": "aeropatch.python.redos-nested-quantifier", "path": "app/signup.py", "line": 6, "severity": "medium", "message": "Regular expression with a nested quantifier can backtrack exponentially."},
+  "allowed_paths": ["app/signup.py"],
+  "target_function": "is_valid_full_name",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}

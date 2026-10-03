@@ -1,0 +1,18 @@
+{
+  "id": "A-089-03",
+  "tier": "A",
+  "cwe": "CWE-89",
+  "cwe_name": "SQL injection",
+  "difficulty": "medium",
+  "split": "test",
+  "description": "search_tickets formats the search term and the status filter from the ticket list page into the WHERE clause with the % operator.",
+  "finding": {"tool": "opengrep", "rule_id": "aeropatch.python.sqli-string-query", "path": "app/tickets.py", "line": 78, "severity": "high", "message": "User input reaches SQL string formatting."},
+  "allowed_paths": ["app/tickets.py"],
+  "target_function": "search_tickets",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}

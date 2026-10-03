@@ -1,0 +1,18 @@
+{
+  "id": "A-918-02",
+  "tier": "A",
+  "cwe": "CWE-918",
+  "cwe_name": "Server-side request forgery",
+  "difficulty": "hard",
+  "split": "test",
+  "description": "deliver posts to the webhook URL a customer registered after comparing only the host name with a short blocklist; it never looks at the address the host resolves to.",
+  "finding": {"tool": "opengrep", "rule_id": "aeropatch.python.ssrf-unvalidated-fetch", "path": "app/webhooks.py", "line": 52, "severity": "high", "message": "User-supplied URL is fetched without checking the resolved address."},
+  "allowed_paths": ["app/webhooks.py"],
+  "target_function": "deliver",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}

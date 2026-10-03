@@ -41,8 +41,9 @@ SECRET_PATTERNS = [
     re.compile(r"hf_[A-Za-z0-9]{30,}"),
     re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
 ]
+# The lookbehind, not \b: "_" is a word character, so \b missed DB_PASSWORD = "..." (2026-10-03).
 SECRET_ASSIGNMENT_RE = re.compile(
-    r"\b(?:password|passwd|secret|api[_-]?key|access[_-]?token|auth[_-]?token)\b\s*[:=]\s*"
+    r"(?<![A-Za-z0-9])(?:password|passwd|secret|api[_-]?key|access[_-]?token|auth[_-]?token)\b\s*[:=]\s*"
     r"(?:[\"'](?P<quoted>[^\"'\r\n]{6,})[\"']|(?P<unquoted>[A-Za-z0-9/+_=.-]{8,})(?=\s|[,;#}]|$))",
     re.IGNORECASE,
 )

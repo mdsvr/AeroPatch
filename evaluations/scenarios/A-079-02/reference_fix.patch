@@ -1,0 +1,22 @@
+diff --git a/app/profile.py b/app/profile.py
+index 445ef32..404f3dd 100644
+--- a/app/profile.py
++++ b/app/profile.py
+@@ -49,13 +49,13 @@ def render_profile(member, viewer=None):
+     """
+     name = member["display_name"]
+     bio = member.get("bio", "")
+-    greeting = f'<p class="greeting">Hi {viewer}, this is your own profile.</p>' if viewer == name else ""
++    greeting = f'<p class="greeting">Hi {escape(viewer)}, this is your own profile.</p>' if viewer == name else ""
+     return (
+-        f'<section class="profile" title="Profile of {name}">'
++        f'<section class="profile" title="Profile of {escape(name)}">'
+         + avatar(name)
+-        + f"<h1>{name}</h1>"
++        + f"<h1>{escape(name)}</h1>"
+         + role_badge(member.get("role", "member"))
+-        + f'<p class="bio">{bio}</p>'
++        + f'<p class="bio">{escape(bio)}</p>'
+         + joined_line(member.get("joined"))
+         + stats_table(member.get("stats", {}))
+         + greeting

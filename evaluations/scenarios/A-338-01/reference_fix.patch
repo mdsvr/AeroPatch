@@ -1,0 +1,21 @@
+diff --git a/app/reset.py b/app/reset.py
+index 1d66ffe..b1797ba 100644
+--- a/app/reset.py
++++ b/app/reset.py
+@@ -1,6 +1,6 @@
+ """Password-reset links: issue a one-time code, mail it, redeem it once."""
+ 
+-import random
++import secrets
+ import string
+ import time
+ 
+@@ -11,7 +11,7 @@ LIFETIME_SECONDS = 15 * 60
+ 
+ def _new_code():
+     """A fresh reset code; it goes into the link that is mailed to the user."""
+-    return "".join(random.choice(CODE_ALPHABET) for _ in range(CODE_LENGTH))
++    return "".join(secrets.choice(CODE_ALPHABET) for _ in range(CODE_LENGTH))
+ 
+ 
+ class ResetCodes:
