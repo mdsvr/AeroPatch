@@ -135,7 +135,7 @@ The first runs of these configs (2026-10-01, on uncommitted code, `dirty: true`)
 8/13 local, 13/13 Opus and 13/13 cascade (8 local, 5 escalated). The Opus run cost $0.14 then
 and $0.26 now for the same 13 first-attempt resolves; the difference was not looked into.
 
-**Oracle route bug (fixed 2026-10-03, branch `claude/week2-test-scenarios`).** `patch_to_blocks`
+**Oracle route bug (fixed 2026-10-03).** `patch_to_blocks`
 gave a file's last hunk the path of the *next* file in the patch, so the two-file A-089-02
 replayed as `FORMAT_FAIL`. It only affects the `oracle` config, not any model run.
 `tests/test_oracle.py` covers a two-file patch.
@@ -229,7 +229,7 @@ configs are the ones that run today.
 ## Week 2, D10–D11 (2026-10-03): 20 test scenarios, 33 of 40–50
 
 All 20 are Tier A, stdlib-only and in **test** (`split.json`: 13 dev, 20 test, not frozen yet).
-Uncommitted on branch `claude/week2-test-scenarios`. For each one:
+For each one:
 - the 4-check validator passes in the sandbox, and **every** PoC test fails on the vulnerable
   code (the validator only asks for one);
 - the reference fix passes the gates and resolves through the `oracle` route: 20/20, run
