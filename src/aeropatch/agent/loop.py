@@ -1,7 +1,8 @@
 """The remediation loop: a plain state machine (doc 08 part 1, §2).
 
 Week 1 runs it single-shot (attempt_plan of length 1). The same code walks longer plans with
-repair feedback and stops early (STUCK) when a repair repeats an earlier edit.
+repair feedback. A route that repeats an earlier edit is dropped (STUCK); the run then ends unless
+the plan still has a different route.
 """
 
 from __future__ import annotations
@@ -63,7 +64,10 @@ def run(task: Task, cfg: dict, run_dir: Path | None = None) -> RunResult:
 
     with Workspace(task.repo_path) as ws:
         originals = ws.read_many(task.allowed_paths)
+        stuck = ""  # a route that repeated itself; its remaining plan entries are skipped
         for i, route in enumerate(cfg["attempt_plan"]):
+            if route == stuck:
+                continue
             temperature = cfg["temperature_first"] if n == 0 else cfg["temperature_repair"]
             prompt_text = prompts.SYSTEM_PROMPT + "\n\n" + "\n\n".join(m["content"] for m in messages)
             if route != "oracle":
@@ -83,7 +87,10 @@ def run(task: Task, cfg: dict, run_dir: Path | None = None) -> RunResult:
                 continue
             proposal, digest = propose(gen.text)
             if digest in seen:
-                # Same edit as an earlier attempt: one hotter retry, then stop (doc 08 part 1, §7).
+                # Same edit as an earlier attempt: one hotter retry, then give up on this route
+                # (doc 08 part 1, §7). A different route later in the plan still gets its turn:
+                # in a cascade the local attempts are used up (doc 04 §5). Until 2026-10-03 this
+                # ended the run, so a stuck local model was never escalated (A-078-03).
                 retry = router.generate(route, messages, prompts.SYSTEM_PROMPT, cfg,
                                         cfg["stuck_retry_temperature"], sdir)
                 spent += retry.cost_usd
@@ -94,7 +101,8 @@ def run(task: Task, cfg: dict, run_dir: Path | None = None) -> RunResult:
                 if gen.refusal or gen.error or digest in seen:
                     attempts.append(Attempt(n=0, route=route, model=gen.model, label="STUCK",
                                             latency_s=round(gen.latency_s, 2), cost_usd=gen.cost_usd))
-                    break
+                    stuck = route
+                    continue
             if digest:
                 seen.add(digest)
             tried += proposal.edits  # stored rebased, so a chain of on-top repairs still resolves

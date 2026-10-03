@@ -2,8 +2,9 @@ import json
 
 import pytest
 
-from aeropatch.bench import _validate_resume_header, done_ids, summarize
+from aeropatch.bench import _validate_resume_header, done_ids
 from aeropatch.config import load_config
+from aeropatch.metrics import run_metrics
 
 
 def line(record: dict) -> bytes:
@@ -61,8 +62,8 @@ def test_report_ignores_attempts_for_incomplete_tasks(tmp_path):
     attempt = {"type": "attempt", "task_id": "A", "n": 1, "cost_usd": 0.4, "label": "POC_FAIL"}
     path.write_bytes(line(header) + line(attempt) + b'{"type":"result"')
 
-    report = summarize(path)
-    assert report["tasks"] == 0
+    report = run_metrics(path)
+    assert report["n"] == 0
     assert report["cost_usd"] == 0
 
 

@@ -2,20 +2,20 @@
 
 Pure functions over parsed records. No model or sandbox access, so re-scoring is instant.
 
-    uv run aeropatch metrics runs/<a>.jsonl runs/<b>.jsonl
+    uv run aeropatch report runs/<a>.jsonl runs/<b>.jsonl
 """
 
 from __future__ import annotations
 
 import json
+import statistics
 from itertools import combinations
 from math import comb, sqrt
 from pathlib import Path
 
 from aeropatch import bench
+from aeropatch.agent.router import model_name
 from aeropatch.config import SCENARIOS_DIR
-
-MAX_K = 3  # attempts in the repair plans (doc 08 part 1)
 
 
 def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
@@ -46,15 +46,20 @@ def cwe_of(task_id: str) -> str:
 
 def run_metrics(jsonl: Path) -> dict:
     header, attempts, results = bench.read_run(jsonl)
+    cfg = header.get("config", {})
     wins = {a["task_id"]: a for a in attempts if a["label"] == "RESOLVED"}
     trail: dict[str, list[str]] = {}
     for a in attempts:
         trail.setdefault(a["task_id"], []).append(a["label"])
+    numbered = [a for a in attempts if a["n"] > 0]
+    first = [a for a in numbered if a["n"] == 1]
+    latency = [a["latency_s"] for a in numbered if a.get("latency_s") is not None]
+    tok_s = [t for a in numbered if (t := ((a.get("proposal") or {}).get("usage") or {}).get("decode_tok_s"))]
     n = len(results)
-    at = [sum(1 for a in wins.values() if a["n"] <= k) for k in range(1, MAX_K + 1)]
+    at = [sum(1 for a in wins.values() if a["n"] <= k) for k in (1, 2, 3)]  # the repair plans have 3 entries
     return {
-        "run": jsonl.stem, "config": header.get("config", {}).get("name", ""), "split": header.get("split", ""),
-        "dirty": header.get("dirty"), "n": n,
+        "run": jsonl.stem, "config": cfg.get("name", ""), "dirty": header.get("dirty"), "n": n,
+        "model": " + ".join(dict.fromkeys(model_name(r, cfg) for r in cfg.get("attempt_plan", []))),
         "resolved": {r["task_id"] for r in results if r["resolved"]},
         "tasks": {r["task_id"]: r["label"] for r in results},
         "resolve_at": at,
@@ -64,50 +69,65 @@ def run_metrics(jsonl: Path) -> dict:
         "escalated": len({a["task_id"] for a in attempts if a["route"] in ("frontier", "claude-code")}),
         # The finding's own rule no longer fires on the resolved fix (secondary signal, doc 06 §6).
         "rule_gone": sum(1 for a in wins.values() if (a.get("sandbox") or {}).get("original_rule_present") is False),
+        # First attempts: the edit applied (it reached the gates), and its PoC passed.
+        "applied": sum(1 for a in first if a.get("sandbox") or a["label"] == "GATE_REJECT"),
+        "poc_fixed": sum(1 for a in first if (a.get("sandbox") or {}).get("poc_passed")),
+        "latency_p50": statistics.median(latency) if latency else None,
+        "tok_s_p50": statistics.median(tok_s) if tok_s else None,
+        "refusals": sum(1 for a in attempts if a["label"] == "REFUSAL"),
         "cost_usd": sum(a.get("cost_usd", 0) for a in attempts),
         "trail": trail,
     }
 
 
-def _pct(k: int, n: int) -> str:
-    return f"{k}/{n} ({k / n:.0%})" if n else "-"
+def _table(columns: list[str], rows: list[list]) -> str:
+    lines = ["| " + " | ".join(columns) + " |", "|" + "---|" * len(columns)]
+    return "\n".join(lines + ["| " + " | ".join(str(cell) for cell in row) + " |" for row in rows])
+
+
+def _fmt(value: float | None, spec: str) -> str:
+    return "-" if value is None else format(value, spec)
 
 
 def headline(runs: list[dict]) -> str:
-    columns = ["Run", "Config", "Resolved", "95% CI", "@1", "@2", "@3", "Repair gain", "Resolved locally",
-               "Escalated", "Rule gone", "Cost $"]
-    rows = ["| " + " | ".join(columns) + " |", "|" + "---|" * len(columns)]
+    rows = []
     for m in runs:
         k, n = len(m["resolved"]), m["n"]
         lo, hi = wilson(k, n)
-        gain = f"{m['repair_gain']:.0%}" if m["repair_gain"] is not None else "-"
-        rows.append(f"| `{m['run']}` | {m['config']} | {_pct(k, n)} | {lo:.0%}-{hi:.0%} | "
-                    + " | ".join(str(x) for x in m["resolve_at"])
-                    + f" | {gain} | {m['by_local']} | {m['escalated']} | {m['rule_gone']}/{k} | {m['cost_usd']:.2f} |")
-    return "\n".join(rows)
+        rows.append([f"`{m['run']}`", m["config"], f"{k}/{n} ({_fmt(k / n if n else None, '.0%')})",
+                     f"{lo:.0%}-{hi:.0%}", *m["resolve_at"], _fmt(m["repair_gain"], ".0%"), m["by_local"],
+                     m["escalated"], f"{m['rule_gone']}/{k}"])
+    return _table(["Run", "Config", "Resolved", "95% CI", "@1", "@2", "@3", "Repair gain", "Resolved locally",
+                   "Escalated", "Rule gone"], rows)
+
+
+def speed(runs: list[dict]) -> str:
+    return _table(["Run", "Model", "Applied @1", "PoC fixed @1", "p50 latency s", "tok/s", "Refusals", "Cost $"],
+                  [[m["label"], m["model"], f"{m['applied']}/{m['n']}", f"{m['poc_fixed']}/{m['n']}",
+                    _fmt(m["latency_p50"], ".1f"), _fmt(m["tok_s_p50"], ".1f"), m["refusals"],
+                    f"{m['cost_usd']:.2f}"] for m in runs])
 
 
 def delta(runs: list[dict]) -> str:
-    rows = ["| A | B | Shared tasks | A only | B only | B - A | McNemar p (exact) |", "|---|---|---|---|---|---|---|"]
+    rows = []
     for a, b in combinations(runs, 2):
         shared = a["tasks"].keys() & b["tasks"].keys()
         only_a = len((a["resolved"] - b["resolved"]) & shared)
         only_b = len((b["resolved"] - a["resolved"]) & shared)
-        diff = f"{(only_b - only_a) / len(shared):+.0%}" if shared else "-"
-        rows.append(f"| {a['config']} | {b['config']} | {len(shared)} | {only_a} | {only_b} | {diff} | "
-                    f"{mcnemar_exact(only_a, only_b):.3f} |")
-    return "\n".join(rows)
+        rows.append([a["label"], b["label"], len(shared), only_a, only_b,
+                     _fmt((only_b - only_a) / len(shared) if shared else None, "+.0%"),
+                     f"{mcnemar_exact(only_a, only_b):.3f}"])
+    return _table(["A", "B", "Shared tasks", "A only", "B only", "B - A", "McNemar p (exact)"], rows)
 
 
 def per_cwe(runs: list[dict]) -> str:
-    cwes: dict[str, list[str]] = {}
-    for task in sorted({t for m in runs for t in m["tasks"]}):
-        cwes.setdefault(cwe_of(task), []).append(task)
-    rows = ["| CWE | Tasks | " + " | ".join(m["config"] for m in runs) + " |", "|---|---|" + "---|" * len(runs)]
-    for cwe in sorted(cwes, key=lambda c: int(c.rsplit("-", 1)[-1]) if c[-1].isdigit() else 0):
-        cells = [f"{len(m['resolved'] & set(cwes[cwe]))}/{len(m['tasks'].keys() & set(cwes[cwe]))}" for m in runs]
-        rows.append(f"| {cwe} | {len(cwes[cwe])} | " + " | ".join(cells) + " |")
-    return "\n".join(rows)
+    cwes: dict[str, set[str]] = {}
+    for task in {t for m in runs for t in m["tasks"]}:
+        cwes.setdefault(cwe_of(task), set()).add(task)
+    return _table(["CWE", "Tasks", *(m["label"] for m in runs)],
+                  [[cwe, len(cwes[cwe]), *(f"{len(m['resolved'] & cwes[cwe])}/{len(m['tasks'].keys() & cwes[cwe])}"
+                                           for m in runs)]
+                   for cwe in sorted(cwes, key=lambda c: int(c.rsplit("-", 1)[-1]) if c[-1].isdigit() else 0)])
 
 
 def attribution(m: dict) -> str:
@@ -116,16 +136,21 @@ def attribution(m: dict) -> str:
     for task, label in sorted(m["tasks"].items()):
         if label != "RESOLVED":
             causes.setdefault(label, []).append(task)
-    rows = [f"| Cause ({m['config']}) | Tasks | | Which (attempt labels) |", "|---|---|---|---|"]
-    for label, tasks in sorted(causes.items(), key=lambda kv: -len(kv[1])):
-        which = "; ".join(f"{t} [{cwe_of(t)}]: {' > '.join(m['trail'].get(t, []))}" for t in tasks)
-        rows.append(f"| {label} | {len(tasks)} | {'#' * len(tasks)} | {which} |")
-    return "\n".join(rows) if causes else f"{m['config']}: every task resolved."
+    if not causes:
+        return f"{m['label']}: every task resolved."
+    return _table([f"Cause ({m['label']})", "Tasks", "", "Which (attempt labels)"],
+                  [[label, len(tasks), "#" * len(tasks),
+                    "; ".join(f"{t} [{cwe_of(t)}]: {' > '.join(m['trail'].get(t, []))}" for t in tasks)]
+                   for label, tasks in sorted(causes.items(), key=lambda kv: -len(kv[1]))])
 
 
 def report(paths: list[Path]) -> str:
     runs = [run_metrics(p) for p in paths]
-    parts = ["### Headline (resolve@k is cumulative; 95% Wilson intervals)", headline(runs)]
+    configs = [m["config"] for m in runs]
+    for m in runs:  # two runs of one config are told apart by their run id
+        m["label"] = m["config"] if configs.count(m["config"]) == 1 else m["run"]
+    parts = ["### Headline (resolve@k is cumulative; 95% Wilson intervals)", headline(runs),
+             "### First attempt, speed and cost", speed(runs)]
     if len(runs) > 1:
         parts += ["### Paired comparison on the tasks both runs share", delta(runs)]
     parts += ["### Resolved per CWE", per_cwe(runs), "### Failure attribution"]

@@ -1,4 +1,4 @@
-"""Benchmark runner and baseline table (doc 11 §8, doc 12).
+"""Benchmark runner (doc 11 §8). The tables are in metrics.py.
 
 One append-only JSONL per run: a header line, then one line per Attempt and a RunResult line
 per task. A killed run resumes by skipping task IDs that already have a RunResult line.
@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 import platform
-import statistics
 import subprocess
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -140,9 +139,10 @@ def run_benchmark(cfg: dict, split: str = "dev", run_id: str | None = None,
 
     pending = [sid for sid in ids if sid not in finished]
     # ponytail: pool.map yields in sorted order, so only this thread writes and the file looks
-    # the same at any `jobs`; a killed run redoes at most `jobs` finished tasks. Local generation
-    # is serialized in router.generate, so at jobs=2 only sandboxes (and API calls) overlap
-    # (doc 11 §8). Write in completion order if a slow task ever holds back too many results.
+    # the same at any `jobs`. The price: at jobs=2 finished tasks wait unwritten behind a slower
+    # earlier one, and a kill redoes all of them. Write in completion order if that ever costs
+    # real time. Local generation is serialized in router.generate, so at jobs=2 only sandboxes
+    # (and API calls) overlap (doc 11 §8).
     pool = ThreadPoolExecutor(max_workers=jobs)
     try:
         with jsonl.open("a", encoding="utf-8") as out:
@@ -183,42 +183,3 @@ def read_run(jsonl: Path) -> tuple[dict, list[dict], list[dict]]:
             results.append(rec)
     completed_ids = {rec.get("task_id") for rec in results}
     return header_rec, [rec for rec in attempts if rec.get("task_id") in completed_ids], results
-
-
-def summarize(jsonl: Path) -> dict:
-    from aeropatch.agent.router import model_name
-
-    header_rec, attempts, results = read_run(jsonl)
-    cfg = header_rec.get("config", {})
-    model = " + ".join(dict.fromkeys(model_name(r, cfg) for r in cfg.get("attempt_plan", [])))
-    numbered = [a for a in attempts if a["n"] > 0]
-    first = [a for a in numbered if a["n"] == 1]
-    n = len(results) or 1
-    applied = sum(1 for a in first if a.get("sandbox") or a["label"] == "GATE_REJECT")
-    poc = sum(1 for a in first if (a.get("sandbox") or {}).get("poc_passed"))
-    lat = [a["latency_s"] for a in numbered]
-    tok_s = [((a.get("proposal") or {}).get("usage") or {}).get("decode_tok_s") for a in numbered]
-    tok_s = [t for t in tok_s if t]
-    return {
-        "config": cfg.get("name", ""), "model": model if results else "", "tasks": len(results),
-        "apply_rate": applied / n, "poc_fixed_rate": poc / n,
-        "resolve_rate": sum(r["resolved"] for r in results) / n,
-        "latency_p50_s": statistics.median(lat) if lat else None,
-        "decode_tok_s_p50": statistics.median(tok_s) if tok_s else None,
-        "refusals": sum(1 for a in attempts if a["label"] == "REFUSAL"),
-        "cost_usd": round(sum(a.get("cost_usd", 0) for a in attempts), 4),
-        "labels": {lab: sum(1 for r in results if r["label"] == lab) for lab in sorted({r["label"] for r in results})},
-    }
-
-
-def table(paths: list[Path]) -> str:
-    rows = ["| Config | Model | Tasks | Apply | PoC fixed | Resolved | p50 latency (s) | tok/s | Cost $ | Failure causes |",
-            "|---|---|---|---|---|---|---|---|---|---|"]
-    for p in paths:
-        s = summarize(p)
-        causes = ", ".join(f"{k} {v}" for k, v in s["labels"].items() if k != "RESOLVED")
-        lat = f"{s['latency_p50_s']:.1f}" if s["latency_p50_s"] is not None else "-"
-        rows.append(f"| {s['config']} | {s['model']} | {s['tasks']} | {s['apply_rate']:.0%} | "
-                    f"{s['poc_fixed_rate']:.0%} | {s['resolve_rate']:.0%} | {lat} | "
-                    f"{s['decode_tok_s_p50'] or '-'} | {s['cost_usd']} | {causes or '-'} |")
-    return "\n".join(rows)

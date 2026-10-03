@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from pathlib import Path
 
-from aeropatch import bench, scenario
+from aeropatch import bench, metrics, scenario
 from aeropatch.config import CONFIGS, RUNS_DIR, load_config
 
 
@@ -77,21 +76,11 @@ def cmd_remediate(args) -> int:
 def cmd_bench(args) -> int:
     cfg = load_config(args.config, local_model=args.local_model, frontier_model=args.frontier_model)
     path = bench.run_benchmark(cfg, args.split, args.run_id, args.ids or None, args.jobs)
-    print(bench.table([path]))
+    print(metrics.report([path]))
     return 0
 
 
 def cmd_report(args) -> int:
-    print(bench.table([Path(p) for p in args.jsonl]))
-    if args.json:
-        for p in args.jsonl:
-            print(json.dumps(bench.summarize(Path(p)), indent=2))
-    return 0
-
-
-def cmd_metrics(args) -> int:
-    from aeropatch import metrics
-
     print(metrics.report([Path(p) for p in args.jsonl]))
     return 0
 
@@ -151,14 +140,9 @@ def main(argv: list[str] | None = None) -> int:
         s.add_argument("--frontier-model", default=None)
         s.set_defaults(fn=fn)
 
-    s = sub.add_parser("report", help="baseline table from run JSONL files")
+    s = sub.add_parser("report", help="CIs, resolve@k, McNemar, per-CWE and failure attribution (doc 12)")
     s.add_argument("jsonl", nargs="+")
-    s.add_argument("--json", action="store_true")
     s.set_defaults(fn=cmd_report)
-
-    s = sub.add_parser("metrics", help="CIs, resolve@k, McNemar, per-CWE and failure attribution (doc 12)")
-    s.add_argument("jsonl", nargs="+")
-    s.set_defaults(fn=cmd_metrics)
 
     sub.add_parser("mcp", help="serve the tools over MCP on stdio (doc 06)").set_defaults(fn=cmd_mcp)
     sub.add_parser("prune", help="remove leftover sandbox containers").set_defaults(fn=cmd_prune)

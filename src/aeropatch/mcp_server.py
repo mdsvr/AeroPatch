@@ -13,7 +13,6 @@ back as short messages; tracebacks and host paths do not.
 from __future__ import annotations
 
 import functools
-import os
 from pathlib import Path
 
 from mcp.server.mcpserver import MCPServer
@@ -50,10 +49,10 @@ def _guard(fn):
 
 
 def _repo(repo: str) -> Path:
-    """The scenario directory, plus roots listed in AEROPATCH_MCP_ROOTS (os.pathsep-separated)."""
-    extra = [Path(p) for p in os.environ.get("AEROPATCH_MCP_ROOTS", "").split(os.pathsep) if p]
+    # ponytail: the scenario directory is the only allowlisted root. Add a configured workspace
+    # root when a client has to scan a repository outside the benchmark (doc 06 §4).
     try:
-        path = check_under_roots(Path(repo), [SCENARIOS_DIR, *extra])
+        path = check_under_roots(Path(repo), [SCENARIOS_DIR])
     except PathError:
         raise PathError("repo is not under an allowlisted root") from None
     if not path.is_dir():

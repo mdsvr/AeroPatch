@@ -3,6 +3,7 @@ import json
 import pytest
 
 from aeropatch import metrics
+from aeropatch.config import load_config
 
 
 def test_wilson_matches_the_intervals_reported_in_notes():
@@ -22,7 +23,8 @@ def test_mcnemar_exact():
 
 def _run(path, config, plan, tasks):
     """tasks: {task_id: [(route, label), ...]} in attempt order."""
-    lines = [{"type": "header", "config": {"name": config, "attempt_plan": plan}, "split": "dev", "dirty": False}]
+    cfg = {**load_config("repair-local"), "name": config, "attempt_plan": plan}  # headers carry the full config
+    lines = [{"type": "header", "config": cfg, "split": "dev", "dirty": False}]
     for task_id, tries in tasks.items():
         for n, (route, label) in enumerate(tries, 1):
             sandbox = {"original_rule_present": task_id == "A-089-02"} if label == "RESOLVED" else None
