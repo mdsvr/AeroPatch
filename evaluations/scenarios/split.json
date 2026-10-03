@@ -1,5 +1,5 @@
 {
-  "_note": "Frozen split. dev = prompt/checkpoint selection; test = final runs only (doc 11 \u00a73). dev grew from 10 to 13 on 2026-10-01: the -02 scenarios exercise the fragment context (files over 60 lines), which no earlier dev file did. Week 2 adds the test scenarios.",
+  "_note": "Frozen on 2026-10-03: 13 dev, 27 test (40 Tier A scenarios). dev = prompt and checkpoint selection; test = final runs only (doc 11 \u00a73). dev grew from 10 to 13 on 2026-10-01: its -02 scenarios were used to check the fragment context (files over 60 lines), so they cannot be test. A scenario added after the freeze goes into a new split key, never into dev or test.",
   "dev": [
     "A-022-01",
     "A-022-02",

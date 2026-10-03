@@ -21,7 +21,7 @@ IDS = scenario.list_ids()
 def test_split_covers_every_scenario_once():
     split = json.loads((SCENARIOS_DIR / "split.json").read_text())
     assert sorted(split["dev"] + split["test"]) == IDS
-    assert len(split["dev"]) == 13
+    assert (len(split["dev"]), len(split["test"])) == (13, 27)  # frozen 2026-10-03
 
 
 def test_original_rule_rescan_reports_present_absent_or_unavailable(monkeypatch, tmp_path):
