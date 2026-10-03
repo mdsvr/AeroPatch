@@ -11,6 +11,7 @@ import platform
 import statistics
 import subprocess
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -27,7 +28,7 @@ def _git(*args: str) -> str:
         return ""
 
 
-def header(cfg: dict, split: str, ids: list[str]) -> dict:
+def header(cfg: dict, split: str, ids: list[str], jobs: int = 1) -> dict:
     images = {}
     for sid in ids:
         try:
@@ -37,7 +38,7 @@ def header(cfg: dict, split: str, ids: list[str]) -> dict:
         except Exception:  # noqa: BLE001 - header info is best effort
             images[sid] = None
     return {"type": "header", "time": datetime.now(UTC).isoformat(), "config": cfg,
-            "split": split, "tasks": ids, "aeropatch_commit": _git("rev-parse", "HEAD"),
+            "split": split, "tasks": ids, "jobs": jobs, "aeropatch_commit": _git("rev-parse", "HEAD"),
             # True means the code, rules or scenarios differ from that commit (new, uncommitted
             # scenario directories included): the number is not reproducible from it.
             "dirty": bool(_git("status", "--porcelain", "--", "src", "evaluations", "rules", "docker",
@@ -120,7 +121,7 @@ def _validate_resume_header(path: Path, cfg: dict, split: str, ids: list[str]) -
 
 
 def run_benchmark(cfg: dict, split: str = "dev", run_id: str | None = None,
-                  ids: list[str] | None = None) -> Path:
+                  ids: list[str] | None = None, jobs: int = 1) -> Path:
     ids = sorted(set(ids or scenario.list_ids(split)))
     run_id = run_id or f"{time.strftime('%Y%m%d-%H%M%S')}-{cfg['name']}-{split}"
     run_dir = RUNS_DIR / run_id
@@ -131,27 +132,39 @@ def run_benchmark(cfg: dict, split: str = "dev", run_id: str | None = None,
     finished = done_ids(jsonl)
     if jsonl.exists() and jsonl.stat().st_size:
         _validate_resume_header(jsonl, cfg, split, ids)
-    with jsonl.open("a", encoding="utf-8") as out:
-        if not jsonl.stat().st_size:
-            out.write(json.dumps(header(cfg, split, ids), default=str) + "\n")
-        for sid in sorted(ids):
-            if sid in finished:
-                continue
-            task = scenario.load(sid)
-            scenario.ensure_image(sid)
-            result = loop.run(task, cfg, run_dir)
-            for a in result.attempts:
-                out.write(json.dumps({"type": "attempt", "task_id": sid, **a.to_dict()}, default=str) + "\n")
-            summary = result.to_dict()
-            summary.pop("attempts")
-            out.write(json.dumps({"type": "result", **summary}, default=str) + "\n")
-            out.flush()
-            print(f"{sid}: {result.label} ({result.duration_s}s)", flush=True)
+
+    def run_one(sid: str):
+        task = scenario.load(sid)
+        scenario.ensure_image(sid)
+        return loop.run(task, cfg, run_dir)
+
+    pending = [sid for sid in ids if sid not in finished]
+    # ponytail: pool.map yields in sorted order, so only this thread writes and the file looks
+    # the same at any `jobs`; a killed run redoes at most `jobs` finished tasks. Local generation
+    # is serialized in router.generate, so at jobs=2 only sandboxes (and API calls) overlap
+    # (doc 11 §8). Write in completion order if a slow task ever holds back too many results.
+    pool = ThreadPoolExecutor(max_workers=jobs)
+    try:
+        with jsonl.open("a", encoding="utf-8") as out:
+            if not jsonl.stat().st_size:
+                out.write(json.dumps(header(cfg, split, ids, jobs), default=str) + "\n")
+            for sid, result in zip(pending, pool.map(run_one, pending)):
+                for a in result.attempts:
+                    out.write(json.dumps({"type": "attempt", "task_id": sid, **a.to_dict()}, default=str) + "\n")
+                summary = result.to_dict()
+                summary.pop("attempts")
+                out.write(json.dumps({"type": "result", **summary}, default=str) + "\n")
+                out.flush()
+                print(f"{sid}: {result.label} ({result.duration_s}s)", flush=True)
+    finally:
+        pool.shutdown(wait=False, cancel_futures=True)  # after Ctrl+C, do not start queued tasks
     return jsonl
 
 
-def summarize(jsonl: Path) -> dict:
-    cfg_name, attempts, results = "", [], []
+def read_run(jsonl: Path) -> tuple[dict, list[dict], list[dict]]:
+    """(header, attempts, results) of a run file. A torn final line is dropped, and so are the
+    attempts of a task that has no result line yet (a killed run)."""
+    header_rec, attempts, results = {}, [], []
     lines = jsonl.read_bytes().splitlines()
     for index, line in enumerate(lines):
         if not line.strip():
@@ -163,16 +176,21 @@ def summarize(jsonl: Path) -> dict:
                 break
             raise ValueError(f"corrupt benchmark JSONL at line {index + 1}") from e
         if rec["type"] == "header":
-            cfg_name = rec["config"]["name"]
-            from aeropatch.agent.router import model_name
-
-            model = " + ".join(dict.fromkeys(model_name(r, rec["config"]) for r in rec["config"]["attempt_plan"]))
+            header_rec = rec
         elif rec["type"] == "attempt":
             attempts.append(rec)
         elif rec["type"] == "result":
             results.append(rec)
     completed_ids = {rec.get("task_id") for rec in results}
-    attempts = [rec for rec in attempts if rec.get("task_id") in completed_ids]
+    return header_rec, [rec for rec in attempts if rec.get("task_id") in completed_ids], results
+
+
+def summarize(jsonl: Path) -> dict:
+    from aeropatch.agent.router import model_name
+
+    header_rec, attempts, results = read_run(jsonl)
+    cfg = header_rec.get("config", {})
+    model = " + ".join(dict.fromkeys(model_name(r, cfg) for r in cfg.get("attempt_plan", [])))
     numbered = [a for a in attempts if a["n"] > 0]
     first = [a for a in numbered if a["n"] == 1]
     n = len(results) or 1
@@ -182,7 +200,7 @@ def summarize(jsonl: Path) -> dict:
     tok_s = [((a.get("proposal") or {}).get("usage") or {}).get("decode_tok_s") for a in numbered]
     tok_s = [t for t in tok_s if t]
     return {
-        "config": cfg_name, "model": model if results else "", "tasks": len(results),
+        "config": cfg.get("name", ""), "model": model if results else "", "tasks": len(results),
         "apply_rate": applied / n, "poc_fixed_rate": poc / n,
         "resolve_rate": sum(r["resolved"] for r in results) / n,
         "latency_p50_s": statistics.median(lat) if lat else None,
