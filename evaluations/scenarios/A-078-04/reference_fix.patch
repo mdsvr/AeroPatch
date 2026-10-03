@@ -1,0 +1,35 @@
+diff --git a/app/commands.py b/app/commands.py
+index 3d9e32b..a8c15f9 100644
+--- a/app/commands.py
++++ b/app/commands.py
+@@ -3,14 +3,14 @@
+ 
+ def count_command(term, path):
+     """`grep` call that prints how many lines of `path` contain `term` as plain text."""
+-    return f"grep -c -F -- {term} {path}"
++    return ["grep", "-c", "-F", "--", term, path]
+ 
+ 
+ def tail_command(path, lines):
+     """`tail` call that prints the last `lines` lines of `path`."""
+-    return f"tail -n {int(lines)} {path}"
++    return ["tail", "-n", str(int(lines)), path]
+ 
+ 
+ def size_command(path):
+     """`wc` call that prints the size of `path` in bytes."""
+-    return f"wc -c {path}"
++    return ["wc", "-c", path]
+diff --git a/app/logviewer.py b/app/logviewer.py
+index 5aa154c..3934d64 100644
+--- a/app/logviewer.py
++++ b/app/logviewer.py
+@@ -22,7 +22,7 @@ def _log_path(log_dir, name):
+ 
+ def run_tool(command):
+     """Run one of the commands from app/commands.py and return (exit status, stdout)."""
+-    proc = subprocess.run(command, shell=True, capture_output=True, text=True,
++    proc = subprocess.run(command, capture_output=True, text=True,
+                           stdin=subprocess.DEVNULL, timeout=TIMEOUT_SECONDS)
+     return proc.returncode, proc.stdout
+ 

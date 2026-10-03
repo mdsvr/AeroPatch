@@ -1,0 +1,18 @@
+{
+  "id": "A-327-01",
+  "tier": "A",
+  "cwe": "CWE-327",
+  "cwe_name": "Broken or risky cryptographic algorithm",
+  "difficulty": "easy",
+  "split": "test",
+  "description": "fingerprint uses MD5 to tie a downloaded update package to its entry in the signed manifest. Different packages with the same MD5 digest can be made, so an untrusted mirror can swap the package.",
+  "finding": {"tool": "opengrep", "rule_id": "aeropatch.python.weak-integrity-digest", "path": "app/updates.py", "line": 16, "severity": "medium", "message": "A collision-prone digest (MD5 or SHA-1) is used to check data integrity."},
+  "allowed_paths": ["app/updates.py"],
+  "target_function": "fingerprint",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}

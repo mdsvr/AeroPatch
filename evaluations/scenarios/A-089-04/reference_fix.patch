@@ -1,0 +1,20 @@
+diff --git a/app/invoices.py b/app/invoices.py
+index 3c5b2bc..08f3bee 100644
+--- a/app/invoices.py
++++ b/app/invoices.py
+@@ -51,8 +51,11 @@ def list_invoices(conn, customer_id, sort="issued_on", direction="asc", limit=50
+     of the table use the SORTABLE columns with "asc" or "desc".
+     """
+     limit = max(1, min(int(limit), MAX_PAGE))
+-    cur = conn.execute(
+-        f"SELECT number, amount_cents, issued_on FROM invoices WHERE customer_id = ? ORDER BY {sort} {direction} LIMIT ?",
+-        (customer_id, limit),
+-    )
++    if sort not in SORTABLE:
++        raise ValueError(f"cannot sort by {sort!r}")
++    if direction not in ("asc", "desc"):
++        raise ValueError("direction must be asc or desc")
++    query = ("SELECT number, amount_cents, issued_on FROM invoices WHERE customer_id = ?"
++             " ORDER BY " + sort + " " + direction + " LIMIT ?")
++    cur = conn.execute(query, (customer_id, limit))
+     return cur.fetchall()

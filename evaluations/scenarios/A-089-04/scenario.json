@@ -1,0 +1,18 @@
+{
+  "id": "A-089-04",
+  "tier": "A",
+  "cwe": "CWE-89",
+  "cwe_name": "SQL injection",
+  "difficulty": "hard",
+  "split": "test",
+  "description": "list_invoices formats the sort and direction values of the request into the ORDER BY clause. Column names and keywords cannot be bound as query parameters, so an expression placed there runs as SQL and can read other tables.",
+  "finding": {"tool": "opengrep", "rule_id": "aeropatch.python.sqli-string-query", "path": "app/invoices.py", "line": 54, "severity": "high", "message": "User input reaches SQL string formatting."},
+  "allowed_paths": ["app/invoices.py"],
+  "target_function": "list_invoices",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}

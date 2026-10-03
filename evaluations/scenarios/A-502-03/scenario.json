@@ -1,0 +1,18 @@
+{
+  "id": "A-502-03",
+  "tier": "A",
+  "cwe": "CWE-502",
+  "cwe_name": "Deserialization of untrusted data",
+  "difficulty": "hard",
+  "split": "test",
+  "description": "_revive imports whatever module the \"__type__\" field of a queue message names and calls the attribute with the message's args, so a message can call any importable function.",
+  "finding": {"tool": "opengrep", "rule_id": "aeropatch.python.dynamic-import-deserialization", "path": "app/messages.py", "line": 31, "severity": "high", "message": "A name taken from the data being decoded is imported and called."},
+  "allowed_paths": ["app/messages.py"],
+  "target_function": "_revive",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}

@@ -1,0 +1,13 @@
+diff --git a/app/signing.py b/app/signing.py
+index 6c326e4..c67c90c 100644
+--- a/app/signing.py
++++ b/app/signing.py
+@@ -14,7 +14,7 @@ class SignatureError(ValueError):
+ 
+ def sign(key, message):
+     """Hex signature of `message` (bytes) under the service's signing `key` (bytes)."""
+-    return hashlib.sha256(key + message).hexdigest()
++    return hmac.new(key, message, hashlib.sha256).hexdigest()
+ 
+ 
+ def signed_query(key, params):
