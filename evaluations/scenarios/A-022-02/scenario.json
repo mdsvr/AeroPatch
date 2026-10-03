@@ -1,0 +1,18 @@
+{
+  "id": "A-022-02",
+  "tier": "A",
+  "cwe": "CWE-22",
+  "cwe_name": "Path traversal",
+  "difficulty": "medium",
+  "split": "dev",
+  "description": "AttachmentStore.read joins the attachment name from a download link onto the ticket directory and opens it; unlike save and delete it never checks that the name is a plain file name.",
+  "finding": {"tool": "opengrep", "rule_id": "aeropatch.python.path-traversal-open", "path": "app/attachments.py", "line": 56, "severity": "high", "message": "A caller-supplied name is joined onto a directory and opened without a containment check."},
+  "allowed_paths": ["app/attachments.py"],
+  "target_function": "AttachmentStore.read",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}

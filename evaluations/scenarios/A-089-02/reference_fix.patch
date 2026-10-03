@@ -1,0 +1,49 @@
+diff --git a/app/filters.py b/app/filters.py
+index d4b0ae8..2da6c86 100644
+--- a/app/filters.py
++++ b/app/filters.py
+@@ -5,17 +5,22 @@ SORTABLE = {"name": "name", "price": "price_cents", "newest": "id DESC"}
+ 
+ 
+ def build_filter(**criteria):
+-    """Return a WHERE clause for the given column=value criteria ('' when there are none)."""
++    """Return (WHERE clause, parameters) for the given column=value criteria.
++
++    The clause is '' when there are no criteria; values are bound, never formatted in.
++    """
+     clauses = []
++    params = []
+     for column, value in sorted(criteria.items()):
+         if column not in FILTERABLE:
+             raise ValueError(f"cannot filter on {column!r}")
+         if value is None:
+             continue
+-        clauses.append(f"{column} = '{value}'")
++        clauses.append(f"{column} = ?")
++        params.append(value)
+     if not clauses:
+-        return ""
+-    return " WHERE " + " AND ".join(clauses)
++        return "", []
++    return " WHERE " + " AND ".join(clauses), params
+ 
+ 
+ def order_clause(sort="name"):
+diff --git a/app/store.py b/app/store.py
+index 896c258..b9636e0 100644
+--- a/app/store.py
++++ b/app/store.py
+@@ -62,10 +62,9 @@ def search_products(conn, sort="name", limit=20, **criteria):
+     The criteria values come straight from the query string of the catalogue page.
+     """
+     limit = max(1, min(int(limit), MAX_PAGE))
+-    where = build_filter(**criteria)
+-    cur = conn.execute(
+-        f"SELECT id, name, category, supplier, price_cents FROM products{where}{order_clause(sort)} LIMIT {limit}"
+-    )
++    where, params = build_filter(**criteria)
++    query = "SELECT id, name, category, supplier, price_cents FROM products" + where + order_clause(sort)
++    cur = conn.execute(query + " LIMIT ?", [*params, limit])
+     return cur.fetchall()
+ 
+ 

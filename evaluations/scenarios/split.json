@@ -1,10 +1,13 @@
 {
-  "_note": "Frozen split. dev = prompt/checkpoint selection; test = final runs only (doc 11 \u00a73). Week 2 adds the test scenarios.",
+  "_note": "Frozen split. dev = prompt/checkpoint selection; test = final runs only (doc 11 \u00a73). dev grew from 10 to 13 on 2026-10-01: the -02 scenarios exercise the fragment context (files over 60 lines), which no earlier dev file did. Week 2 adds the test scenarios.",
   "dev": [
     "A-022-01",
+    "A-022-02",
     "A-078-01",
+    "A-078-02",
     "A-079-01",
     "A-089-01",
+    "A-089-02",
     "A-1333-01",
     "A-209-01",
     "A-328-01",

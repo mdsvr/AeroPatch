@@ -36,11 +36,41 @@ class ApplyError(Exception):
         self.message = message
 
 
-def parse(text: str, default_path: str | None = None) -> EditProposal:
+def _infer_path(edit: Edit, files: dict[str, str]) -> Edit | None:
+    """The file for a block whose SEARCH line named none; None when it cannot be told.
+
+    With one editable file it is that file. With several, Qwen3.5 writes the path as the block's
+    first line or leaves it out (A-089-02, 2026-10-01): take a first line that names a file, else
+    the one file the SEARCH text is found in.
+    """
+    if len(files) == 1:
+        return Edit(next(iter(files)), edit.search, edit.replace)
+
+    def named(text: str) -> tuple[str, str]:
+        first, _, rest = text.partition("\n")
+        return first.strip().removeprefix("--- ").strip("` "), rest
+
+    name, rest = named(edit.search)
+    if name in files:
+        again, replace_rest = named(edit.replace)
+        return Edit(name, rest, replace_rest if again == name else edit.replace)
+
+    def found(content: str) -> bool:
+        try:
+            apply_one(content, edit)
+        except ApplyError as e:
+            return e.code == "SEARCH_AMBIGUOUS"
+        return True
+
+    hits = [p for p, content in files.items() if found(content)]
+    return Edit(hits[0], edit.search, edit.replace) if len(hits) == 1 else None
+
+
+def parse(text: str, files: dict[str, str] | None = None) -> EditProposal:
     """Parse model output. Text after the last REPLACE marker is ignored.
 
-    A SEARCH line without a path uses `default_path` (the single editable file), else it is a
-    format error: small models often drop the path when only one file is shown.
+    `files` maps each editable path to its content. A SEARCH line without a path is resolved
+    against them (`_infer_path`), else it is a format error: small models often drop the path.
     """
     text = THINK_RE.sub("", text.replace("\r\n", "\n"))
     rationale = ""
@@ -50,10 +80,7 @@ def parse(text: str, default_path: str | None = None) -> EditProposal:
         if state == "out":
             m = SEARCH_RE.match(line)
             if m:
-                path = (m["path"] or "").strip("`") or default_path
-                if not path:
-                    return EditProposal(edits=[], rationale=rationale[:600],
-                                        parse_error="FORMAT_ERROR: SEARCH line has no file path")
+                path = (m["path"] or "").strip("`")
                 state, search, replace = "search", [], []
             elif not rationale and line.strip().upper().startswith("RATIONALE:"):
                 rationale = line.split(":", 1)[1].strip()
@@ -73,6 +100,13 @@ def parse(text: str, default_path: str | None = None) -> EditProposal:
         # marker; a truncated edit still has to pass the AST gate and the sandbox tests.
         edits.append(Edit(path=path, search="\n".join(search), replace="\n".join(replace).rstrip("\n")))
         state = "out"
+    for i, edit in enumerate(edits):
+        if not edit.path:
+            inferred = _infer_path(edit, files or {})
+            if inferred is None:
+                return EditProposal(edits=[], rationale=rationale[:600],
+                                    parse_error="FORMAT_ERROR: SEARCH line has no file path")
+            edits[i] = inferred
     error = ""
     if state != "out":
         error = "FORMAT_ERROR: unterminated SEARCH/REPLACE block"
@@ -185,13 +219,30 @@ def apply_edits(files: dict[str, str], edits: list[Edit]) -> dict[str, str]:
     return changed
 
 
+def _norm(text: str) -> str:
+    return "\n".join(_dedent(text.split("\n"))).strip()
+
+
+def rebase(edit: Edit, earlier: list[Edit]) -> Edit:
+    """Retarget a repair that quotes an earlier attempt's REPLACE text at the original lines.
+
+    Small models often patch their own failed edit instead of the original file (6 of 8
+    SEARCH_NOT_FOUND repairs on 2026-10-01). Swapping in that attempt's SEARCH keeps every edit
+    applying to the original file (doc 08 part 2, §1).
+    """
+    for old in reversed(earlier):
+        if old.path == edit.path and _norm(old.replace) == _norm(edit.search) != _norm(old.search):
+            return Edit(path=edit.path, search=old.search, replace=edit.replace)
+    return edit
+
+
 def normalized_hash(edits: list[Edit]) -> str:
     """Stable hash of an edit set, for identical-edit detection on repair attempts."""
     import hashlib
 
     h = hashlib.sha256()
     for e in edits:
-        for part in (e.path, "\n".join(_dedent(e.search.split("\n"))), "\n".join(_dedent(e.replace.split("\n")))):
-            h.update(part.strip().encode())
+        for part in (e.path, _norm(e.search), _norm(e.replace)):
+            h.update(part.encode())
             h.update(b"\0")
     return h.hexdigest()[:16]

@@ -71,20 +71,27 @@ def _header(start: int, end: int) -> str:
 
 
 def render_scope(src: bytes, row: int) -> tuple[str, str]:
-    """Imports + referenced constants + enclosing function (or class header + method)."""
+    """A small file whole; else imports + referenced constants + enclosing function (or class
+    header + method)."""
     tree = _parse(src)
     root = tree.root_node
+    chain = enclosing(tree, row)
+    funcs = [n for n in chain if n.type in FUNC]
+    if src.count(b"\n") + 1 <= SMALL_FILE_LINES:
+        # ponytail: a file this small is shown whole and verbatim. Fragments hid code the fix had
+        # to touch (A-502's dump_prefs), and models copied the "# lines" headers into SEARCH.
+        # Larger files still get fragments: no header leaked on the 64-84-line dev scenarios.
+        # Raise the threshold if that changes.
+        return src.decode("utf-8", "replace").rstrip("\n"), qualified_name(chain, src) if funcs else ""
+
     parts: list[str] = []
     imports = [c for c in root.named_children if c.type in ("import_statement", "import_from_statement")]
     if imports:
         parts.append(_header(imports[0].start_point[0], imports[-1].end_point[0]))
         parts.append("\n".join(_text(i, src) for i in imports))
 
-    chain = enclosing(tree, row)
-    funcs = [n for n in chain if n.type in FUNC]
     if not funcs:
-        n_lines = src.count(b"\n") + 1
-        lo, hi = (0, n_lines - 1) if n_lines <= SMALL_FILE_LINES else (max(0, row - 15), row + 15)
+        lo, hi = max(0, row - 15), row + 15
         parts.append(_header(lo, hi))
         parts.append(_lines(src, lo, hi))
         return "\n\n".join(parts), ""
@@ -121,8 +128,12 @@ def render_scope(src: bytes, row: int) -> tuple[str, str]:
     return "\n\n".join(parts), qualified_name(chain, src)
 
 
-def find_callers(repo: Path, name: str, skip: tuple[str, int] | None = None) -> list[str]:
-    """Up to MAX_CALLERS call sites by name match (approximate; no type-resolved call graph)."""
+def find_callers(repo: Path, name: str, skip: tuple[str, int, int] | None = None) -> list[str]:
+    """Up to MAX_CALLERS call sites by name match (approximate; no type-resolved call graph).
+
+    `skip` is (path, first, last) with 1-based lines: the target function itself, whose own
+    lines otherwise show up as a "call site" (a method named `read` matches `f.read()`).
+    """
     if not name:
         return []
     pat = re.compile(rf"(?<!def )\b{re.escape(name)}\s*\(")
@@ -134,7 +145,7 @@ def find_callers(repo: Path, name: str, skip: tuple[str, int] | None = None) -> 
         lines = py.read_text(encoding="utf-8", errors="replace").split("\n")
         for i, line in enumerate(lines):
             if pat.search(line) and not line.lstrip().startswith("def "):
-                if skip and rel == skip[0] and abs(i - skip[1]) < 1:
+                if skip and rel == skip[0] and skip[1] <= i + 1 <= skip[2]:
                     continue
                 lo, hi = max(0, i - 3), min(len(lines) - 1, i + 3)
                 out.append(f"# {rel} {_header(lo, hi)[2:]}\n" + "\n".join(lines[lo:hi + 1]))
@@ -151,7 +162,8 @@ def get_context(repo: Path, path: str, line: int, extra_paths: list[str] | None 
     scope, target = render_scope(src, max(0, line - 1))
     files = {path: scope}
     func_name = target.rsplit(".", 1)[-1] if target else ""
-    callers = find_callers(repo, func_name)
+    span = function_span(src.decode("utf-8", "replace"), target) if target else None
+    callers = find_callers(repo, func_name, (path, *span) if span else None)
     if callers:
         files[path] += "\n\n# call sites (context only)\n" + "\n\n".join(callers)
     for extra in extra_paths or []:

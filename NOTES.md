@@ -116,10 +116,121 @@ cheaper; decide at D13 whether the frontier reference moves to it. Ollama cloud 
   `F:\AeroPatch\.tools\opengrep.exe`, since `.tools/` is gitignored and not copied.
 - **Frontier baseline via Claude Code**, not the API (section above).
 
+## Week 2, D8–D10 start (2026-10-01): repair loop, gates, router modes, 3 larger scenarios
+
+**13 dev scenarios** (the Week 1 ten plus A-022-02, A-078-02, A-089-02), oracle localization.
+Every run below was made on **uncommitted changes on top of `f65332f`** (each header says
+`dirty: true`), so re-run them on the commit before quoting a number anywhere. Runs are local
+(`runs/` is gitignored). `pytest -q`: 142 passed.
+
+| Config | Plan | Resolved (95% CI) | Run | Notes |
+|---|---|---|---|---|
+| `repair-local` | local ×3 | 10/13 (50–92%) | `20261001-181502` | 7 on attempt 1, 3 by repair |
+| `repair-local` | local ×3 | 8/13 (36–82%) | `20261001-182050` | 7 on attempt 1, 1 by repair |
+| `repair-claude-code` | Claude Opus 5 ×3 | **13/13** (77–100%) | `20261001-182615` | All on attempt 1; $0.14 API-equivalent |
+| `cascade-claude-code` | local, local, Claude Opus 5 | **13/13** (77–100%) | `20261001-180638` | 8 local, 5 escalated; $0.26 API-equivalent. **Older state**, see below |
+
+The first three rows share one state of the code and scenarios. The cascade row is one step
+older: it ran before A-022-02's PoC test was corrected (item 10 below), and its re-run failed
+fast with `LocalServerDown` because the Ollama server had stopped. That run escalated A-022-02,
+which the local model resolved on attempt 1 in both later runs, so its 8 local / 5 escalated
+split is likely to shift. **Re-run it.**
+
+- **D8 check met:** a fix that fails attempt 1 and lands on attempt 2 is in
+  `runs/20261001-181502-repair-local-dev/A-918-01/`; two more land on attempt 3 (A-078-01,
+  A-601). Opus has one in an earlier run (`20261001-180131`): its first A-328 edit added
+  `# noqa`, the `SUPPRESSES_CHECKS` gate rejected it, and attempt 2 resolved.
+- **D9 check met:** every dev scenario ran through all three modes (local, frontier, cascade).
+- **Attempt 1 is more stable than repair.** The same seven resolve on attempt 1 in both
+  `repair-local` runs (A-022-01, 022-02, 078-02, 079, 089-01, 1333, 209); A-502 also resolves
+  on attempt 1 in some runs, the cascade run among them. Repairs added 3 in one run and 1 in the
+  other, and not the same scenarios. Across all of today's local-route runs, including those
+  made before the fixes below (16 per Week 1 scenario): A-328 never resolved locally, A-918
+  once, A-078-01 and A-601 four times each, A-502 nine times. With n = 13 none of the run-to-run
+  differences is significant.
+- **Not comparable with D6:** the context, the loop and one Week 1 test changed (below), and
+  dev grew.
+- **Decode speed fell** from ~48 tok/s to 38 and 43 tok/s (run medians) in the last two local
+  runs, after about an hour of back-to-back benchmarks. Earlier in the session (during run
+  `175545`) the GPU read 78 °C with 3,947 MiB in use. Thermal throttling (risk R10) and VRAM
+  pressure are the candidates; neither was checked.
+
+**What the first repair run showed (it added nothing: 5/10 on the Week 1 ten), and what changed:**
+
+1. *Fragment headers leaked into edits.* The model copied `# lines 6-8` into SEARCH and spanned
+   non-adjacent fragments (A-328, A-502; the D6 baseline outputs for the same two show it too).
+   **A file of ≤ 60 lines is now shown whole and verbatim** (`context.py`). Attempt-1 apply rate
+   went 70% → 100%, and no model output since contains a `# lines` header (every saved
+   `raw_output.txt` searched).
+2. *A-502 was a context problem, not a test problem.* Its test is valid. The fix has to change
+   `dump_prefs` too, which the fragment context hid, so every model (Opus included) broke it.
+   Fixed by (1).
+3. *`FORMAT_FAIL` feedback was not actionable.* A-601 produced the same marker-less output three
+   times. The feedback now repeats the format example.
+4. *Repairs written on top of the failed edit.* 6 of 8 `SEARCH_NOT_FOUND` repair attempts quoted
+   the model's own previous REPLACE text instead of the file. `edits.rebase` retargets such an
+   edit at the original lines, so edits still always apply to the original file.
+5. *Identical-edit detection* (doc 08 part 1 §7) is wired in: one retry at 0.8, then `STUCK`.
+   It fired on real runs (A-502, A-328, A-078-01). Edits are rebased before they are hashed.
+6. *Secret filter false positives on sandbox feedback.* pytest tracebacks print locals
+   (`password = 's3cret!'` from A-328's own tests) and long temp paths ending in a credential
+   word (`.../ticket-1/secret.txt`, A-022-02). Both blocked the next prompt. Sandbox feedback is
+   now redacted (`prompts.redact`) before it enters a prompt; the filter itself is unchanged, and
+   `test_scenarios.py` checks every scenario's first prompt against it.
+7. *A-078-01's regression test rejected a valid fix.* It required `CalledProcessError` for a
+   missing file; Opus's fix (open the file, pipe it to `wc`) raises `FileNotFoundError`. The test
+   now accepts either. Re-validated: 4/4 checks.
+8. *Missing file path with two editable files.* On A-089-02 the model left the path off the
+   SEARCH line or wrote it as the block's first line: `FORMAT_FAIL` on all three attempts, in
+   both runs. The parser now infers the file (a first line that names one, else the one file
+   containing the SEARCH text). After that its edits applied and were judged by the sandbox.
+9. *Call sites.* A method named `read` matched its own `f.read()` as a "call site"; the target
+   function's own lines are now skipped.
+10. *A-022-02's first PoC test rejected a valid fix.* It demanded `PermissionError` or
+    `ValueError`. The local model's `os.path.basename(name)` fix makes the traversal harmless
+    but ends in `FileNotFoundError`. The PoC now asserts that no content from outside the ticket
+    comes back. Re-validated: 4/4 checks.
+
+**Larger scenarios (64–84-line target files, fragment context):** A-022-02 (class method; the
+fix can reuse an existing `_safe_name`), A-078-02 (one of seven functions shells out to `du`),
+A-089-02 (two files: the SQL is assembled in `filters.py`, executed in `store.py`). All pass the
+4-check validator and the rule test. No `# lines` header leaked into SEARCH on any of them, so
+the 60-line threshold stays. They are in **dev**, not test, because the context and the parser
+were checked against them. `bench` headers now record `dirty`, and `make_reference_patch.py`
+writes LF (a CRLF patch failed `git apply` in the rule test on Windows).
+
+**Still failing locally, and why (guides the Week 3 data mix):**
+- A-328 (weak hash): never finds salted hashing; by attempt 3 it reasons in circles inside
+  RATIONALE until the 1,024-token limit and emits no blocks. The same runaway shows on A-502.
+  A grammar (Week 4 ablation) or fine-tuning on short rationales targets this.
+- A-918 (SSRF): wrong logic in the attempts read (it fetches the private address it has just
+  detected). Resolved locally once in 16 runs.
+- A-601 (open redirect): misses `//host` and `/\host` on attempt 1; a repair sometimes lands.
+- A-078-01: does not replace the shell's `<` redirection correctly; a repair sometimes lands.
+- A-089-02 (two-file): resolved locally in 3 of 10 runs; its first attempts keep formatting
+  values into the SQL text.
+
+**"Resolved" is behavioural, and one resolve shows the limit of that.** A-089-02's local fix in
+run `182050` doubles the quotes in each value instead of binding parameters. On SQLite that does
+stop the injection, so the PoC and regression tests pass, and the run counts as resolved. The
+report line says `original rule still present`. Doc 12's scanner-clean rate is the metric that
+keeps fixes like this visible; report it next to the resolve rate in Week 4.
+
+`cascade` and `baseline-frontier` still use the API route and need a key; the `-claude-code`
+configs are the ones that run today.
+
 ## Next (Week 2, doc 14)
 
-1. D8 repair loop: `repair-local` and `cascade` configs exist; run them on the dev split.
-2. Check A-502's regression test (above) before adding scenarios 11–24.
-3. SEARCH mismatches are the most common local failure: the repair turn's closest-lines feedback
-   is the first thing to measure.
-4. Section 15 of the architecture page (`docs/architecture-interactive.html`, and the local `docs/architecture.html` copy) still shows D6/D7 as pending.
+1. Re-run `cascade-claude-code` on dev, and all four configs once this work is committed.
+   Today's server was started with `OLLAMA_MODELS=F:\.ollama\models` set for that process: the
+   user-level variable points at `D:\ollama_models`, which does not exist. Whether the tray app
+   finds the models with that variable was not tested; check `ollama list` before a long run.
+2. D10–D11: the remaining scenarios (13 exist, all dev; target 40–50) with 50–150-line apps,
+   all into **test**, then freeze `split.json`. New CWEs each need an Opengrep rule; a CWE-798
+   scenario must use a placeholder credential or the secret filter blocks its prompt; check XXE
+   is really exploitable on Python 3.12 before building on it. PoC tests should assert the
+   outcome (nothing leaked, nothing run), not one exception type (items 7 and 10).
+3. D12: `metrics.py` (Wilson CIs, McNemar), concurrency 2, thin MCP wrapper.
+4. D13: full baselines with repair, run on a clean commit. Decide first whether the frontier
+   reference moves to `claude-opus-5-5`.
+5. The architecture pages (`docs/architecture*.html`) still carry a "What's blocking D6?" prompt.

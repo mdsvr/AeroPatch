@@ -152,6 +152,9 @@ requests will be declined. Expect it and measure it.
 | `server_side_fallbacks` | `true` | Claude API refusal fallback (beta) |
 
 `attempt_plan` entries are `local`, `frontier` (API) or `claude-code` (subscription CLI).
+The three modes as run today: `repair-local`, `repair-claude-code`, `cascade-claude-code`.
+Escalation is the fixed plan; triggers 4–5 of §5 are not built, because no scenario's context
+comes near the 6k local budget yet.
 Changing any of these means a new config name. Results are only compared within a config.
 
 ## 10. What to report from this component

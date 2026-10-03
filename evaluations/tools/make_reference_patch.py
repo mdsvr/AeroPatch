@@ -17,7 +17,8 @@ def main() -> None:
         for pair in pairs:
             rel, fixed = pair.split("=", 1)
             shutil.copyfile(fixed, ws.repo / rel)
-        (d / "reference_fix.patch").write_text(ws.diff(), encoding="utf-8")
+        # LF on Windows too: `git apply` rejects a CRLF patch against LF files.
+        (d / "reference_fix.patch").write_text(ws.diff(), encoding="utf-8", newline="\n")
     print((d / "reference_fix.patch").read_text())
 
 

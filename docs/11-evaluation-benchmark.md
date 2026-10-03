@@ -41,6 +41,9 @@ support for this plan's PoC + regression test rule.
 Split once, at the start: **dev = 10** (for checkpoint selection and prompt tuning) and
 **test = the rest** (touched only in final runs). Record the split in `scenarios/split.json`.
 Status 2026-09-29: the 10 dev scenarios are recorded; the test IDs are added in Week 2.
+Change 2026-10-01: **dev is now 13.** The first three larger scenarios (A-022-02, A-078-02,
+A-089-02) were used to check the context builder and parser on files over 60 lines, so they
+cannot be test scenarios. Every scenario added from here on goes to test.
 
 ## 4. CWE coverage for Tier A (Python-relevant)
 

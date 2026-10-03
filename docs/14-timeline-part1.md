@@ -43,6 +43,10 @@ or the scenario validator.
 
 ## 3. Week 2: repair loop, gates, full scenario set, full baselines
 
+**Status (2026-10-01): D8 and D9 done and measured on the dev split** (`NOTES.md`, Week 2).
+D10 started: 3 larger scenarios added to dev (13 dev, 0 test; 13 of 40–50). D11 onwards not
+started.
+
 | Day | Work | Output / acceptance check |
 |---|---|---|
 | D8 | Repair loop (doc 08 part 1): attempt plan, feedback builder, budgets, identical-edit detection, refusal-as-routing | A scenario that fails attempt 1 and succeeds on attempt 2, visible in the logs |
