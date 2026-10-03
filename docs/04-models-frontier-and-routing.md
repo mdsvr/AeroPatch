@@ -154,7 +154,8 @@ requests will be declined. Expect it and measure it.
 `attempt_plan` entries are `local`, `frontier` (API) or `claude-code` (subscription CLI).
 The three modes as run today: `repair-local`, `repair-claude-code`, `cascade-claude-code`.
 Escalation is the fixed plan; triggers 4–5 of §5 are not built, because no scenario's context
-comes near the 6k local budget yet.
+comes near the 6k local budget yet. A local route that repeats its own edit (`STUCK`, doc 08
+part 1 §7) counts as used up, so the plan moves on to the frontier entry (fixed 2026-10-03).
 Changing any of these means a new config name. Results are only compared within a config.
 
 ## 10. What to report from this component

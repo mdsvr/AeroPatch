@@ -44,7 +44,12 @@ Status 2026-09-29: the 10 dev scenarios are recorded; the test IDs are added in 
 Change 2026-10-01: **dev is now 13.** The first three larger scenarios (A-022-02, A-078-02,
 A-089-02) were used to check the context builder and parser on files over 60 lines, so they
 cannot be test scenarios. Every scenario added from here on goes to test.
-Status 2026-10-03: 20 Tier A test scenarios exist (33 in total); Tier B and C are still to come.
+Status 2026-10-03: 27 Tier A test scenarios exist (40 in total) and **`split.json` is frozen at
+13 dev / 27 test**. Every CWE in section 4 has at least two scenarios; CWE-338 was added.
+Tier B and Tier C were not built for the freeze: Tier B puts real vulnerable project code
+and pinned dependencies in the repo, which is your call, and Tier C needs the doc 09
+script to produce verified examples first. If either is added later it goes under its own
+key in `split.json`, so the frozen dev and test lists stay as they are.
 
 ## 4. CWE coverage for Tier A (Python-relevant)
 
@@ -126,7 +131,9 @@ as the main table, and the other axes as focused ablations on the fine-tuned mod
 - For each scenario, call the same `loop.run(task, config)` the CLI uses, and append the
   `Attempt` and `RunResult` lines to `runs/<run_id>.jsonl`.
 - Resumable: completed task IDs are skipped. Deterministic order (sorted IDs); seeds are logged.
-- Concurrency: sequential generation, at most 2 sandboxes (doc 02).
+- Concurrency: sequential generation, at most 2 sandboxes (doc 02). As built: `--jobs 2` runs
+  two tasks at once with local generation under one lock; the default is `--jobs 1`, which the
+  baseline runs use so that latency and tok/s stay comparable.
 - The run header records the git commit of AeroPatch, model digests, image digests, server
   version, and hardware info, so every number in the README traces back to a run file.
 
@@ -143,7 +150,8 @@ multiplies generations by 5, so run it on the fine-tuned SLM and one frontier mo
 
 - [x] Week 1: 10 validated dev scenarios, and a baseline table for 3 models (2 local + Claude
       Opus 5; `NOTES.md`, doc 03 §5).
-- [ ] Week 2: 40–50 validated scenarios, `split.json` frozen, and full baselines logged.
+- [x] Week 2: 40 validated scenarios (all Tier A), `split.json` frozen, and full baselines logged
+      (`NOTES.md`, 2026-10-03).
 - [ ] Week 4: final results with every number traceable to a run file (doc 12).
 
 Next: [12-metrics-and-reporting.md](12-metrics-and-reporting.md)

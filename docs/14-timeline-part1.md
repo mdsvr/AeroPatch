@@ -48,6 +48,13 @@ D10 started: 3 larger scenarios added to dev (13 dev, 0 test; 13 of 40–50). **
 dev runs were repeated on the merged commit, and 20 Tier A test scenarios were added (13 dev, 20
 test; 33 of 40–50; split not frozen). Tier B and D12 onwards not started.
 
+**Status (2026-10-03, end of day): D11–D14 done, with two things left out on purpose.** The set is
+40 Tier A scenarios (13 dev, 27 test), frozen; **Tier B and Tier C were not built**. D12's three
+pieces exist. The D13 baselines ran on the frozen test split in an afternoon, not overnight, and
+a re-check of them found and fixed a cascade bug (`NOTES.md`, D13). D14's analysis is written,
+and `training/inject_cwe.py` exists but has only had a smoke test: its teacher model is not
+chosen yet.
+
 | Day | Work | Output / acceptance check |
 |---|---|---|
 | D8 | Repair loop (doc 08 part 1): attempt plan, feedback builder, budgets, identical-edit detection, refusal-as-routing | A scenario that fails attempt 1 and succeeds on attempt 2, visible in the logs |
@@ -59,11 +66,18 @@ test; 33 of 40–50; split not frozen). Tier B and D12 onwards not started.
 | D14 | Buffer; baseline analysis (failure attribution, per-CWE); start the synthetic CWE-injection script (doc 09) so it can run unattended from D15 | Written notes: where the SLM fails and why. These guide the data mix |
 
 **Week 2 exit criteria**
-- [ ] The full loop with repair runs unattended over the whole set and can resume.
-- [ ] 40–50 validated scenarios, with the dev/test split frozen and committed.
-- [ ] A baseline headline table for untuned SLM (`local`, `cascade`) and frontier, with CIs.
-- [ ] The failure-attribution chart for the untuned SLM exists; it guides the Week 3 data.
-- [ ] The MCP server lists tools and serves one real call. It's a thin wrapper, as planned.
+- [x] The full loop with repair runs unattended over the whole set and can resume. Evidence in
+      two pieces: the three repair configs each ran unattended over the 27 test scenarios (and
+      over the 13 dev ones that morning, as separate commands), and resume was shown with the
+      `oracle` config at `--jobs 2`, killed after 8 results and resumed to 27/27. A model run
+      has not been killed and resumed.
+- [x] 40–50 validated scenarios, with the dev/test split frozen and committed. 40, all Tier A.
+- [x] A baseline headline table for untuned SLM (`local`, `cascade`) and frontier, with CIs
+      (`NOTES.md`, D13; `aeropatch report`).
+- [x] The failure-attribution chart for the untuned SLM exists; it guides the Week 3 data. It is
+      the text chart in `aeropatch report`. The data mix uses the dev runs only (`NOTES.md`, D14).
+- [x] The MCP server lists tools and serves one real call. It's a thin wrapper, as planned. The
+      call came from the SDK's stdio client, not from Claude Code or MCP Inspector.
 
 ## 4. Detailed task lists for the riskiest days
 

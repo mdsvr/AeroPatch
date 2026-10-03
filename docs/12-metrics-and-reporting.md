@@ -1,7 +1,10 @@
 # 12 — Metrics Definitions, Statistics and Reporting (Week 4)
 
-Maps to: `src/aeropatch/metrics.py` (planned, D12). Until then `aeropatch report` (`bench.py`)
-prints the Week 1 baseline table without CIs. Back to the index: [00-overall-plan.md](00-overall-plan.md)
+Maps to: `src/aeropatch/metrics.py` (v1 built on D12: `aeropatch report <run.jsonl>...`; the same
+report is printed at the end of `aeropatch bench`). v1 has Wilson intervals, cumulative
+resolve@k, repair gain, the exact McNemar test, a first-attempt/speed/cost table, the per-CWE
+table and the failure-attribution chart. Still to come in Week 4: pass@k (no sampled runs exist
+yet), the bootstrap, CSV output, tokens and $ per resolved scenario, p95 latency. Back to the index: [00-overall-plan.md](00-overall-plan.md)
 
 ## 1. The plan's "Pass@3" means two different things. Split it.
 
