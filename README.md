@@ -5,11 +5,12 @@ do. It fixes Python vulnerabilities locally, proves each fix in a network-less s
 with test feedback, and escalates to a frontier model only when needed. Every claim is measured
 on a contamination-controlled benchmark.
 
-Status: **Week 2 complete** (see [NOTES.md](NOTES.md) and the plan in [docs/](docs/00-overall-plan.md)).
+Status: **Week 2 exit criteria met; the real-CVE and synthetic scenario tiers were not built** (see
+[NOTES.md](NOTES.md) and the plan in [docs/](docs/00-overall-plan.md)).
 Baselines with up to three attempts on the frozen test split (27 scenarios, 2026-10-03): untuned
 Qwen3.5-4B resolves 17/27 and 18/27 in two runs (95% CIs 44–78% and 48–81%) at $0, Claude Opus 5 resolves 27/27
 (88–100%), and the cascade resolves 27/27 with 16 of them fixed locally. All 40 scenarios are
-hand-built and were written by Claude models, so the Opus number is an upper bound on easy ground.
+hand-built and were written by Claude models, so the test split is too easy to separate frontier models.
 Outputs are **candidate fixes that need human review**.
 
 ## Pipeline
