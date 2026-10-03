@@ -7,11 +7,12 @@ import subprocess
 import pytest
 
 from aeropatch import scenario
+from aeropatch.agent import prompts
 from aeropatch.agent.gates import check
 from aeropatch.config import SCENARIOS_DIR
 from aeropatch.contracts import Finding
 from aeropatch.tools import scanners
-from aeropatch.tools.context import function_span
+from aeropatch.tools.context import function_span, get_context
 from aeropatch.tools.git_ops import Workspace
 
 IDS = scenario.list_ids()
@@ -20,7 +21,7 @@ IDS = scenario.list_ids()
 def test_split_covers_every_scenario_once():
     split = json.loads((SCENARIOS_DIR / "split.json").read_text())
     assert sorted(split["dev"] + split["test"]) == IDS
-    assert len(split["dev"]) == 10
+    assert len(split["dev"]) == 13
 
 
 def test_original_rule_rescan_reports_present_absent_or_unavailable(monkeypatch, tmp_path):
@@ -43,6 +44,14 @@ def test_scenario_loads_and_points_at_target(sid):
     start, end = function_span(src, task.target_function)
     assert task.finding.path in task.allowed_paths
     assert start <= task.finding.line <= end or task.finding.line < start  # module-level finding allowed
+
+
+@pytest.mark.parametrize("sid", IDS)
+def test_first_prompt_passes_the_secret_filter(sid):
+    # A scenario whose own code trips the filter is SECRET_BLOCKED on every route but oracle.
+    task = scenario.load(sid)
+    ctx = get_context(task.repo_path, task.finding.path, task.finding.line, task.allowed_paths)
+    prompts.check_no_secrets(prompts.SYSTEM_PROMPT + "\n\n" + prompts.first_user_message(task, ctx))
 
 
 @pytest.mark.parametrize("sid", IDS)

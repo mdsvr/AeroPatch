@@ -19,9 +19,9 @@ from aeropatch.agent import loop
 from aeropatch.config import ROOT, RUNS_DIR
 
 
-def _git_commit() -> str:
+def _git(*args: str) -> str:
     try:
-        return subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True,
+        return subprocess.run(["git", *args], cwd=ROOT, capture_output=True,
                               text=True, check=False).stdout.strip()
     except OSError:
         return ""
@@ -37,7 +37,12 @@ def header(cfg: dict, split: str, ids: list[str]) -> dict:
         except Exception:  # noqa: BLE001 - header info is best effort
             images[sid] = None
     return {"type": "header", "time": datetime.now(UTC).isoformat(), "config": cfg,
-            "split": split, "tasks": ids, "aeropatch_commit": _git_commit(), "images": images,
+            "split": split, "tasks": ids, "aeropatch_commit": _git("rev-parse", "HEAD"),
+            # True means the code, rules or scenarios differ from that commit (new, uncommitted
+            # scenario directories included): the number is not reproducible from it.
+            "dirty": bool(_git("status", "--porcelain", "--", "src", "evaluations", "rules", "docker",
+                               "pyproject.toml", "uv.lock")),
+            "images": images,
             "host": {"platform": platform.platform(), "python": platform.python_version()}}
 
 

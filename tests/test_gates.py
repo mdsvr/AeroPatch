@@ -71,6 +71,19 @@ def test_risky_import_allowlisted_per_scenario():
     assert "RISKY_IMPORT" not in r.violations
 
 
+def test_near_misses_pass():
+    def grown(n):
+        return GOOD + "".join(f"X{i} = {i}\n" for i in range(n))
+
+    assert "TOO_LARGE" not in change(grown(58)).violations  # 2 + 58 = 60 changed lines, the limit
+    assert "TOO_LARGE" in change(grown(59)).violations
+    marked = {"app/db.py": ORIG["app/db.py"].replace("return 1", "return 1  # noqa")}
+    kept = marked["app/db.py"].replace("'q'", "'q2'")  # the marker was already there
+    assert "SUPPRESSES_CHECKS" not in change(kept, orig=marked).violations
+    added = GOOD + "\n\ndef helper():\n    return 2\n"  # new symbols are fine; only removals count
+    assert "DELETES_SYMBOL" not in change(added).violations
+
+
 def test_no_change():
     assert "NO_CHANGE" in change(ORIG["app/db.py"]).violations
     assert "NO_CHANGE" not in change(GOOD).violations

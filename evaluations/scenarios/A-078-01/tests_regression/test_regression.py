@@ -16,5 +16,6 @@ def test_empty_file(tmp_path):
 
 
 def test_missing_file_raises(tmp_path):
-    with pytest.raises(subprocess.CalledProcessError):
+    # Either is a valid failure: a fix that opens the file itself raises OSError.
+    with pytest.raises((subprocess.CalledProcessError, OSError)):
         count_lines(tmp_path, "nope.txt")

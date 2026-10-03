@@ -1,0 +1,18 @@
+{
+  "id": "A-089-02",
+  "tier": "A",
+  "cwe": "CWE-89",
+  "cwe_name": "SQL injection",
+  "difficulty": "hard",
+  "split": "dev",
+  "description": "search_products runs a query whose WHERE clause comes from build_filter in app/filters.py, which formats the criteria values from the query string straight into the SQL text.",
+  "finding": {"tool": "opengrep", "rule_id": "aeropatch.python.sqli-string-query", "path": "app/store.py", "line": 66, "severity": "high", "message": "User input reaches SQL string formatting."},
+  "allowed_paths": ["app/store.py", "app/filters.py"],
+  "target_function": "search_products",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}

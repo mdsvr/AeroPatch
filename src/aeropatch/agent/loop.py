@@ -1,7 +1,7 @@
 """The remediation loop: a plain state machine (doc 08 part 1, §2).
 
 Week 1 runs it single-shot (attempt_plan of length 1). The same code walks longer plans with
-repair feedback; Week 2 adds identical-edit detection and the cascade escalation triggers.
+repair feedback and stops early (STUCK) when a repair repeats an earlier edit.
 """
 
 from __future__ import annotations
@@ -47,6 +47,16 @@ def run(task: Task, cfg: dict, run_dir: Path | None = None) -> RunResult:
     messages = [{"role": "user", "content": prompts.first_user_message(task, context)}]
     attempts: list[Attempt] = []
     older: list[str] = []
+    seen: set[str] = set()  # hashes of edits already tried
+    tried: list = []  # those edits, for edits.rebase
+
+    def propose(text: str):
+        """Parse and rebase, then hash: a repair written on top of an earlier edit must compare
+        equal to that edit's direct form. No edits -> empty digest, which is never 'seen'."""
+        p = edits.parse(text, originals)
+        p.edits = [edits.rebase(e, tried) for e in p.edits]
+        return p, edits.normalized_hash(p.edits) if p.edits else ""
+
     n = 0
     spent = 0.0
     final_diff = ""
@@ -71,19 +81,37 @@ def run(task: Task, cfg: dict, run_dir: Path | None = None) -> RunResult:
                                         latency_s=round(gen.latency_s, 2), cost_usd=gen.cost_usd,
                                         refusal=gen.refusal, apply_error=gen.error))
                 continue
+            proposal, digest = propose(gen.text)
+            if digest in seen:
+                # Same edit as an earlier attempt: one hotter retry, then stop (doc 08 part 1, §7).
+                retry = router.generate(route, messages, prompts.SYSTEM_PROMPT, cfg,
+                                        cfg["stuck_retry_temperature"], sdir)
+                spent += retry.cost_usd
+                retry.cost_usd += gen.cost_usd
+                retry.latency_s += gen.latency_s
+                gen = retry
+                proposal, digest = propose(gen.text)
+                if gen.refusal or gen.error or digest in seen:
+                    attempts.append(Attempt(n=0, route=route, model=gen.model, label="STUCK",
+                                            latency_s=round(gen.latency_s, 2), cost_usd=gen.cost_usd))
+                    break
+            if digest:
+                seen.add(digest)
+            tried += proposal.edits  # stored rebased, so a chain of on-top repairs still resolves
             n += 1
             adir = task_dir / f"attempt_{n}" if task_dir else None
             _save(adir, "prompt.txt", prompt_text)
             _save(adir, "raw_output.txt", gen.text)
             att = Attempt(n=n, route=route, model=gen.model, latency_s=round(gen.latency_s, 2),
                           cost_usd=gen.cost_usd)
-            proposal = edits.parse(gen.text, task.allowed_paths[0] if len(task.allowed_paths) == 1 else None)
             proposal.model, proposal.usage = gen.model, gen.usage
             att.proposal = proposal
             feedback = ""
             ws.reset()
             if proposal.parse_error:
-                att.label, feedback = "FORMAT_FAIL", proposal.parse_error
+                att.label = "FORMAT_FAIL"
+                # The bare error was not actionable: A-601 repeated the same marker-less output 3 times.
+                feedback = f"{proposal.parse_error}\nUse exactly this layout:\n{edits.FORMAT_EXAMPLE}"
             else:
                 try:
                     paths = sorted({e.path for e in proposal.edits})
@@ -109,7 +137,8 @@ def run(task: Task, cfg: dict, run_dir: Path | None = None) -> RunResult:
                         att.sandbox.original_rule_present = scanners.original_rule_present(ws.repo, task.finding)
                         _save(adir, "sandbox.json", att.sandbox.to_json())
                         att.label = att.sandbox.label
-                        feedback = junit.summarize(att.sandbox.failures, cfg["feedback_token_cap"] * 4)
+                        feedback = prompts.redact(
+                            junit.summarize(att.sandbox.failures, cfg["feedback_token_cap"] * 4))
             attempts.append(att)
             if att.label == "RESOLVED":
                 final_diff = att.diff

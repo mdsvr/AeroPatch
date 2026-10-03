@@ -1,0 +1,13 @@
+diff --git a/app/attachments.py b/app/attachments.py
+index 2255661..70e0fa5 100644
+--- a/app/attachments.py
++++ b/app/attachments.py
+@@ -52,7 +52,7 @@ class AttachmentStore:
+ 
+         `name` is the file name from the download link an agent clicked.
+         """
+-        path = os.path.join(self._ticket_dir(ticket_id), name)
++        path = os.path.join(self._ticket_dir(ticket_id), self._safe_name(name))
+         with open(path, "rb") as f:
+             return f.read()
+ 

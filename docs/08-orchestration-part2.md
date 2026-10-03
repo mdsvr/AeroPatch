@@ -32,7 +32,10 @@ it starts writing.
 - "Fix the problem. Output a complete new set of blocks against the ORIGINAL file."
 
 Edits always apply to the original code, never on top of a failed attempt. That makes each
-attempt independent, so a bad attempt can't compound into the next one.
+attempt independent, so a bad attempt can't compound into the next one. Small models often
+ignore this and quote their own previous REPLACE text; `edits.rebase` retargets such an edit at
+the original lines that attempt replaced. On a format failure the feedback repeats the format
+example. Sandbox feedback has literal credential values redacted before it enters a prompt.
 
 ## 2. Safety gates (`gates.py`), deterministic, run before the sandbox
 
@@ -107,16 +110,18 @@ the project's security policy and write the PR yourself.
 Much of this was built early, in Week 1. The loop already walks multi-attempt plans with repair
 feedback; D8 measures it.
 
-- [ ] `loop.py` runs one scenario end-to-end with each route. `local` and `claude-code` done
-      (D6); `frontier` (API) needs a key; `cascade` runs in D8.
+- [x] `loop.py` runs one scenario end-to-end with each route: `repair-local`,
+      `repair-claude-code` and `cascade-claude-code` ran on the 13 dev scenarios (2026-10-01,
+      `NOTES.md`). The `frontier` (API) route still needs a key.
 - [x] The edit engine passes tests for: exact match, whitespace-tolerant match, not found (with
       closest-lines feedback), ambiguous match, multiple blocks in one file, blocks across two files.
-- [ ] Every gate rule has one passing and one failing test. `tests/test_gates.py` (17 cases) has a
-      rejecting test for all 8 rules, but rule-specific passing cases only for `FORBIDDEN_PATH`
-      and `RISKY_IMPORT` (plus one shared clean edit).
+- [x] Every gate rule has one passing and one failing test. `tests/test_gates.py` (18 cases) has a
+      rejecting test for all 8 rules, and near-miss passing cases for `FORBIDDEN_PATH`,
+      `RISKY_IMPORT`, `TOO_LARGE` (at the limit), `SUPPRESSES_CHECKS` (marker already present)
+      and `DELETES_SYMBOL` (symbol added). The other three share one clean edit.
 - [ ] Repair feedback is capped at ~1.5k tokens: unit-tested (`test_summarize_caps_length`);
       still to check on a scenario with a huge traceback.
-- [ ] Identical-edit detection stops a stuck run early.
+- [x] Identical-edit detection stops a stuck run early (`STUCK`; seen on real runs).
 - [ ] `submit` refuses to run without an interactive confirmation (no `--yes` flag in v1).
 - [x] Resuming a killed benchmark run skips completed tasks (done again on 2026-09-29 after a
       crash mid-run).

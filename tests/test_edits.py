@@ -38,8 +38,18 @@ def test_parse_unterminated_and_empty():
 
 def test_parse_missing_path_uses_single_editable_file():
     text = "<<<<<<< SEARCH\nx = 1\n=======\nx = 2\n>>>>>>> REPLACE"
-    assert edits.parse(text, default_path="a.py").edits == [Edit("a.py", "x = 1", "x = 2")]
+    assert edits.parse(text, {"a.py": ""}).edits == [Edit("a.py", "x = 1", "x = 2")]
     assert "no file path" in edits.parse(text).parse_error
+
+
+def test_parse_missing_path_with_two_editable_files():
+    files = {"a.py": "x = 1\ny = 0\n", "b.py": "z = 1\ny = 0\n"}
+    want = [Edit("a.py", "x = 1", "x = 2")]
+    bare = "<<<<<<< SEARCH\n{}x = 1\n=======\n{}x = 2\n>>>>>>> REPLACE"
+    assert edits.parse(bare.format("", ""), files).edits == want  # only a.py contains the text
+    assert edits.parse(bare.format("--- a.py\n", ""), files).edits == want  # path as the first line
+    assert edits.parse(bare.format("a.py\n", "a.py\n"), files).edits == want  # ... in both halves
+    assert "no file path" in edits.parse(bare.format("", "").replace("x", "y"), files).parse_error  # in both
 
 
 def test_exact_match():
@@ -91,3 +101,12 @@ def test_normalized_hash_ignores_indent():
     a = [Edit("a.py", "    x = 1", "    x = 2")]
     b = [Edit("a.py", "x = 1", "x = 2")]
     assert edits.normalized_hash(a) == edits.normalized_hash(b)
+
+
+def test_rebase_retargets_a_repair_written_on_top_of_an_earlier_edit():
+    first = Edit("app/db.py", "    x = 1", "    x = 2")
+    on_top = Edit("app/db.py", "x = 2", "x = 3")  # quotes the earlier REPLACE, not the file
+    assert edits.rebase(on_top, [first]) == Edit("app/db.py", "    x = 1", "x = 3")
+    fresh = Edit("app/db.py", "    x = 1", "    x = 4")
+    assert edits.rebase(fresh, [first]) == fresh
+    assert edits.rebase(on_top, [Edit("app/other.py", "x = 1", "x = 2")]) == on_top

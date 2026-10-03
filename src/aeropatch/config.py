@@ -45,6 +45,7 @@ DEFAULTS: dict = {
     "max_tokens_frontier": 4096,
     "temperature_first": 0.2,
     "temperature_repair": 0.4,
+    "stuck_retry_temperature": 0.8,
     "max_usd_per_scenario": 0.50,
     "local_ctx_budget": 6000,
     "max_changed_lines": 60,
@@ -73,7 +74,12 @@ CONFIGS: dict[str, dict] = {
     # Harness self-check: replays each scenario's reference fix. Must resolve 100%.
     "oracle": {"mode": "oracle", "attempt_plan": ["oracle"]},
     "repair-local": {"attempt_plan": ["local", "local", "local"]},
+    "repair-claude-code": {"mode": "frontier", "attempt_plan": ["claude-code", "claude-code", "claude-code"]},
+    # ponytail: escalation is the fixed plan below. With 2 local entries it equals doc 04 §5
+    # triggers 1-3; add triggers 4-5 (context over local_ctx_budget, multi-file tag) when a
+    # scenario's context exceeds ~6k tokens. Today's largest is ~115.
     "cascade": {"mode": "cascade", "attempt_plan": ["local", "local", "frontier"]},
+    "cascade-claude-code": {"mode": "cascade", "attempt_plan": ["local", "local", "claude-code"]},
 }
 
 # USD per 1M tokens (doc 04 §2; Anthropic table cached 2026-06-24). Re-check before publishing.

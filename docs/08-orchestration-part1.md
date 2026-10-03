@@ -120,6 +120,11 @@ Two parser leniencies were added after the first laptop runs (2026-09-28): a SEA
 without a path uses the task's single editable file, and end-of-output closes an open REPLACE
 block (Qwen3.5 often stops just before the marker). The sandbox still judges every edit.
 
+Two more followed the first repair runs (2026-10-01, `NOTES.md`). With several editable files,
+a SEARCH line without a path takes a first block line that names a file, else the one file that
+contains the SEARCH text. And a repair that quotes the model's own previous REPLACE text is
+rebased onto the original lines (`edits.rebase`), before the identical-edit hash is taken.
+
 ## 7. Temperature and sampling per attempt
 
 - Attempt 1: temperature 0.2, for a stable pass@1.

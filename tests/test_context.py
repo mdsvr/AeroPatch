@@ -3,15 +3,25 @@ from pathlib import Path
 
 import pytest
 
+from aeropatch.tools import context
 from aeropatch.tools.context import function_span, get_context
 
 FIX = Path(__file__).parent / "fixtures" / "context"
 
 
 @pytest.fixture
-def repo(tmp_path):
+def repo(tmp_path, monkeypatch):
+    monkeypatch.setattr(context, "SMALL_FILE_LINES", 0)  # the fixtures are small; test the scoped path
     shutil.copytree(FIX, tmp_path / "repo")
     return tmp_path / "repo"
+
+
+def test_small_file_is_shown_whole_and_verbatim(repo, monkeypatch):
+    monkeypatch.setattr(context, "SMALL_FILE_LINES", 60)
+    ctx = get_context(repo, "sample.py", 11)
+    assert ctx.target == "outer"
+    assert ctx.files["sample.py"].startswith((FIX / "sample.py").read_text().rstrip("\n"))
+    assert "# lines" not in ctx.files["sample.py"].split("# call sites")[0]
 
 
 def test_plain_function_has_imports_constants_and_callers(repo):

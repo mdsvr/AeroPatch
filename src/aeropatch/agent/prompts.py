@@ -50,7 +50,8 @@ KEY_CONTEXT_RE = re.compile(
     r"\b(?:[a-z0-9]+[_-])*(?:key|token|secret|password|credential|auth)\b", re.IGNORECASE
 )
 LONG_TOKEN_RE = re.compile(r"[A-Za-z0-9/+_=-]{32,}")
-PLACEHOLDERS = {"changeme", "example", "dummy", "fake", "placeholder", "replace_me", "your_api_key"}
+PLACEHOLDERS = {"changeme", "example", "dummy", "fake", "placeholder", "replace_me", "your_api_key",
+                "redacted"}
 
 
 class SecretInPrompt(ValueError):
@@ -82,6 +83,22 @@ def check_no_secrets(text: str) -> None:
     reason = _secret_reason(text)
     if reason:
         raise SecretInPrompt(f"prompt blocked: {reason}")
+
+
+def redact(text: str) -> str:
+    """Blank literal credential values in sandbox feedback before it enters a prompt.
+
+    pytest tracebacks print locals such as `password = 's3cret!'` from the scenario's own tests,
+    and long temp paths that end in a credential word (`.../ticket-1/secret.txt`). Unredacted,
+    check_no_secrets blocked the next attempt (A-328, A-022-02; 2026-10-01). The value never
+    leaves the machine either way, and whatever is left still goes through check_no_secrets.
+    """
+    text = SECRET_ASSIGNMENT_RE.sub(
+        lambda m: m.group().replace(m.group("quoted") or m.group("unquoted"), "redacted"), text)
+    return "\n".join(
+        LONG_TOKEN_RE.sub(lambda m: "redacted" if _entropy(m.group()) >= 4.0 else m.group(), line)
+        if KEY_CONTEXT_RE.search(line) else line
+        for line in text.split("\n"))
 
 
 def first_user_message(task: Task, context: Context) -> str:

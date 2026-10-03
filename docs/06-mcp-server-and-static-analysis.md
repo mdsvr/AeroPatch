@@ -79,6 +79,11 @@ Context assembly for a finding at `path:line`, sized for a 4B model (target ≤ 
 Show code **without line-number prefixes**. The model has to copy `SEARCH` text verbatim, and
 line-number prefixes get copied into it. Pass line ranges as a separate header line instead.
 
+**A file of 60 lines or fewer is shown whole and verbatim** (added 2026-10-01). The header lines
+were being copied into `SEARCH` as well, and the fragments hid code the fix had to change
+(`NOTES.md`, Week 2). Larger files keep the fragments: on the first three 64–84-line scenarios no
+header was copied into `SEARCH`. A function's own lines are no longer listed as its call sites.
+
 ## 6. Static analysis scanners
 
 | Scanner | License | Strength | Use in AeroPatch |

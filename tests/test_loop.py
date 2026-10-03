@@ -1,5 +1,7 @@
 """End-to-end loop behaviour with a scripted model (needs Docker for the sandbox cases)."""
 
+from itertools import pairwise
+
 from conftest import needs_docker
 
 from aeropatch import scenario
@@ -64,6 +66,50 @@ def test_secret_prompt_is_blocked_and_recorded(monkeypatch, tmp_path):
     assert result.label == "SECRET_BLOCKED"
     assert [a.label for a in result.attempts] == ["SECRET_BLOCKED"]
     assert "sensitive-placeholder-value" not in (tmp_path / task.id / "report.md").read_text()
+
+
+BAD = GOOD.replace("conn.execute(f", "conn.run(f")  # SEARCH never matches, so no sandbox run
+
+
+def test_identical_edit_retries_hotter_then_stops_stuck(monkeypatch, tmp_path):
+    temps = []
+
+    def fake(route, messages, system, cfg, temperature, scenario_dir=None):
+        temps.append(temperature)
+        return Generation(text=BAD, model="scripted", cost_usd=0.01)
+
+    monkeypatch.setattr(router, "generate", fake)
+    res = loop.run(scenario.load("A-089-01"), load_config("repair-local"), tmp_path)
+    assert temps == [0.2, 0.4, 0.8]
+    assert [a.label for a in res.attempts] == ["SEARCH_NOT_FOUND", "STUCK"]
+    assert res.label == "STUCK" and not res.resolved
+    assert round(sum(a.cost_usd for a in res.attempts), 2) == 0.03  # the discarded repeat is still billed
+
+
+def test_identical_edit_retry_that_differs_is_a_normal_attempt(monkeypatch, tmp_path):
+    other = BAD.replace("conn.run(f", "conn.query(f")
+    monkeypatch.setattr(router, "generate", scripted([BAD, BAD, other]))
+    cfg = load_config("repair-local", attempt_plan=["local", "local"])
+    res = loop.run(scenario.load("A-089-01"), cfg, tmp_path)
+    assert [(a.n, a.label) for a in res.attempts] == [(1, "SEARCH_NOT_FOUND"), (2, "SEARCH_NOT_FOUND")]
+
+
+def test_chain_of_repairs_on_top_of_each_other_still_targets_the_original(monkeypatch, tmp_path):
+    original = """    cur = conn.execute(f"SELECT id, name FROM users WHERE name = '{name}'")"""
+    # Each version adds a suppression marker, so every attempt stops at the gates (no Docker).
+    versions = [original] + [f'    cur = conn.execute("{q}")  # nosec' for q in "abc"]
+    outs = [f"<<<<<<< SEARCH app/db.py\n{old}\n=======\n{new}\n>>>>>>> REPLACE"
+            for old, new in pairwise(versions)]
+    monkeypatch.setattr(router, "generate", scripted(outs))
+    res = loop.run(scenario.load("A-089-01"), load_config("repair-local"), tmp_path)
+    assert [a.label for a in res.attempts] == ["GATE_REJECT"] * 3  # none is SEARCH_NOT_FOUND
+    assert all(a.proposal.edits[0].search == original for a in res.attempts)
+
+    # A repair that re-states the first edit on top of itself is the same edit: STUCK.
+    same = outs[0].replace(original, versions[1])
+    monkeypatch.setattr(router, "generate", scripted([outs[0], same, same]))
+    res = loop.run(scenario.load("A-089-01"), load_config("repair-local"), tmp_path)
+    assert [a.label for a in res.attempts] == ["GATE_REJECT", "STUCK"]
 
 
 @needs_docker[0]
