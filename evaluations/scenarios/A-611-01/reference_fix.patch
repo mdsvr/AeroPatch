@@ -1,0 +1,13 @@
+diff --git a/app/feeds.py b/app/feeds.py
+index eaca11a..ba8abe0 100644
+--- a/app/feeds.py
++++ b/app/feeds.py
+@@ -47,7 +47,7 @@ def parse_feed(data):
+     handler = _ItemHandler()
+     parser = xml.sax.make_parser()
+     parser.setFeature(xml.sax.handler.feature_namespaces, False)
+-    parser.setFeature(xml.sax.handler.feature_external_ges, True)
++    parser.setFeature(xml.sax.handler.feature_external_ges, False)
+     parser.setContentHandler(handler)
+     try:
+         parser.parse(io.BytesIO(data))

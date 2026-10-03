@@ -1,0 +1,15 @@
+diff --git a/app/giftcards.py b/app/giftcards.py
+index b6adf30..122e4c4 100644
+--- a/app/giftcards.py
++++ b/app/giftcards.py
+@@ -39,6 +39,10 @@ def transfer(ledger, sender, recipient, amount):
+     if sender == recipient:
+         raise LedgerError("cannot send to the same card")
+     cents = int(amount)
++    if cents <= 0:
++        raise LedgerError("amount must be positive")
++    if ledger[recipient] + cents > MAX_BALANCE_CENTS:
++        raise LedgerError("card balance limit reached")
+     remaining = ledger[sender] - cents
+     if remaining < 0:
+         raise LedgerError("not enough balance")

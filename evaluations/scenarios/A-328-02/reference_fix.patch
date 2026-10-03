@@ -1,0 +1,40 @@
+diff --git a/app/accounts.py b/app/accounts.py
+index 2dacd02..1fff7b2 100644
+--- a/app/accounts.py
++++ b/app/accounts.py
+@@ -2,8 +2,10 @@
+ 
+ import hashlib
+ import hmac
++import os
+ 
+ MIN_PASSWORD_LENGTH = 8
++ITERATIONS = 200_000
+ 
+ 
+ class AccountError(ValueError):
+@@ -33,15 +35,21 @@ class Accounts:
+             raise AccountError("no such account")
+         if len(password) < MIN_PASSWORD_LENGTH:
+             raise AccountError(f"passwords need at least {MIN_PASSWORD_LENGTH} characters")
+-        self._records[username] = hashlib.sha1(password.encode("utf-8")).hexdigest()
++        salt = os.urandom(16)
++        digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, ITERATIONS)
++        self._records[username] = f"pbkdf2_sha256${ITERATIONS}${salt.hex()}${digest.hex()}"
+ 
+     def check_password(self, username, password):
+         """True when `password` is the account's current password."""
+         stored = self._records.get(username)
+         if not stored:
+             return False
+-        candidate = hashlib.sha1(password.encode("utf-8")).hexdigest()
+-        return hmac.compare_digest(candidate, stored)
++        try:
++            _, iterations, salt, digest = stored.split("$")
++            candidate = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), bytes.fromhex(salt), int(iterations))
++        except ValueError:
++            return False
++        return hmac.compare_digest(candidate.hex(), digest)
+ 
+     def record(self, username):
+         """The stored password record, as it is written to the accounts file."""

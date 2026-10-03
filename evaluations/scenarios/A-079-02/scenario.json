@@ -1,0 +1,18 @@
+{
+  "id": "A-079-02",
+  "tier": "A",
+  "cwe": "CWE-79",
+  "cwe_name": "Cross-site scripting",
+  "difficulty": "medium",
+  "split": "test",
+  "description": "render_profile puts the member's display name and bio into the page as they were typed, in element text and inside a title attribute.",
+  "finding": {"tool": "opengrep", "rule_id": "aeropatch.python.html-fstring-unescaped", "path": "app/profile.py", "line": 54, "severity": "medium", "message": "User-supplied values are interpolated into HTML without escaping."},
+  "allowed_paths": ["app/profile.py"],
+  "target_function": "render_profile",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}

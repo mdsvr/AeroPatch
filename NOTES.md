@@ -119,22 +119,26 @@ cheaper; decide at D13 whether the frontier reference moves to it. Ollama cloud 
 ## Week 2, D8–D10 start (2026-10-01): repair loop, gates, router modes, 3 larger scenarios
 
 **13 dev scenarios** (the Week 1 ten plus A-022-02, A-078-02, A-089-02), oracle localization.
-Every run below was made on **uncommitted changes on top of `f65332f`** (each header says
-`dirty: true`), so re-run them on the commit before quoting a number anywhere. Runs are local
-(`runs/` is gitignored). `pytest -q`: 142 passed.
+The table is the **2026-10-03 re-run on `main` at `3d26b27`**: every header says `dirty: false`,
+and `pytest -q -rs` on that commit gave 142 passed, 0 skipped. Runs are local (`runs/` is
+gitignored).
 
 | Config | Plan | Resolved (95% CI) | Run | Notes |
 |---|---|---|---|---|
-| `repair-local` | local ×3 | 10/13 (50–92%) | `20261001-181502` | 7 on attempt 1, 3 by repair |
-| `repair-local` | local ×3 | 8/13 (36–82%) | `20261001-182050` | 7 on attempt 1, 1 by repair |
-| `repair-claude-code` | Claude Opus 5 ×3 | **13/13** (77–100%) | `20261001-182615` | All on attempt 1; $0.14 API-equivalent |
-| `cascade-claude-code` | local, local, Claude Opus 5 | **13/13** (77–100%) | `20261001-180638` | 8 local, 5 escalated; $0.26 API-equivalent. **Older state**, see below |
+| `repair-local` | local ×3 | 10/13 (50–92%) | `20261003-113223` | 7 on attempt 1, 3 by repair; 43 tok/s |
+| `repair-local` | local ×3 | 7/13 (29–77%) | `20261003-115043` | 7 on attempt 1, none by repair; 46 tok/s |
+| `repair-claude-code` | Claude Opus 5 ×3 | **13/13** (77–100%) | `20261003-113658` | All on attempt 1; $0.26 API-equivalent |
+| `cascade-claude-code` | local, local, Claude Opus 5 | **13/13** (77–100%) | `20261003-114259` | 9 local (7 on attempt 1, 2 by repair), 4 escalated; $0.22 API-equivalent |
+| `oracle` | reference fix replay | 12/13 | `20261003-113134` | Harness bug in the oracle route, fixed below; 13/13 after (`20261003-121131`) |
 
-The first three rows share one state of the code and scenarios. The cascade row is one step
-older: it ran before A-022-02's PoC test was corrected (item 10 below), and its re-run failed
-fast with `LocalServerDown` because the Ollama server had stopped. That run escalated A-022-02,
-which the local model resolved on attempt 1 in both later runs, so its 8 local / 5 escalated
-split is likely to shift. **Re-run it.**
+The first runs of these configs (2026-10-01, on uncommitted code, `dirty: true`) gave 10/13 and
+8/13 local, 13/13 Opus and 13/13 cascade (8 local, 5 escalated). The Opus run cost $0.14 then
+and $0.26 now for the same 13 first-attempt resolves; the difference was not looked into.
+
+**Oracle route bug (fixed 2026-10-03).** `patch_to_blocks`
+gave a file's last hunk the path of the *next* file in the patch, so the two-file A-089-02
+replayed as `FORMAT_FAIL`. It only affects the `oracle` config, not any model run.
+`tests/test_oracle.py` covers a two-file patch.
 
 - **D8 check met:** a fix that fails attempt 1 and lands on attempt 2 is in
   `runs/20261001-181502-repair-local-dev/A-918-01/`; two more land on attempt 3 (A-078-01,
@@ -147,13 +151,16 @@ split is likely to shift. **Re-run it.**
   other, and not the same scenarios. Across all of today's local-route runs, including those
   made before the fixes below (16 per Week 1 scenario): A-328 never resolved locally, A-918
   once, A-078-01 and A-601 four times each, A-502 nine times. With n = 13 none of the run-to-run
-  differences is significant.
+  differences is significant. The 2026-10-03 runs repeat the pattern: the same seven on attempt
+  1 in all three local-route runs, and 3, 0 and 2 repairs.
 - **Not comparable with D6:** the context, the loop and one Week 1 test changed (below), and
   dev grew.
 - **Decode speed fell** from ~48 tok/s to 38 and 43 tok/s (run medians) in the last two local
   runs, after about an hour of back-to-back benchmarks. Earlier in the session (during run
   `175545`) the GPU read 78 °C with 3,947 MiB in use. Thermal throttling (risk R10) and VRAM
-  pressure are the candidates; neither was checked.
+  pressure are the candidates; neither was checked. On 2026-10-03 it held at 43–46 tok/s over a
+  25-minute block of five runs; the GPU went from 54 °C to 72 °C after the first local run, with
+  3,933 MiB in use (about 190 MiB of that was there before the model loaded).
 
 **What the first repair run showed (it added nothing: 5/10 on the Week 1 ten), and what changed:**
 
@@ -219,18 +226,89 @@ keeps fixes like this visible; report it next to the resolve rate in Week 4.
 `cascade` and `baseline-frontier` still use the API route and need a key; the `-claude-code`
 configs are the ones that run today.
 
+## Week 2, D10–D11 (2026-10-03): 20 test scenarios, 33 of 40–50
+
+All 20 are Tier A, stdlib-only and in **test** (`split.json`: 13 dev, 20 test, not frozen yet).
+For each one:
+- the 4-check validator passes in the sandbox, and **every** PoC test fails on the vulnerable
+  code (the validator only asks for one);
+- the reference fix passes the gates and resolves through the `oracle` route: 20/20, run
+  `20261003-123850-oracle-test`;
+- its rule fires on the vulnerable code and not on the fixed code;
+- a second-attempt prompt built from its sandbox feedback passes the secret filter, for both a
+  PoC failure and a regression failure (40 prompts, 0 blocked; no model involved). Feedback, not
+  the first prompt, is what got prompts blocked on 2026-10-01, and `test_scenarios.py` only
+  covers first prompts.
+
+`pytest -q -rs`: 224 passed, 0 skipped. **No model has been run on these, and none should be
+before D13.** Dev is dev because the context builder and the parser were tuned against it.
+
+| ID | CWE | Target file | What it adds over dev |
+|---|---|---|---|
+| A-089-03 | 89 | 90 lines | `%`-formatted `LIKE` search plus a status filter; a second table to leak through `UNION` |
+| A-078-03 | 78 | 76 lines | `os.system` with `cd … && tar`; a `tarfile` fix needs no subprocess at all |
+| A-022-03 | 22 | 66 lines | `tarfile.extractall` on an uploaded archive (`..` and absolute entries) |
+| A-079-02 | 79 | 68 lines | Four interpolation points, one inside a `title="…"` attribute |
+| A-502-02 | 502 | 91 lines | A legacy pickle branch next to the JSON path in a job spool |
+| A-918-02 | 918 | 67 lines | A host-name blocklist already exists; the resolved address is never checked |
+| A-601-02 | 601 | 58 lines | A prefix check already exists; `//host`, `/\host` and look-alike hosts pass it |
+| A-1333-02 | 1333 | 67 lines | `^([A-Za-z]+\s*)+$` among four compiled patterns; a length cap alone does not fix it (41 characters hang, a 62-character name must stay valid) |
+| A-328-02 | 328 | 55 lines | Class with `set_password` and `check_password`; both must change together |
+| A-209-02 | 209 | 71 lines | `repr(exc)` and `traceback.format_exc()` in the JSON body |
+| A-611-01 | 611 | 74 lines | SAX parser with `feature_external_ges` turned on |
+| A-798-01 | 798 | 51 lines | Password literal next to settings that are read from `BILLING_*` variables |
+| A-352-01 | 352 | 52 lines | One of two POST views skips the existing `csrf_ok` check |
+| A-020-01 | 20 | 44 lines | Quantity with no range check: zero, negative, over the per-line limit, repeated adds |
+| A-338-01 | 338 | 47 lines | Reset codes from `random.choice`; the PoC replays the seed |
+| A-611-02 | 611 | 58 lines | `pulldom` with a custom parser; a local file entity and an external DTD |
+| A-798-02 | 798 | 50 lines | Fallback HMAC key in the source when the environment variable is missing |
+| A-352-02 | 352 | 50 lines | The token is compared only when the form sends one; an empty token matches a session without one |
+| A-020-02 | 20 | 62 lines | Negative transfer amount pulls money back; the recipient can pass the card limit |
+| A-338-02 | 338 | 47 lines | API key from `random.Random(owner:second)`; the PoC recomputes it |
+
+**Things found while writing them**
+- **XXE on Python 3.12 needs the code to ask for it.** Probed with a `file://` entity: `ElementTree`
+  raises, `minidom` and default `xml.sax` drop the entity, and only `xml.sax` with
+  `feature_external_ges` set to True reads the file (it then loads an external DTD too, also
+  through `pulldom`). Setting `feature_external_pes` raises: expat does not read external
+  parameter entities. Both 611 scenarios use the `external_ges` switch; an lxml variant would
+  need a pinned dependency.
+- **A-798-01 uses `"changeme"`** as the hard-coded password, so nothing that looks like a real
+  secret is sent to a model.
+- **Secret filter gap, fixed.** `DB_PASSWORD = "…"` and other `_`-prefixed names passed the
+  assignment check, because `\b` does not match between `_` and `PASSWORD`. The pattern now uses
+  a lookbehind; `tests/test_prompts.py` has the case. `redact` uses the same pattern, so repair
+  feedback is redacted more widely too. All 28 first prompts still pass, and no prompt, model
+  output or sandbox log of the 2026-10-03 runs contains an assignment the old pattern missed, so
+  those results do not depend on the change. Names with a suffix (`SECRET_KEY = "…"`) are still
+  only caught by the entropy rule (32+ characters).
+- **Files over 60 lines limit what a scenario can ask.** The prompt then shows only the
+  finding's function, so a fix that needs a second function in the same file is out of reach
+  for any model (A-502-01's old problem). The larger test scenarios keep the whole fix inside
+  the target function; those that need a sibling function or a module-level constant
+  (A-328-02, A-352-01, A-798-01, A-798-02) stay under 61 lines.
+- **Seven new rules** (17 in total): `tar-extract-unfiltered`, `xxe-external-entities`,
+  `hardcoded-credential`, `csrf-missing-check`, `csrf-check-skippable`, `unchecked-quantity`,
+  `insecure-random-secret`. They add no finding to any other scenario.
+- **The rules are syntactic, so some valid fixes still trip them:** escaping into a variable
+  before the f-string (A-079-02), a manual path check without `filter=` (A-022-03), a safe
+  regex that still has a quantified group (A-1333-02). Those count as "original rule still
+  present" and will lower the scanner-clean rate without being wrong.
+- **Authoring bias.** These scenarios and their reference fixes were written by a Claude model,
+  and the frontier reference is Claude Opus 5. The PoC tests assert outcomes (nothing leaked,
+  nothing run, nothing stored) so that other correct fixes pass, but say this next to the
+  frontier numbers. Tier B (real CVEs) does not have this problem.
+
 ## Next (Week 2, doc 14)
 
-1. Re-run `cascade-claude-code` on dev, and all four configs once this work is committed.
-   Today's server was started with `OLLAMA_MODELS=F:\.ollama\models` set for that process: the
-   user-level variable points at `D:\ollama_models`, which does not exist. Whether the tray app
-   finds the models with that variable was not tested; check `ollama list` before a long run.
-2. D10–D11: the remaining scenarios (13 exist, all dev; target 40–50) with 50–150-line apps,
-   all into **test**, then freeze `split.json`. New CWEs each need an Opengrep rule; a CWE-798
-   scenario must use a placeholder credential or the secret filter blocks its prompt; check XXE
-   is really exploitable on Python 3.12 before building on it. PoC tests should assert the
-   outcome (nothing leaked, nothing run), not one exception type (items 7 and 10).
-3. D12: `metrics.py` (Wilson CIs, McNemar), concurrency 2, thin MCP wrapper.
-4. D13: full baselines with repair, run on a clean commit. Decide first whether the frontier
-   reference moves to `claude-opus-5-5`.
-5. The architecture pages (`docs/architecture*.html`) still carry a "What's blocking D6?" prompt.
+1. D11: 7–17 more scenarios, then freeze `split.json`. Tier A is at 33 (the plan asked for
+   ~28). Open: Tier B, 10–15 real Python CVEs (doc 14 §4), which need hash-pinned
+   `requirements.lock` files and network at image build; Tier C, 5 held-out synthetic ones,
+   which wait for the doc 09 injection script (D14). CWE-327 has no scenario of its own.
+2. D12: `metrics.py` (Wilson CIs, McNemar), concurrency 2, thin MCP wrapper.
+3. D13: full baselines with repair, run on a clean commit. Decide first whether the frontier
+   reference moves to `claude-opus-5-5`. Ollama: on 2026-10-03 the tray app served the models
+   from `F:\.ollama\models` although the user-level `OLLAMA_MODELS` still points at the missing
+   `D:\ollama_models`; `ollama list` showed `qwen3.5:4b`. Use the tray server for the overnight
+   run (a server started from a session is killed after 2 hours).
+4. The architecture pages (`docs/architecture*.html`) still carry a "What's blocking D6?" prompt.

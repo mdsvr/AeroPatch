@@ -1,0 +1,38 @@
+diff --git a/app/jobs.py b/app/jobs.py
+index 7f19e06..71383ef 100644
+--- a/app/jobs.py
++++ b/app/jobs.py
+@@ -2,11 +2,9 @@
+ 
+ import json
+ import os
+-import pickle
+ import uuid
+ 
+ JOB_SUFFIX = ".job"
+-PICKLE_MAGIC = b"\x80"
+ REQUIRED_FIELDS = ("name", "args", "priority")
+ MAX_PRIORITY = 9
+ 
+@@ -42,17 +40,14 @@ def save_job(spool_dir, job):
+ def load_job(path):
+     """Read one job file from the spool directory.
+ 
+-    Other hosts drop job files into the spool over the upload endpoint. Files written by
+-    workers older than v2 are pickles; newer ones are JSON.
++    Other hosts drop job files into the spool over the upload endpoint. Job files are JSON;
++    the pickle format of workers older than v2 is no longer read.
+     """
+     with open(path, "rb") as f:
+         raw = f.read()
+     try:
+-        if raw.startswith(PICKLE_MAGIC):
+-            job = pickle.loads(raw)
+-        else:
+-            job = json.loads(raw.decode("utf-8"))
+-    except (pickle.UnpicklingError, EOFError, ValueError) as exc:
++        job = json.loads(raw.decode("utf-8"))
++    except ValueError as exc:
+         raise JobError(f"unreadable job file: {os.path.basename(path)}") from exc
+     return _validated(job)
+ 

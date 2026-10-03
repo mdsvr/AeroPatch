@@ -1,0 +1,18 @@
+{
+  "id": "A-798-01",
+  "tier": "A",
+  "cwe": "CWE-798",
+  "cwe_name": "Hard-coded credentials",
+  "difficulty": "easy",
+  "split": "test",
+  "description": "The SMTP password is a literal in the source and smtp_settings returns it, while host, port and user are read from BILLING_* environment variables through setting().",
+  "finding": {"tool": "opengrep", "rule_id": "aeropatch.python.hardcoded-credential", "path": "app/mailer.py", "line": 7, "severity": "high", "message": "A credential is assigned from a string literal in the source."},
+  "allowed_paths": ["app/mailer.py"],
+  "target_function": "smtp_settings",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}

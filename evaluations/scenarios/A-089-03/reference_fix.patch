@@ -1,0 +1,23 @@
+diff --git a/app/tickets.py b/app/tickets.py
+index d16f6b0..f02f659 100644
+--- a/app/tickets.py
++++ b/app/tickets.py
+@@ -72,12 +72,13 @@ def search_tickets(conn, term, status=None, limit=50):
+     `term` and `status` are the search box and the status drop-down of the ticket list page.
+     """
+     limit = max(1, min(int(limit), MAX_RESULTS))
+-    where = "title LIKE '%%%s%%'" % term
++    where = "title LIKE ?"
++    params = [f"%{term}%"]
+     if status:
+-        where += " AND status = '%s'" % status
+-    cur = conn.execute(
+-        "SELECT id, title, status, assignee FROM tickets WHERE %s ORDER BY id DESC LIMIT %d" % (where, limit)
+-    )
++        where += " AND status = ?"
++        params.append(status)
++    query = "SELECT id, title, status, assignee FROM tickets WHERE " + where + " ORDER BY id DESC LIMIT ?"
++    cur = conn.execute(query, [*params, limit])
+     return cur.fetchall()
+ 
+ 

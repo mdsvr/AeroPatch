@@ -1,0 +1,18 @@
+{
+  "id": "A-338-01",
+  "tier": "A",
+  "cwe": "CWE-338",
+  "cwe_name": "Cryptographically weak pseudo-random number generator",
+  "difficulty": "easy",
+  "split": "test",
+  "description": "_new_code builds password-reset codes with random.choice. The random module is a seeded Mersenne Twister, so the codes can be predicted from its state.",
+  "finding": {"tool": "opengrep", "rule_id": "aeropatch.python.insecure-random-secret", "path": "app/reset.py", "line": 14, "severity": "high", "message": "A security code is generated with the non-cryptographic random module."},
+  "allowed_paths": ["app/reset.py"],
+  "target_function": "_new_code",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}

@@ -1,0 +1,13 @@
+diff --git a/app/settings.py b/app/settings.py
+index a7346cb..bcf6ba5 100644
+--- a/app/settings.py
++++ b/app/settings.py
+@@ -42,6 +42,8 @@ def change_email(request, session, users):
+     """Handle POST /settings/email: set a new e-mail address for the logged-in user."""
+     if request["method"] != "POST":
+         return 405, {"error": "use POST"}
++    if not csrf_ok(request, session):
++        return 403, {"error": "invalid CSRF token"}
+     user = users.get(session.get("user_id"))
+     if user is None:
+         return 401, {"error": "log in first"}

@@ -1,0 +1,18 @@
+{
+  "id": "A-611-02",
+  "tier": "A",
+  "cwe": "CWE-611",
+  "cwe_name": "XML external entity reference",
+  "difficulty": "medium",
+  "split": "test",
+  "description": "read_sitemap gives pulldom a SAX parser with external general entities turned on, so a submitted sitemap can include local files and external DTDs.",
+  "finding": {"tool": "opengrep", "rule_id": "aeropatch.python.xxe-external-entities", "path": "app/sitemap.py", "line": 40, "severity": "high", "message": "The XML parser is set to resolve external entities."},
+  "allowed_paths": ["app/sitemap.py"],
+  "target_function": "read_sitemap",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}

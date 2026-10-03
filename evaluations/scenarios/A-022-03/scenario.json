@@ -1,0 +1,18 @@
+{
+  "id": "A-022-03",
+  "tier": "A",
+  "cwe": "CWE-22",
+  "cwe_name": "Path traversal",
+  "difficulty": "medium",
+  "split": "test",
+  "description": "restore_backup unpacks an uploaded tar archive with extractall and never checks that the entry names stay inside the restore folder.",
+  "finding": {"tool": "opengrep", "rule_id": "aeropatch.python.tar-extract-unfiltered", "path": "app/restore.py", "line": 50, "severity": "high", "message": "Archive entries are extracted without checking that their paths stay inside the destination."},
+  "allowed_paths": ["app/restore.py"],
+  "target_function": "restore_backup",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}

@@ -1,0 +1,20 @@
+diff --git a/app/bundles.py b/app/bundles.py
+index 8e11bb7..ffd1f58 100644
+--- a/app/bundles.py
++++ b/app/bundles.py
+@@ -38,9 +38,12 @@ def create_bundle(workdir, label, names):
+     for name in names:
+         if not os.path.isfile(os.path.join(workdir, name)):
+             raise BundleError(f"no such report: {name}")
+-    status = os.system(f"cd {workdir} && tar -czf {label}{BUNDLE_SUFFIX} {' '.join(names)}")
+-    if status != 0:
+-        raise BundleError(f"tar failed with status {status}")
++    try:
++        with tarfile.open(bundle_path(workdir, label), "w:gz") as tar:
++            for name in names:
++                tar.add(os.path.join(workdir, name), arcname=name)
++    except (OSError, tarfile.TarError) as exc:
++        raise BundleError(f"cannot write bundle: {exc}") from exc
+     return bundle_path(workdir, label)
+ 
+ 

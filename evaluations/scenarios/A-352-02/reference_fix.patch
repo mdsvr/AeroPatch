@@ -1,0 +1,14 @@
+diff --git a/app/transfers.py b/app/transfers.py
+index da2b541..749be5f 100644
+--- a/app/transfers.py
++++ b/app/transfers.py
+@@ -31,7 +31,8 @@ def transfer(request, session, accounts):
+     if request["method"] != "POST":
+         return 405, {"error": "use POST"}
+     form = request["form"]
+-    if "csrf_token" in form and not hmac.compare_digest(form["csrf_token"], session.get("csrf_token", "")):
++    expected = session.get("csrf_token", "")
++    if not expected or not hmac.compare_digest(form.get("csrf_token", ""), expected):
+         return 403, {"error": "invalid CSRF token"}
+     owner = _owner(session, accounts)
+     if owner is None:

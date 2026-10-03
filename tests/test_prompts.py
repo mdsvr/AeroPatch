@@ -10,6 +10,7 @@ from aeropatch.agent.prompts import SecretInPrompt, check_no_secrets, redact
         "GOOGLE_API_KEY=AIza" + "A" * 35,
         "github_pat_" + "a" * 30,
         'password = "s3cret-value-123"',
+        'DB_PASSWORD = "s3cret-value-123"',
         "api_token = AbCd0123EfGh4567IjKl8901MnOp2345",
         "auth payload contains aB3dE7fG9hJ2kL4mN6pQ8rS1tV5wX0yZ",
     ],

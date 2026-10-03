@@ -23,11 +23,12 @@ def patch_to_blocks(patch: str) -> str:
                           + "\n".join(replace) + "\n>>>>>>> REPLACE")
 
     for line in patch.splitlines():
-        if line.startswith("+++ "):
-            path = line[4:].removeprefix("b/")
-        elif line.startswith("@@"):
+        if line.startswith(("+++ ", "@@")):
+            # Flush before the path changes: a file's last hunk belongs to that file (A-089-02).
             flush()
             search, replace = [], []
+            if line.startswith("+++ "):
+                path = line[4:].removeprefix("b/")
         elif line.startswith(("--- ", "diff ", "index ")):
             continue
         elif line.startswith("-"):

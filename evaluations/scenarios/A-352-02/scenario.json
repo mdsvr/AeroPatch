@@ -1,0 +1,18 @@
+{
+  "id": "A-352-02",
+  "tier": "A",
+  "cwe": "CWE-352",
+  "cwe_name": "Cross-site request forgery",
+  "difficulty": "medium",
+  "split": "test",
+  "description": "transfer compares the CSRF token only when the form has a csrf_token field, so a forged form that leaves the field out is accepted; an empty token also matches a session that has none.",
+  "finding": {"tool": "opengrep", "rule_id": "aeropatch.python.csrf-check-skippable", "path": "app/transfers.py", "line": 34, "severity": "medium", "message": "The CSRF token is only checked when the request sends one."},
+  "allowed_paths": ["app/transfers.py"],
+  "target_function": "transfer",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}

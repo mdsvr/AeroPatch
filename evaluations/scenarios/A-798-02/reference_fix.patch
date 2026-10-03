@@ -1,0 +1,23 @@
+diff --git a/app/webhook_auth.py b/app/webhook_auth.py
+index 33d2c0e..7d372b4 100644
+--- a/app/webhook_auth.py
++++ b/app/webhook_auth.py
+@@ -6,7 +6,6 @@ import os
+ 
+ SIGNATURE_HEADER = "X-Pay-Signature"
+ ENV_NAME = "PAY_WEBHOOK_SECRET"
+-FALLBACK_SECRET = "changeme"
+ TOLERANCE_SECONDS = 300
+ 
+ 
+@@ -20,7 +19,9 @@ def signing_key(env=None):
+     Deployments set the PAY_WEBHOOK_SECRET environment variable; `env` replaces os.environ.
+     """
+     env = os.environ if env is None else env
+-    return env.get(ENV_NAME, FALLBACK_SECRET).encode("utf-8")
++    if not env.get(ENV_NAME):
++        raise SignatureError(f"{ENV_NAME} is not set")
++    return env[ENV_NAME].encode("utf-8")
+ 
+ 
+ def sign(timestamp, body, key):

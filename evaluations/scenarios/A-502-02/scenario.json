@@ -1,0 +1,18 @@
+{
+  "id": "A-502-02",
+  "tier": "A",
+  "cwe": "CWE-502",
+  "cwe_name": "Unsafe deserialization",
+  "difficulty": "medium",
+  "split": "test",
+  "description": "load_job still unpickles job files in the old worker format, and job files arrive from other hosts through the upload endpoint.",
+  "finding": {"tool": "opengrep", "rule_id": "aeropatch.python.unsafe-deserialization", "path": "app/jobs.py", "line": 52, "severity": "high", "message": "Untrusted bytes are deserialized with pickle or unsafe YAML loading."},
+  "allowed_paths": ["app/jobs.py"],
+  "target_function": "load_job",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}

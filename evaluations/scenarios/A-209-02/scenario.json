@@ -1,0 +1,18 @@
+{
+  "id": "A-209-02",
+  "tier": "A",
+  "cwe": "CWE-209",
+  "cwe_name": "Information exposure through an error message",
+  "difficulty": "medium",
+  "split": "test",
+  "description": "When anything fails, export_invoice puts the exception's repr and the full traceback into the JSON body it sends to the API client.",
+  "finding": {"tool": "opengrep", "rule_id": "aeropatch.python.exception-in-response", "path": "app/invoices.py", "line": 71, "severity": "medium", "message": "Exception details are returned to the client."},
+  "allowed_paths": ["app/invoices.py"],
+  "target_function": "export_invoice",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}
