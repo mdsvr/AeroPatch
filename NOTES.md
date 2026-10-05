@@ -546,7 +546,9 @@ published last week:
   own tests converted to pytest (Flask-HTTPAuth). Four are the project's tests plus tests I
   added (geopy, microdot, sqlparse, pyasn1). Five I wrote in the style of the project's suite
   (both PyJWT ones, mistune, Mako, hpack); the second PyJWT one includes three cases from the
-  fix's tests. Each file's docstring says which.
+  fix's tests. This list is the record: the docstrings of the microdot, sqlparse and second
+  PyJWT files name the upstream test file without mentioning my additions, and the scenario
+  files are frozen.
 - Mako and Flask-HTTPAuth install hash-pinned dependencies at image build (MarkupSafe; Flask
   and its six dependencies). The other eight need nothing beyond the standard library.
 - Same bar as the 27 Tier A test scenarios: validator, every PoC test failing on the vulnerable
