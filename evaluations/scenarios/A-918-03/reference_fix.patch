@@ -1,0 +1,26 @@
+diff --git a/app/previews.py b/app/previews.py
+index 8404a06..d73fa7a 100644
+--- a/app/previews.py
++++ b/app/previews.py
+@@ -2,7 +2,7 @@
+ 
+ from urllib.parse import urlsplit
+ 
+-ALLOWED_PREFIXES = ("https://cdn.shop.example", "https://img.partner.example")
++ALLOWED_HOSTS = ("cdn.shop.example", "img.partner.example")
+ IMAGE_TYPES = ("image/png", "image/jpeg", "image/webp")
+ MAX_IMAGE_BYTES = 2 * 1024 * 1024
+ 
+@@ -24,7 +24,11 @@ def fetch_image(url, session):
+     from inside our network and returns an object with `status`, `content_type` and `body`.
+     Images may only be loaded from our CDN and from the partner image host.
+     """
+-    if not url.startswith(ALLOWED_PREFIXES):
++    try:
++        parts = urlsplit(url)
++    except ValueError as exc:
++        raise PreviewError("not a URL") from exc
++    if parts.scheme != "https" or parts.hostname not in ALLOWED_HOSTS:
+         raise PreviewError("images must come from the CDN or the partner image host")
+     response = session.get(url)
+     if response.status != 200:

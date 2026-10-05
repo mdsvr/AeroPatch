@@ -86,6 +86,21 @@ def test_identical_edit_retries_hotter_then_stops_stuck(monkeypatch, tmp_path):
     assert round(sum(a.cost_usd for a in res.attempts), 2) == 0.03  # the discarded repeat is still billed
 
 
+def test_stuck_local_route_still_escalates_in_a_cascade(monkeypatch, tmp_path):
+    other = BAD.replace("conn.run(f", "conn.query(f")
+    routes = []
+
+    def fake(route, messages, system, cfg, temperature, scenario_dir=None):
+        routes.append(route)
+        return Generation(text=BAD if route == "local" else other, model=route)
+
+    monkeypatch.setattr(router, "generate", fake)
+    res = loop.run(scenario.load("A-089-01"), load_config("cascade"), tmp_path)
+    assert routes == ["local", "local", "local", "frontier"]  # repeat, hotter repeat, then the next route
+    assert [(a.route, a.label) for a in res.attempts] == [
+        ("local", "SEARCH_NOT_FOUND"), ("local", "STUCK"), ("frontier", "SEARCH_NOT_FOUND")]
+
+
 def test_identical_edit_retry_that_differs_is_a_normal_attempt(monkeypatch, tmp_path):
     other = BAD.replace("conn.run(f", "conn.query(f")
     monkeypatch.setattr(router, "generate", scripted([BAD, BAD, other]))

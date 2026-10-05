@@ -1,0 +1,18 @@
+{
+  "id": "A-078-04",
+  "tier": "A",
+  "cwe": "CWE-78",
+  "cwe_name": "OS command injection",
+  "difficulty": "hard",
+  "split": "test",
+  "description": "run_tool runs a command string through the shell. The string is built in app/commands.py, where count_command formats the search term typed by the user straight into the grep command line.",
+  "finding": {"tool": "opengrep", "rule_id": "aeropatch.python.subprocess-shell", "path": "app/logviewer.py", "line": 25, "severity": "high", "message": "A command string is run through the shell."},
+  "allowed_paths": ["app/logviewer.py", "app/commands.py"],
+  "target_function": "run_tool",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}

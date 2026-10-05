@@ -44,7 +44,22 @@ Status 2026-09-29: the 10 dev scenarios are recorded; the test IDs are added in 
 Change 2026-10-01: **dev is now 13.** The first three larger scenarios (A-022-02, A-078-02,
 A-089-02) were used to check the context builder and parser on files over 60 lines, so they
 cannot be test scenarios. Every scenario added from here on goes to test.
-Status 2026-10-03: 20 Tier A test scenarios exist (33 in total); Tier B and C are still to come.
+Status 2026-10-03: 27 Tier A test scenarios exist (40 in total) and **`split.json` is frozen at
+13 dev / 27 test**. Every CWE in section 4 has at least two scenarios; CWE-338 was added.
+Status 2026-10-05: **Tier B exists: 10 scenarios from real CVEs**, under their own key `test_b`
+in `split.json` (50 scenarios in total; dev and test are unchanged). They come from the GitHub
+advisory database, not from PatchEval-Verified or CVE-Bench: reviewed pip advisories published
+since 2026-03-15, kept when the upstream fix is one commit that changes one non-test file by
+at most 60 lines and adds a test, in a permissively licensed pure-Python project. Each
+scenario vendors the package at the commit before the fix, with its licence file, and uses the
+upstream fix as its reference patch. The PoC tests use upstream's attack inputs with the
+assertions rewritten to check outcomes, or are rebuilt around the advisory (4 of 10); the
+regression tests are the project's own, the project's own plus additions, or written in the
+project's style (1, 4 and 5 scenarios; `NOTES.md`, 2026-10-05).
+Two of the ten install hash-pinned dependencies at image build. `scenario.json` carries the
+advisory URL, the CVE id, both commit hashes and the advisory date; none of these is shown
+to a model. **Tier C was not built**: it has to come from the same teacher model as the
+training data (doc 09), and that teacher is not chosen.
 
 ## 4. CWE coverage for Tier A (Python-relevant)
 
@@ -104,6 +119,7 @@ Each scenario must pass all four of these, or it doesn't enter the benchmark:
 3. With a **"delete the function body"** patch: at least one regression test **fails**,
    which shows the regression tests catch destructive fixes.
 4. The scanner finding is reported on the vulnerable code (Tier A), so the intake path is real.
+   A Tier B finding comes from the advisory, so the validator marks this check as skipped.
 
 ## 7. Evaluation settings (the axes of the results table)
 
@@ -126,7 +142,9 @@ as the main table, and the other axes as focused ablations on the fine-tuned mod
 - For each scenario, call the same `loop.run(task, config)` the CLI uses, and append the
   `Attempt` and `RunResult` lines to `runs/<run_id>.jsonl`.
 - Resumable: completed task IDs are skipped. Deterministic order (sorted IDs); seeds are logged.
-- Concurrency: sequential generation, at most 2 sandboxes (doc 02).
+- Concurrency: sequential generation, at most 2 sandboxes (doc 02). As built: `--jobs 2` runs
+  two tasks at once with local generation under one lock; the default is `--jobs 1`, which the
+  baseline runs use so that latency and tok/s stay comparable.
 - The run header records the git commit of AeroPatch, model digests, image digests, server
   version, and hardware info, so every number in the README traces back to a run file.
 
@@ -143,7 +161,8 @@ multiplies generations by 5, so run it on the fine-tuned SLM and one frontier mo
 
 - [x] Week 1: 10 validated dev scenarios, and a baseline table for 3 models (2 local + Claude
       Opus 5; `NOTES.md`, doc 03 §5).
-- [ ] Week 2: 40–50 validated scenarios, `split.json` frozen, and full baselines logged.
+- [x] Week 2: 50 validated scenarios (40 Tier A, 10 Tier B), `split.json` frozen, and full
+      baselines logged (`NOTES.md`, 2026-10-03 and 2026-10-05).
 - [ ] Week 4: final results with every number traceable to a run file (doc 12).
 
 Next: [12-metrics-and-reporting.md](12-metrics-and-reporting.md)

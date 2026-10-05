@@ -20,8 +20,9 @@ IDS = scenario.list_ids()
 
 def test_split_covers_every_scenario_once():
     split = json.loads((SCENARIOS_DIR / "split.json").read_text())
-    assert sorted(split["dev"] + split["test"]) == IDS
-    assert len(split["dev"]) == 13
+    assert sorted(split["dev"] + split["test"] + split["test_b"]) == IDS
+    assert (len(split["dev"]), len(split["test"])) == (13, 27)  # frozen 2026-10-03
+    assert len(split["test_b"]) == 10  # Tier B, frozen 2026-10-05
 
 
 def test_original_rule_rescan_reports_present_absent_or_unavailable(monkeypatch, tmp_path):
@@ -40,7 +41,7 @@ def test_original_rule_rescan_reports_present_absent_or_unavailable(monkeypatch,
 @pytest.mark.parametrize("sid", IDS)
 def test_scenario_loads_and_points_at_target(sid):
     task = scenario.load(sid)
-    src = (task.repo_path / task.finding.path).read_text()
+    src = (task.repo_path / task.finding.path).read_text(encoding="utf-8")
     start, end = function_span(src, task.target_function)
     assert task.finding.path in task.allowed_paths
     assert start <= task.finding.line <= end or task.finding.line < start  # module-level finding allowed
@@ -59,7 +60,7 @@ def test_reference_fix_passes_the_gates(sid):
     task = scenario.load(sid)
     with Workspace(task.repo_path) as ws:
         originals = ws.read_many(task.allowed_paths)
-        assert ws.apply_patch((SCENARIOS_DIR / sid / "reference_fix.patch").read_text()) == ""
+        assert ws.apply_patch((SCENARIOS_DIR / sid / "reference_fix.patch").read_text(encoding="utf-8")) == ""
         changed = ws.read_many(ws.changed_paths())
     gate = check(originals, changed, task.allowed_paths, allow_imports=task.allow_imports)
     assert gate.ok, gate.details
@@ -69,7 +70,7 @@ needs_opengrep = pytest.mark.skipif(scanners.opengrep_binary() is None, reason="
 
 
 @needs_opengrep
-@pytest.mark.parametrize("sid", IDS)
+@pytest.mark.parametrize("sid", [s for s in IDS if scenario.load(s).finding.tool == "opengrep"])  # Tier A
 def test_rules_fire_on_vulnerable_and_not_on_fixed(sid, tmp_path):
     task = scenario.load(sid)
     before = scanners.run_opengrep(task.repo_path)

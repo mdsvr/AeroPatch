@@ -1,6 +1,6 @@
 # 06 — MCP Server, AST Context Extraction and Static Analysis (Week 1)
 
-Maps to: `mcp_server/server.py` (Week 2, D12), `src/aeropatch/tools/`. Back to the index: [00-overall-plan.md](00-overall-plan.md)
+Maps to: `src/aeropatch/mcp_server.py` (`aeropatch mcp`, built on D12), `src/aeropatch/tools/`. Back to the index: [00-overall-plan.md](00-overall-plan.md)
 
 ## 1. MCP in September 2026: what changed
 
@@ -48,6 +48,13 @@ write access to real branches out of reach of any model is the safer default.
 Use MCP tool annotations (`readOnlyHint`, `destructiveHint`, `openWorldHint`) truthfully, so
 clients can apply their own approval policies.
 
+**As built (2026-10-03):** `src/aeropatch/mcp_server.py`, started with `uv run aeropatch mcp`
+(stdio), on the MCP Python SDK 2.2 (`MCPServer`; `FastMCP` is its v1 name). It sits inside the
+package for the same reason as the rest of `src/aeropatch/`: it runs as an installed script.
+Four of the six tools are exposed: `scan`, `get_context`, `validate` and `remediate`.
+`propose_fix` and `apply_edits` are not: `remediate` covers both, and no client drives the
+steps one by one yet. `validate` and `remediate` take a benchmark `task_id`, not a free repo.
+
 ## 4. Input validation at the MCP boundary (security, don't skip)
 
 - `repo` must resolve (via `Path.resolve()`) to a path under an allowlisted root, e.g.
@@ -57,6 +64,9 @@ clients can apply their own approval policies.
 - Cap input sizes: search/replace text ≤ 20 KB per edit and ≤ 10 edits.
 - Tool errors return structured error results. Don't let raw tracebacks with host paths go
   back to the client.
+- As built: the only allowlisted root is `evaluations/scenarios/`; a configured workspace root
+  is not built, because no client scans anything else yet. `validate` caps the diff at 64 KB
+  and refuses a diff that adds or removes files, because the gates only look at changed files.
 
 ## 5. AST context extraction (tree-sitter + stdlib `ast`)
 
@@ -148,8 +158,12 @@ When both scanners report the same line, merge the two findings and keep both ru
       fires on all 10 dev scenarios (`opengrep.exe` + the 10-rule ruleset).
 - [x] `get_context(repo, path, line)` returns ≤ 3k-token context; `tests/test_context.py` covers
       a nested function, a decorated method, and a file with a syntax error.
-- [ ] MCP server lists the tools; one successful call from MCP Inspector or Claude Code.
-      **Moved to D12** (doc 14), as the timeline already planned.
+- [x] MCP server lists the tools; one successful call. Done on D12 (2026-10-03) with the SDK's own
+      stdio client, not Inspector or Claude Code: `scan` and `validate` on A-327-02 against
+      `uv run aeropatch mcp` as a separate process (`NOTES.md`). `tests/test_mcp_server.py` covers
+      the tool list, a real `get_context` call and the rejected inputs. On 2026-10-05 headless
+      Claude Code (2.1.239) loaded the server from a throwaway `--mcp-config` file, listed the four
+      tools and called `get_context`; nothing was added to the user's Claude Code settings.
 - [x] Path-validation tests (`tests/test_paths.py`): traversal, symlink escape, and
       non-allowlisted repo are all rejected.
 

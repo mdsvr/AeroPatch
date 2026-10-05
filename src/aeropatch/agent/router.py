@@ -2,16 +2,21 @@
 
 from __future__ import annotations
 
+import threading
 from pathlib import Path
 
 from aeropatch.models import claude_code_client, fallback_client, local_client, oracle_client
 from aeropatch.models.base import Generation
 
+# One generation at a time on the local GPU, also when bench runs two tasks at once (doc 11 §8).
+_LOCAL_LOCK = threading.Lock()
+
 
 def generate(route: str, messages: list[dict], system: str, cfg: dict, temperature: float,
              scenario_dir: Path | None = None) -> Generation:
     if route == "local":
-        return local_client.generate(messages, system, cfg, temperature)
+        with _LOCAL_LOCK:
+            return local_client.generate(messages, system, cfg, temperature)
     if route == "frontier":
         return fallback_client.generate(messages, system, cfg, temperature)
     if route == "claude-code":

@@ -1,0 +1,21 @@
+{
+  "id": "B-400-02",
+  "tier": "B",
+  "cwe": "CWE-400",
+  "cwe_name": "Uncontrolled resource consumption",
+  "difficulty": "medium",
+  "split": "test_b",
+  "description": "Real.__float__ converts a REAL value (mantissa, base, exponent) by first computing the integer mantissa * base ** exponent. The exponent of a decoded value is chosen by the sender, so a base-10 value with an exponent in the hundreds of millions makes float(), and everything that calls it such as prettyPrint(), build a number with hundreds of millions of digits before failing.",
+  "finding": {"tool": "advisory", "rule_id": "advisory.cwe-400", "path": "pyasn1/type/univ.py", "line": 1495, "severity": "high", "message": "Float conversion materialises base ** exponent as an integer for any exponent."},
+  "allowed_paths": ["pyasn1/type/univ.py"],
+  "target_function": "Real.__float__",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "https://github.com/advisories/GHSA-hm4w-wwcw-mr6r",
+  "cve": "CVE-2026-59886",
+  "fix_commit": "https://github.com/pyasn1/pyasn1/commit/e60c691cb91addb8fcefa2f537e85ede6fb1e886",
+  "vulnerable_commit": "af65c3b92e9deeae50db4de390982dd970d87f98",
+  "license": "BSD-2-Clause",
+  "published_date": "2026-07-21"
+}

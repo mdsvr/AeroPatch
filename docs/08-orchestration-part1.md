@@ -131,8 +131,10 @@ rebased onto the original lines (`edits.rebase`), before the identical-edit hash
 - Repair attempts: temperature 0.4, a little diversity so the model doesn't repeat the same
   wrong edit.
 - A repair attempt whose edit is identical to a previous one is detected by hashing the
-  normalized edits. Retry it once at temperature 0.8; if it's still identical, stop early and
-  label the run `STUCK`.
+  normalized edits. Retry it once at temperature 0.8; if it's still identical, the attempt is
+  labelled `STUCK` and that route gets no further attempts. The run ends there unless the
+  plan still has a different route: in a cascade the frontier entry still runs (changed
+  2026-10-03; before, `STUCK` ended every run, so a stuck local model was never escalated).
 
 ## 8. Example attempt log (what one JSONL line records, abridged)
 

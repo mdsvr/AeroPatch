@@ -1,0 +1,18 @@
+{
+  "id": "A-918-03",
+  "tier": "A",
+  "cwe": "CWE-918",
+  "cwe_name": "Server-side request forgery",
+  "difficulty": "medium",
+  "split": "test",
+  "description": "fetch_image allows a URL when the text starts with one of the allowed prefixes. The host is never parsed, so https://cdn.shop.example.attacker.net/ and https://cdn.shop.example@10.0.0.5/ pass the check and are requested from inside the network.",
+  "finding": {"tool": "opengrep", "rule_id": "aeropatch.python.url-prefix-allowlist", "path": "app/previews.py", "line": 27, "severity": "high", "message": "A URL is allowed by its string prefix; its host is never parsed."},
+  "allowed_paths": ["app/previews.py"],
+  "target_function": "fetch_image",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}

@@ -1,0 +1,21 @@
+{
+  "id": "B-1333-01",
+  "tier": "B",
+  "cwe": "CWE-1333",
+  "cwe_name": "Inefficient regular expression complexity",
+  "difficulty": "medium",
+  "split": "test_b",
+  "description": "Point.from_string matches POINT_PATTERN against the whole input string. On a long string that does not match, for example text followed by thousands of spaces and one more character, the pattern backtracks for seconds to minutes, so a service that parses caller-supplied coordinates can be tied up.",
+  "finding": {"tool": "advisory", "rule_id": "advisory.cwe-1333", "path": "geopy/point.py", "line": 426, "severity": "medium", "message": "Regular expression matching of caller-supplied text takes super-linear time."},
+  "allowed_paths": ["geopy/point.py"],
+  "target_function": "Point.from_string",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "https://github.com/advisories/GHSA-mhvh-fq92-pfmr",
+  "cve": "CVE-2026-77387",
+  "fix_commit": "https://github.com/geopy/geopy/commit/5d09fa843f90ec80788b61552539c9fd3ae6c528",
+  "vulnerable_commit": "beceb5fe7a671c0c0b535da31d8eb09cc29deccf",
+  "license": "MIT",
+  "published_date": "2026-10-02"
+}

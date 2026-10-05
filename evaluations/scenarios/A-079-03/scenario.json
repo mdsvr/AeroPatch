@@ -1,0 +1,18 @@
+{
+  "id": "A-079-03",
+  "tier": "A",
+  "cwe": "CWE-79",
+  "cwe_name": "Cross-site scripting",
+  "difficulty": "medium",
+  "split": "test",
+  "description": "_clean escapes &, < and > but not quotes, and its result is placed inside double-quoted HTML attributes (title, value). A profile field that contains a double quote ends the attribute and adds its own, such as an event handler.",
+  "finding": {"tool": "opengrep", "rule_id": "aeropatch.python.html-escape-misses-quotes", "path": "app/profiles.py", "line": 7, "severity": "medium", "message": "A hand-written HTML escape leaves quotes unescaped."},
+  "allowed_paths": ["app/profiles.py"],
+  "target_function": "_clean",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "MIT",
+  "published_date": null
+}

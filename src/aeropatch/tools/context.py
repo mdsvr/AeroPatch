@@ -16,7 +16,6 @@ from aeropatch.contracts import Context
 from aeropatch.tools.paths import safe_join
 
 PY = Language(tsp.language())
-_parser = Parser(PY)
 
 FUNC = ("function_definition",)
 MAX_CALLERS = 2
@@ -24,7 +23,8 @@ SMALL_FILE_LINES = 60
 
 
 def _parse(src: bytes):
-    return _parser.parse(src)
+    # A parser per call: a Parser object is not safe to share between bench's worker threads.
+    return Parser(PY).parse(src)
 
 
 def _text(node: Node, src: bytes) -> str:

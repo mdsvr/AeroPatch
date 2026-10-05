@@ -1,0 +1,29 @@
+diff --git a/app/messages.py b/app/messages.py
+index 2264da3..5855dfd 100644
+--- a/app/messages.py
++++ b/app/messages.py
+@@ -1,11 +1,11 @@
+ """Wire format of the job queue: JSON, with a few typed values marked by "__type__"."""
+ 
+-import importlib
+ import json
+ from datetime import date, timedelta
+ from decimal import Decimal
+ 
+ TYPE_KEY = "__type__"
++SAFE_TYPES = {"decimal.Decimal": Decimal, "datetime.date": date, "datetime.timedelta": timedelta}
+ 
+ 
+ class MessageError(ValueError):
+@@ -27,8 +27,9 @@ def _revive(obj):
+     """json.loads `object_hook`: rebuild a value that _mark described."""
+     if TYPE_KEY not in obj:
+         return obj
+-    module_name, _, name = obj[TYPE_KEY].rpartition(".")
+-    factory = getattr(importlib.import_module(module_name), name)
++    factory = SAFE_TYPES.get(obj[TYPE_KEY])
++    if factory is None:
++        raise MessageError(f"unknown type {obj[TYPE_KEY]!r}")
+     return factory(*obj.get("args", []))
+ 
+ 

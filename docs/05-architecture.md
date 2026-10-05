@@ -88,12 +88,13 @@ place if you want JSON-schema export for the MCP tool signatures, which the MCP 
 ## 6. Revised repository structure (differences from the original plan)
 
 As built in Week 1, everything lives in one package, `src/aeropatch/`, so `uv run aeropatch`
-works as an installed script. `mcp_server/` (Week 2) and `training/` (Week 3) don't exist yet.
+works as an installed script. The MCP wrapper is `src/aeropatch/mcp_server.py` (Week 2), and
+`training/` holds only `inject_cwe.py` so far (the rest is Week 3).
 
 | Original path | Revised (as built) | Reason |
 |---|---|---|
 | `docker/vllm.Dockerfile` | **drop**; use the official Ollama or llama.cpp server image in compose | No vLLM on 4 GB |
-| `mcp_server/tools/` | `src/aeropatch/tools/` (real code) + `mcp_server/server.py` (thin wrapper, Week 2) | One implementation, two front doors |
+| `mcp_server/tools/` | `src/aeropatch/tools/` (real code) + `src/aeropatch/mcp_server.py` (thin wrapper, `aeropatch mcp`) | One implementation, two front doors |
 | `src/agent/graph.py` | `src/aeropatch/agent/loop.py` | Plain state machine, no LangGraph |
 | — | `src/aeropatch/agent/edits.py`, `gates.py`, `prompts.py`, `router.py` | Edit parsing/diffing and safety gates are core logic |
 | — | `src/aeropatch/models/`: local (Ollama), API, Claude Code and oracle clients | One small module per route |

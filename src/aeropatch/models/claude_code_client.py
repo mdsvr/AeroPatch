@@ -60,13 +60,17 @@ def generate(messages: list[dict], system: str, cfg: dict, temperature: float,
         return Generation(text="", model=model, error=f"PROVIDER_ERROR: exit {proc.returncode}: {detail}",
                           latency_s=latency)
     u = out.get("usage") or {}
-    served = next(iter(out.get("modelUsage") or {}), model)
+    # modelUsage also lists the CLI's own side calls (a small Haiku call comes first since
+    # 2026-10-01), so look the requested model up; the first key was logged as served_by before.
+    by_model = out.get("modelUsage") or {}
+    served = next((m for m in by_model if m.startswith(model)), next(iter(by_model), model))
     usage = {
         "input_tokens": u.get("input_tokens", 0),
         "output_tokens": u.get("output_tokens", 0),
         "cache_read_input_tokens": u.get("cache_read_input_tokens", 0),
         "cache_creation_input_tokens": u.get("cache_creation_input_tokens", 0),
         "served_by": served,
+        "model_usage": by_model,  # per model, with costUSD: cost_usd below is the total of all of them
         "billing": "claude-code-subscription",
     }
     gen = Generation(text="", model=model, usage=usage, latency_s=latency,

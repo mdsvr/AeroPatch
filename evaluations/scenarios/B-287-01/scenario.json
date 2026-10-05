@@ -1,0 +1,21 @@
+{
+  "id": "B-287-01",
+  "tier": "B",
+  "cwe": "CWE-287",
+  "cwe_name": "Improper authentication",
+  "difficulty": "easy",
+  "split": "test_b",
+  "description": "HTTPTokenAuth.authenticate calls the application's verify_token callback even when the request carries no token: a missing or empty Authorization header reaches the callback as an empty string. An application that looks the token up in its user table then logs the request in as any account whose stored token is empty.",
+  "finding": {"tool": "advisory", "rule_id": "advisory.cwe-287", "path": "flask_httpauth.py", "line": 623, "severity": "high", "message": "The token verification callback runs with an empty token when the request has none."},
+  "allowed_paths": ["flask_httpauth.py"],
+  "target_function": "HTTPTokenAuth.authenticate",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "https://github.com/advisories/GHSA-p44q-vqpr-4xmg",
+  "cve": "CVE-2026-34531",
+  "fix_commit": "https://github.com/miguelgrinberg/flask-httpauth/commit/b15ffe9e50e110d7174ccd944f642079e1dcf9ee",
+  "vulnerable_commit": "bc689124a25960f6e481ea308d3ccf03bbfaec5e",
+  "license": "MIT",
+  "published_date": "2026-03-31"
+}

@@ -1,0 +1,21 @@
+{
+  "id": "B-113-01",
+  "tier": "B",
+  "cwe": "CWE-113",
+  "cwe_name": "HTTP response splitting",
+  "difficulty": "easy",
+  "split": "test_b",
+  "description": "Response.set_cookie builds the Set-Cookie header value from the cookie name, value, path, domain and expires arguments without checking them. An argument that contains a carriage return or a line feed ends the header line, so the caller of the application can add headers of their own to the response.",
+  "finding": {"tool": "advisory", "rule_id": "advisory.cwe-113", "path": "microdot/microdot.py", "line": 614, "severity": "medium", "message": "Cookie arguments are placed in a response header without rejecting line breaks."},
+  "allowed_paths": ["microdot/microdot.py"],
+  "target_function": "Response.set_cookie",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "https://github.com/advisories/GHSA-7wc8-wvc4-m498",
+  "cve": "CVE-2026-42874",
+  "fix_commit": "https://github.com/miguelgrinberg/microdot/commit/99b281b45faef8472410f2d56bfef496dfbd95d5",
+  "vulnerable_commit": "da91d4272aa2fb5efcc81bf823947737e031d0f8",
+  "license": "MIT",
+  "published_date": "2026-05-05"
+}

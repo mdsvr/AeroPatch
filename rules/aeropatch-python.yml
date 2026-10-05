@@ -245,3 +245,72 @@ rules:
       - metavariable-regex:
           metavariable: $FN
           regex: ^(Random|choice|choices|randint|random|randrange|getrandbits|sample|shuffle)$
+
+  - id: aeropatch.python.weak-integrity-digest
+    languages: [python]
+    severity: WARNING
+    message: A collision-prone digest (MD5 or SHA-1) is used to check data integrity.
+    metadata: {cwe: "CWE-327: Broken or risky cryptographic algorithm"}
+    patterns:
+      - pattern-inside: |
+          def $F(...):
+            ...
+      - metavariable-regex:
+          metavariable: $F
+          regex: (?i).*(fingerprint|checksum|digest|etag|integrity).*
+      - pattern-either:
+          - pattern: hashlib.md5(...)
+          - pattern: hashlib.sha1(...)
+          - pattern: hashlib.new("md5", ...)
+          - pattern: hashlib.new("sha1", ...)
+
+  - id: aeropatch.python.keyed-hash-without-hmac
+    languages: [python]
+    severity: ERROR
+    message: A signature is a plain hash of the key joined to the message, not an HMAC.
+    metadata: {cwe: "CWE-327: Broken or risky cryptographic algorithm"}
+    patterns:
+      - pattern-inside: |
+          def $F(...):
+            ...
+      - metavariable-regex:
+          metavariable: $F
+          regex: (?i).*(sign|mac).*
+      - pattern-either:
+          - pattern: hashlib.$H($KEY + $MSG, ...)
+          - pattern: hashlib.new($ALG, $KEY + $MSG, ...)
+
+  - id: aeropatch.python.dynamic-import-deserialization
+    languages: [python]
+    severity: ERROR
+    message: A name taken from the data being decoded is imported and called.
+    metadata: {cwe: "CWE-502: Unsafe deserialization"}
+    pattern-either:
+      - pattern: getattr(importlib.import_module($M), $N)
+      - pattern: getattr(__import__($M), $N)
+
+  - id: aeropatch.python.html-escape-misses-quotes
+    languages: [python]
+    severity: WARNING
+    message: A hand-written HTML escape leaves quotes unescaped.
+    metadata: {cwe: "CWE-79: Cross-site scripting"}
+    patterns:
+      - pattern: |
+          def $F(...):
+              ...
+              return <... $V.replace("<", "&lt;") ...>
+      - pattern-not-regex: (&quot;|&#34;|&#x22;)
+
+  - id: aeropatch.python.url-prefix-allowlist
+    languages: [python]
+    severity: ERROR
+    message: A URL is allowed by its string prefix; its host is never parsed.
+    metadata: {cwe: "CWE-918: Server-side request forgery"}
+    patterns:
+      - pattern-inside: |
+          def $F(..., $URL, ...):
+            ...
+      - metavariable-regex:
+          metavariable: $F
+          regex: (?i).*(fetch|download|proxy).*
+      - pattern: $URL.startswith(...)

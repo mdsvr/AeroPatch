@@ -1,0 +1,13 @@
+diff --git a/app/updates.py b/app/updates.py
+index cd1cc48..94e9cbb 100644
+--- a/app/updates.py
++++ b/app/updates.py
+@@ -13,7 +13,7 @@ class UpdateError(ValueError):
+ 
+ def fingerprint(data):
+     """Hex fingerprint of a package's bytes, as recorded in the release manifest."""
+-    return hashlib.md5(data).hexdigest()
++    return hashlib.sha256(data).hexdigest()
+ 
+ 
+ def manifest_entry(name, version, data):

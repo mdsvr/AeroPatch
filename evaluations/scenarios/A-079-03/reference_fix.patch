@@ -1,0 +1,20 @@
+diff --git a/app/profiles.py b/app/profiles.py
+index a0f90cb..10eea6f 100644
+--- a/app/profiles.py
++++ b/app/profiles.py
+@@ -1,12 +1,14 @@
+ """HTML fragments for the member directory: profile cards and the "edit profile" form."""
+ 
++import html
++
+ BADGES = {"admin": "Administrator", "staff": "Staff", "guest": "Guest"}
+ MAX_BIO_CHARS = 280
+ 
+ 
+ def _clean(value):
+     """Make a value safe to place in the page."""
+-    return str(value).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
++    return html.escape(str(value), quote=True)
+ 
+ 
+ def initials(name):

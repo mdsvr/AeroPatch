@@ -119,7 +119,8 @@ demonstration of the architecture.
 
 - [ ] All sandbox tests from doc 07, section 10, pass.
 - [ ] All gate rule tests from doc 08 pass.
-- [ ] MCP path-validation tests pass (traversal, symlink escape, non-allowlisted root).
+- [x] MCP path-validation tests pass (traversal, symlink escape, non-allowlisted root):
+      `tests/test_mcp_server.py` at the MCP boundary, `tests/test_paths.py` for the symlink case.
 - [ ] Outgoing-prompt secret scanner blocks a planted fake key (e.g. `sk-ant-FAKE...`).
 - [ ] `grep` of the repo for keys and tokens comes back clean; `.env` is in `.gitignore`; a
       history scan (e.g. `gitleaks`) has been run once before making the repo public.

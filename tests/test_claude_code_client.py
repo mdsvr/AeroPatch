@@ -65,3 +65,10 @@ def test_repair_history_is_flattened_in_order():
     msgs = [{"role": "user", "content": "a"}, {"role": "assistant", "content": "b"}, {"role": "user", "content": "c"}]
     cc.generate(msgs, "S", load_config("baseline-claude-code"), 0.2, run=runner(ok(), seen))
     assert seen["input"].index("[user]\na") < seen["input"].index("[assistant]\nb") < seen["input"].index("[user]\nc")
+
+
+def test_served_by_is_the_requested_model_not_the_cli_side_call():
+    by_model = {"claude-haiku-4-5-20251001": {"costUSD": 0.0009}, "claude-opus-5": {"costUSD": 0.0412}}
+    gen = cc.generate([{"role": "user", "content": "fix it"}], "SYSTEM", load_config("baseline-claude-code"),
+                      0.2, run=runner(ok(modelUsage=by_model), {}))
+    assert gen.usage["served_by"] == "claude-opus-5" and gen.usage["model_usage"] == by_model

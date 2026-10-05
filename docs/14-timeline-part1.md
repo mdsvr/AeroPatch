@@ -48,6 +48,18 @@ D10 started: 3 larger scenarios added to dev (13 dev, 0 test; 13 of 40–50). **
 dev runs were repeated on the merged commit, and 20 Tier A test scenarios were added (13 dev, 20
 test; 33 of 40–50; split not frozen). Tier B and D12 onwards not started.
 
+**Status (2026-10-03, end of day): D11–D14 done, with two things left out on purpose.** The set is
+40 Tier A scenarios (13 dev, 27 test), frozen; **Tier B and Tier C were not built**. D12's three
+pieces exist. The D13 baselines ran on the frozen test split in an afternoon, not overnight, and
+a re-check of them found and fixed a cascade bug (`NOTES.md`, D13). D14's analysis is written,
+and `training/inject_cwe.py` exists but has only had a smoke test: its teacher model is not
+chosen yet.
+
+**Status (2026-10-05): Tier B built and measured; Week 2 is closed except for Tier C.** Ten
+real-CVE scenarios were added under `test_b` (50 scenarios in total) and all three repair
+configs were run on them. A model run was killed and resumed, and Claude Code called the MCP
+server. Tier C waits for the teacher model of Week 3 (`NOTES.md`, 2026-10-05).
+
 | Day | Work | Output / acceptance check |
 |---|---|---|
 | D8 | Repair loop (doc 08 part 1): attempt plan, feedback builder, budgets, identical-edit detection, refusal-as-routing | A scenario that fails attempt 1 and succeeds on attempt 2, visible in the logs |
@@ -59,11 +71,20 @@ test; 33 of 40–50; split not frozen). Tier B and D12 onwards not started.
 | D14 | Buffer; baseline analysis (failure attribution, per-CWE); start the synthetic CWE-injection script (doc 09) so it can run unattended from D15 | Written notes: where the SLM fails and why. These guide the data mix |
 
 **Week 2 exit criteria**
-- [ ] The full loop with repair runs unattended over the whole set and can resume.
-- [ ] 40–50 validated scenarios, with the dev/test split frozen and committed.
-- [ ] A baseline headline table for untuned SLM (`local`, `cascade`) and frontier, with CIs.
-- [ ] The failure-attribution chart for the untuned SLM exists; it guides the Week 3 data.
-- [ ] The MCP server lists tools and serves one real call. It's a thin wrapper, as planned.
+- [x] The full loop with repair runs unattended over the whole set and can resume. Evidence in
+      two pieces: the three repair configs each ran unattended over the 27 test scenarios (and
+      over the 13 dev ones that morning, as separate commands), and resume was shown with the
+      `oracle` config at `--jobs 2`, killed after 8 results and resumed to 27/27. On 2026-10-05 a
+      `repair-local` run on dev was hard-killed after 5 results and resumed to 13 distinct results.
+- [x] 40–50 validated scenarios, with the dev/test split frozen and committed. 50: 40 Tier A and
+      10 Tier B.
+- [x] A baseline headline table for untuned SLM (`local`, `cascade`) and frontier, with CIs
+      (`NOTES.md`, D13; `aeropatch report`).
+- [x] The failure-attribution chart for the untuned SLM exists; it guides the Week 3 data. It is
+      the text chart in `aeropatch report`. The data mix uses the dev runs only (`NOTES.md`, D14).
+- [x] The MCP server lists tools and serves one real call. It's a thin wrapper, as planned. Called
+      from the SDK's stdio client and, on 2026-10-05, from headless Claude Code with a throwaway
+      MCP config.
 
 ## 4. Detailed task lists for the riskiest days
 
@@ -110,12 +131,17 @@ test; 33 of 40–50; split not frozen). Tier B and D12 onwards not started.
 - Accounts (Kaggle, Hugging Face, API console) are created by you; the code only reads keys from `.env`.
 
 **D11: Tier B real CVEs (slowest scenario type)**
-- [ ] Shortlist ~25 Python candidates from PatchEval-Verified and CVE-Bench (Gatti). Keep
-      those with small dependency sets and fast test suites.
-- [ ] Reuse the benchmark's own PoC tests where they exist; add 3+ regression tests if missing.
-- [ ] Put each one through the same validator; expect ~50% to be dropped for flaky tests,
-      heavy dependencies or build failures.
-- [ ] Record `published_date` and the source URL for the pre/post-release split (doc 09).
+- [x] Shortlist candidates. **Done from the GitHub advisory database instead of PatchEval-Verified
+      and CVE-Bench:** 154 advisories since 2026-03-15 fit the shape (one small single-file fix
+      with a test, permissive licence, pure Python); 16 fix commits were read.
+- [x] PoC tests use the attack inputs of the tests each upstream fix added, or are rebuilt around
+      the advisory where that test would not work as a PoC (4 of 10). Regression tests are the
+      project's own in 1 scenario, the project's own plus additions in 4, and written in the
+      project's style in 5 (`NOTES.md`, 2026-10-05, "How each one is built").
+- [x] Same validator. 10 of the 16 were built and all 10 pass; the other 6 were dropped before
+      building, for the reasons listed in `NOTES.md` (2026-10-05, "How the ten were chosen").
+- [x] `published_date`, the advisory URL, the CVE id and both commit hashes are in `scenario.json`.
+      All ten were published after Qwen3.5's release, so there is no "before release" group.
 
 ## 5. How Week 2 feeds Week 3 (don't skip this link)
 
