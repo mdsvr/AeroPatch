@@ -4,6 +4,8 @@ Part 1: [14-timeline-part1.md](14-timeline-part1.md). Back to the index: [00-ove
 
 ## 1. Week 3: data, training, export, serving
 
+Day-by-day task lists and the open decisions: [14-timeline-part3.md](14-timeline-part3.md).
+
 | Day | Work | Output / acceptance check |
 |---|---|---|
 | D15 (O) | Synthetic CWE injection runs unattended (teacher + sandbox verification); MoreFixes Python filter + commit→search/replace conversion (doc 09) | Verified pairs accumulating; conversion spot check: 20/20 byte-exact |

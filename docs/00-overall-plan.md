@@ -80,6 +80,7 @@ sandbox tests, the gates, the scenario validator, the baselines, or traceable nu
 | 13 | [13-security-threat-model.md](13-security-threat-model.md) | Security | Threats T1–T13, injection defence, adversarial scenarios, checklist | 136 |
 | 14a | [14-timeline-part1.md](14-timeline-part1.md) | Timeline | Weeks 1–2 day by day, exit criteria, detailed risky-day checklists | 133 |
 | 14b | [14-timeline-part2.md](14-timeline-part2.md) | Timeline | Weeks 3–4, weekly reviews, budget, risk register, cut list, definition of done | 135 |
+| 14c | [14-timeline-part3.md](14-timeline-part3.md) | Timeline | Week 3 in detail: open decisions, day-by-day task lists, the dev comparison | 179 |
 | 15 | [15-resume-and-deliverables.md](15-resume-and-deliverables.md) | Outcomes | Resume claim fixes, bullet templates, deliverables, README outline, demo | 141 |
 | 16 | [16-sources.md](16-sources.md) | References | All sources, claim→source confidence map, open verification items | 152 |
 
