@@ -41,7 +41,7 @@ interpreter or test runner; use the sandbox for your own scenarios and pinned pu
 uv sync
 uv run aeropatch build-base              # sandbox base image (once)
 uv run aeropatch validate --all          # 4 checks per scenario; builds scenario images
-uv run aeropatch bench --config oracle   # harness self-check: must resolve every scenario
+uv run aeropatch bench --config oracle   # harness self-check: must resolve every dev scenario (--split test, test_b for the others)
 uv run pytest -q                         # unit + sandbox containment tests
 ```
 
@@ -80,8 +80,8 @@ reads repositories under `evaluations/scenarios/`.
 | `src/aeropatch/sandbox/` | hardened Docker runner, JUnit parser |
 | `src/aeropatch/tools/` | tree-sitter context, scanners, scratch workspaces, path validation |
 | `src/aeropatch/scenario.py` | scenario loader and the 4-check validator |
-| `src/aeropatch/bench.py` | JSONL benchmark runner (resumable, `--jobs 2`) and baseline table |
-| `src/aeropatch/metrics.py` | Wilson intervals, resolve@k, exact McNemar, per-CWE table, failure attribution |
+| `src/aeropatch/bench.py` | JSONL benchmark runner (resumable, `--jobs 2`) |
+| `src/aeropatch/metrics.py` | the report: Wilson intervals, resolve@k, exact McNemar, speed and cost, per-CWE table, failure attribution |
 | `src/aeropatch/mcp_server.py` | thin MCP wrapper over the tools (stdio) |
 | `docker/` | sandbox base + per-scenario Dockerfiles, `run.sh`, hash-pinned harness tools |
 | `rules/` | AeroPatch's own Opengrep ruleset (22 rules) |
