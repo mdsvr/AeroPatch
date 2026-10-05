@@ -1,0 +1,21 @@
+{
+  "id": "B-400-01",
+  "tier": "B",
+  "cwe": "CWE-400",
+  "cwe_name": "Uncontrolled resource consumption",
+  "difficulty": "medium",
+  "split": "test_b",
+  "description": "decode_integer keeps reading continuation bytes for as long as the peer sends them and shifts each one into an ever larger Python integer. A header block with hundreds of thousands of continuation bytes makes one decode call run for many seconds. HPACK says integer encodings that exceed implementation limits must be treated as decoding errors.",
+  "finding": {"tool": "advisory", "rule_id": "advisory.cwe-400", "path": "hpack/hpack.py", "line": 98, "severity": "medium", "message": "The variable-length integer decoder has no limit on the number of continuation bytes."},
+  "allowed_paths": ["hpack/hpack.py"],
+  "target_function": "decode_integer",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "https://github.com/advisories/GHSA-8v8h-hg4w-mvq2",
+  "cve": "CVE-2026-59980",
+  "fix_commit": "https://github.com/python-hyper/hpack/commit/8cfb02c547740e16dbfe7aba77bad84b297cec2c",
+  "vulnerable_commit": "77e36a9cb51a930047ab8d4bed527e4c4d8a9854",
+  "license": "MIT",
+  "published_date": "2026-09-24"
+}

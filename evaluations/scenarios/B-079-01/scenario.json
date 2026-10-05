@@ -1,0 +1,21 @@
+{
+  "id": "B-079-01",
+  "tier": "B",
+  "cwe": "CWE-79",
+  "cwe_name": "Cross-site scripting",
+  "difficulty": "medium",
+  "split": "test_b",
+  "description": "safe_url replaces link and image targets that start with a harmful scheme, but it compares the URL as written. A scheme whose colon is percent-encoded, such as javascript%3Aalert(1), also when encoded twice, does not start with any listed scheme and is rendered as the link target.",
+  "finding": {"tool": "advisory", "rule_id": "advisory.cwe-79", "path": "mistune/renderers/html.py", "line": 56, "severity": "medium", "message": "The harmful-scheme check is applied to the URL before percent-decoding."},
+  "allowed_paths": ["mistune/renderers/html.py"],
+  "target_function": "HTMLRenderer.safe_url",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "https://github.com/advisories/GHSA-8c25-4j27-2rv3",
+  "cve": "CVE-2026-59923",
+  "fix_commit": "https://github.com/lepture/mistune/commit/c7101fcbb6e8790e8e39157c5ca2238fc6dd6cbc",
+  "vulnerable_commit": "2f2449dd0ab1976c98f4441f973c0a7f3d6f5ee4",
+  "license": "BSD-3-Clause",
+  "published_date": "2026-07-20"
+}

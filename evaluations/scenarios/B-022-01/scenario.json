@@ -1,0 +1,21 @@
+{
+  "id": "B-022-01",
+  "tier": "B",
+  "cwe": "CWE-22",
+  "cwe_name": "Path traversal",
+  "difficulty": "easy",
+  "split": "test_b",
+  "description": "Template.__init__ refuses a template uri that points outside the root path. Before the check it removes one leading slash from the uri, so a uri that starts with two or more slashes and then steps up with .. is normalised to an absolute-looking path and accepted. TemplateLookup strips all leading slashes when it looks for the file, so such a uri loads a file outside the template directories.",
+  "finding": {"tool": "advisory", "rule_id": "advisory.cwe-22", "path": "mako/template.py", "line": 263, "severity": "high", "message": "The check that a template uri stays inside the root strips only one leading slash."},
+  "allowed_paths": ["mako/template.py"],
+  "target_function": "Template.__init__",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "https://github.com/advisories/GHSA-v92g-xgxw-vvmm",
+  "cve": "CVE-2026-41205",
+  "fix_commit": "https://github.com/sqlalchemy/mako/commit/e05ac61989a7fb9dd7dcde6cfd72dc48328719a3",
+  "vulnerable_commit": "91232d80e4914fd82b42628bb2e2b061abb3dcfc",
+  "license": "MIT",
+  "published_date": "2026-04-16"
+}

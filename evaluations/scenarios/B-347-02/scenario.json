@@ -1,0 +1,21 @@
+{
+  "id": "B-347-02",
+  "tier": "B",
+  "cwe": "CWE-347",
+  "cwe_name": "Improper verification of cryptographic signature",
+  "difficulty": "hard",
+  "split": "test_b",
+  "description": "HMAC key preparation refuses PEM-encoded asymmetric keys by asking is_pem_format, whose pattern only matches the exact line layout of a PEM block. A public key whose layout is changed slightly (a tab before the END line, carriage returns instead of newlines, or no newlines) is still read as the same key by PEM loaders but is not recognised here, so it is accepted as an HMAC secret.",
+  "finding": {"tool": "advisory", "rule_id": "advisory.cwe-347", "path": "jwt/utils.py", "line": 127, "severity": "high", "message": "PEM detection depends on exact whitespace, so reformatted asymmetric keys pass as HMAC secrets."},
+  "allowed_paths": ["jwt/utils.py"],
+  "target_function": "is_pem_format",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "https://github.com/advisories/GHSA-ffc3-869f-jxw9",
+  "cve": "CVE-2026-102268",
+  "fix_commit": "https://github.com/jpadilla/pyjwt/commit/8b4e233a22206b34ec1186e912e75c0b2396ac07",
+  "vulnerable_commit": "1f8180a211256dfe5cf32294b6753f554a5a4258",
+  "license": "MIT",
+  "published_date": "2026-09-29"
+}

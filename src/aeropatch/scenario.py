@@ -133,6 +133,10 @@ def validate(sid: str, rebuild: bool = False) -> Validation:
         v.checks["3_destructive_fix_caught"] = ("PASS" if not r.regressions_passed else "FAIL") + \
             f" (regressions_passed={r.regressions_passed})"
 
+    if task.finding.tool not in ("opengrep", "bandit"):
+        # Check 4 is for scanner findings (Tier A, doc 11 §6); a Tier B finding comes from an advisory.
+        v.checks["4_finding_detected"] = f"SKIPPED ({task.finding.tool} finding)"
+        return v
     found = scanners.scan(task.repo_path)
     if task.finding.tool == "opengrep" and not found["opengrep"]:
         v.checks["4_finding_detected"] = "SKIPPED (opengrep not installed)"

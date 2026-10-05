@@ -1,5 +1,5 @@
 {
-  "_note": "Frozen on 2026-10-03: 13 dev, 27 test (40 Tier A scenarios). dev = prompt and checkpoint selection; test = final runs only (doc 11 \u00a73). dev grew from 10 to 13 on 2026-10-01: its -02 scenarios were used to check the fragment context (files over 60 lines), so they cannot be test. A scenario added after the freeze goes into a new split key, never into dev or test.",
+  "_note": "Frozen on 2026-10-03: 13 dev, 27 test (40 Tier A scenarios). dev = prompt and checkpoint selection; test = final runs only (doc 11 \u00a73). dev grew from 10 to 13 on 2026-10-01: its -02 scenarios were used to check the fragment context (files over 60 lines), so they cannot be test. A scenario added after the freeze goes into a new split key, never into dev or test: test_b holds the 10 Tier B real-CVE scenarios (frozen on 2026-10-05), which are test-only and were never used for tuning.",
   "dev": [
     "A-022-01",
     "A-022-02",
@@ -43,5 +43,17 @@
     "A-798-02",
     "A-918-02",
     "A-918-03"
+  ],
+  "test_b": [
+    "B-022-01",
+    "B-079-01",
+    "B-094-01",
+    "B-113-01",
+    "B-1333-01",
+    "B-287-01",
+    "B-347-01",
+    "B-347-02",
+    "B-400-01",
+    "B-400-02"
   ]
 }

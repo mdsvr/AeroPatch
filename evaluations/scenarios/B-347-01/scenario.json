@@ -1,0 +1,21 @@
+{
+  "id": "B-347-01",
+  "tier": "B",
+  "cwe": "CWE-347",
+  "cwe_name": "Improper verification of cryptographic signature",
+  "difficulty": "medium",
+  "split": "test_b",
+  "description": "When the verification key is a PyJWK, _verify_signature uses its raw key material directly and skips the algorithm's prepare_key step, which is where an empty HMAC key is rejected. A JWK of type oct with an empty k value therefore verifies any token that was signed with the empty key.",
+  "finding": {"tool": "advisory", "rule_id": "advisory.cwe-347", "path": "jwt/api_jws.py", "line": 417, "severity": "high", "message": "A key taken from a PyJWK is used for verification without the algorithm's key validation."},
+  "allowed_paths": ["jwt/api_jws.py"],
+  "target_function": "PyJWS._verify_signature",
+  "poc_tests": ["tests_poc/test_poc.py"],
+  "regression_tests": ["tests_regression/test_regression.py"],
+  "allow_imports": [],
+  "source_url": "https://github.com/advisories/GHSA-9j54-fg26-wv3r",
+  "cve": "CVE-2026-102266",
+  "fix_commit": "https://github.com/jpadilla/pyjwt/commit/f91ed44dd65baaf457f4b3353ed35e98a753934c",
+  "vulnerable_commit": "180783930de91876bc0d601f826a1f2956057291",
+  "license": "MIT",
+  "published_date": "2026-09-29"
+}

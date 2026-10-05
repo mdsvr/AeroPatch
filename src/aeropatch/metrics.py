@@ -68,7 +68,9 @@ def run_metrics(jsonl: Path) -> dict:
         "by_local": sum(1 for a in wins.values() if a["route"] == "local"),
         "escalated": len({a["task_id"] for a in attempts if a["route"] in ("frontier", "claude-code")}),
         # The finding's own rule no longer fires on the resolved fix (secondary signal, doc 06 §6).
-        "rule_gone": sum(1 for a in wins.values() if (a.get("sandbox") or {}).get("original_rule_present") is False),
+        # None when no rescan applies (an advisory finding has no rule to re-run).
+        "rule_gone": [(a.get("sandbox") or {}).get("original_rule_present") for a in wins.values()].count(False)
+        if any((a.get("sandbox") or {}).get("original_rule_present") is not None for a in wins.values()) else None,
         # First attempts: the edit applied (it reached the gates), and its PoC passed.
         "applied": sum(1 for a in first if a.get("sandbox") or a["label"] == "GATE_REJECT"),
         "poc_fixed": sum(1 for a in first if (a.get("sandbox") or {}).get("poc_passed")),
@@ -96,7 +98,7 @@ def headline(runs: list[dict]) -> str:
         lo, hi = wilson(k, n)
         rows.append([f"`{m['run']}`", m["config"], f"{k}/{n} ({_fmt(k / n if n else None, '.0%')})",
                      f"{lo:.0%}-{hi:.0%}", *m["resolve_at"], _fmt(m["repair_gain"], ".0%"), m["by_local"],
-                     m["escalated"], f"{m['rule_gone']}/{k}"])
+                     m["escalated"], "-" if m["rule_gone"] is None else f"{m['rule_gone']}/{k}"])
     return _table(["Run", "Config", "Resolved", "95% CI", "@1", "@2", "@3", "Repair gain", "Resolved locally",
                    "Escalated", "Rule gone"], rows)
 

@@ -50,7 +50,7 @@ def _run_build(cmd: list[str], log_path: Path | None) -> None:
                           errors="replace", env=env, check=False)
     if log_path:
         log_path.parent.mkdir(parents=True, exist_ok=True)
-        log_path.write_text(proc.stdout + proc.stderr)
+        log_path.write_text(proc.stdout + proc.stderr, encoding="utf-8")
     if proc.returncode != 0:
         raise RuntimeError(f"docker build failed ({cmd[-1]}):\n{proc.stderr[-3000:]}")
 
@@ -166,7 +166,7 @@ def run_tests(image: str, src_dir: Path, cfg: dict | None = None,
     _, logs, timed_out, duration = run_container(image, None, src_dir, cfg=cfg)
     if raw_log:
         raw_log.parent.mkdir(parents=True, exist_ok=True)
-        raw_log.write_text(logs)
+        raw_log.write_text(logs, encoding="utf-8")  # real code and model output are not cp1252
     return parse_logs(logs, timed_out, duration)
 
 

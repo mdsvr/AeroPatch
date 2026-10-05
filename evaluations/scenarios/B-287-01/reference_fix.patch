@@ -1,0 +1,15 @@
+diff --git a/flask_httpauth.py b/flask_httpauth.py
+index d1d270a..2f74c98 100644
+--- a/flask_httpauth.py
++++ b/flask_httpauth.py
+@@ -620,8 +620,8 @@ class HTTPTokenAuth(HTTPAuth):
+         return f
+ 
+     def authenticate(self, auth, stored_password):
+-        token = getattr(auth, 'token', '')
+-        if self.verify_token_callback:
++        token = getattr(auth, 'token', None)
++        if token and self.verify_token_callback:
+             return self.ensure_sync(self.verify_token_callback)(token)
+ 
+ 
