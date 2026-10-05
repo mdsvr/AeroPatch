@@ -51,8 +51,11 @@ in `split.json` (50 scenarios in total; dev and test are unchanged). They come f
 advisory database, not from PatchEval-Verified or CVE-Bench: reviewed pip advisories published
 since 2026-03-15, kept when the upstream fix is one commit that changes one non-test file by
 at most 60 lines and adds a test, in a permissively licensed pure-Python project. Each
-scenario vendors the package at the commit before the fix, with its licence file; the PoC is
-taken from the tests the fix added and the regression tests from the project's own suite.
+scenario vendors the package at the commit before the fix, with its licence file, and uses the
+upstream fix as its reference patch. The PoC tests use upstream's attack inputs with the
+assertions rewritten to check outcomes, or are rebuilt around the advisory (4 of 10); the
+regression tests are the project's own, the project's own plus additions, or written in the
+project's style (1, 4 and 5 scenarios; `NOTES.md`, 2026-10-05).
 Two of the ten install hash-pinned dependencies at image build. `scenario.json` carries the
 advisory URL, the CVE id, both commit hashes and the advisory date; none of these is shown
 to a model. **Tier C was not built**: it has to come from the same teacher model as the

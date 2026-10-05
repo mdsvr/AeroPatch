@@ -536,10 +536,17 @@ published last week:
   file (MIT, BSD-2, BSD-3). `scenario.json` records the advisory URL, the CVE id, both commit
   hashes and the advisory date. None of these is shown to a model: the finding's rule id is
   `advisory.cwe-N` and the description states the flaw without naming the CVE.
-- The PoC comes from the tests the upstream fix added, the regression tests from the project's
-  own suite (4 to 17 per scenario), and the reference patch is the upstream fix. Where an
-  upstream test pinned one way of fixing (an exact error message, a literal `#harmful-link`),
-  the PoC asserts the outcome instead, so another correct fix passes.
+- The reference patch is the upstream fix, unchanged.
+- **PoC tests: the attack is upstream's, the test code is mine.** Six reuse the inputs of the
+  tests the upstream fix added, with the assertion rewritten to check the outcome (nothing
+  leaked, no header line added, no claims returned), so another correct fix passes. Four were
+  rebuilt around the advisory, because the upstream test pins exact output, passes on the
+  vulnerable code too, or would hang the test process: sqlparse, Flask-HTTPAuth, hpack, pyasn1.
+- **Regression tests (4 to 17 per scenario) are not all upstream's.** One file is the project's
+  own tests converted to pytest (Flask-HTTPAuth). Four are the project's tests plus tests I
+  added (geopy, microdot, sqlparse, pyasn1). Five I wrote in the style of the project's suite
+  (both PyJWT ones, mistune, Mako, hpack); the second PyJWT one includes three cases from the
+  fix's tests. Each file's docstring says which.
 - Mako and Flask-HTTPAuth install hash-pinned dependencies at image build (MarkupSafe; Flask
   and its six dependencies). The other eight need nothing beyond the standard library.
 - Same bar as the 27 Tier A test scenarios: validator, every PoC test failing on the vulnerable
@@ -562,8 +569,8 @@ prompts or the gates)
   libraries. Real fixes that span files, need native code or services are not represented, so
   these ten are the easy end of real CVEs.
 - **Authoring bias is reduced, not gone.** The vulnerable code and the fixes are other people's.
-  The scenario descriptions, the choice of regression tests and the adaptation of the PoC
-  tests were done by a Claude model.
+  The scenario descriptions, the PoC test code and writing or choosing the regression tests
+  were done by a Claude model.
 - **Three scenarios depend on time** (geopy, hpack, pyasn1): their PoC runs the call in a child
   process with a 5-second limit. On this laptop the vulnerable code needs well over that for
   the PoC inputs (measured on smaller inputs: 18 s for hpack, over 12 s for pyasn1, over 8 s
@@ -573,6 +580,10 @@ prompts or the gates)
 - **No "before release" group.** All ten advisories are later than Qwen3.5's release, so the
   memorisation comparison of doc 09 §9 cannot be made. Fix commits were public 2 days to 3
   months before their advisories, and six of the ten fixes were public before July 2026.
+- **Memorisation cannot be ruled out for the frontier reference.** `claude-opus-5`'s training
+  cutoff is not in the model table I checked (it gives June 2026 for `claude-opus-5-5`, a later
+  model). Six of the ten fixes were public before July 2026 and three before May, so Opus may
+  have seen some of these fixes. Its 10/10 is not evidence either way.
 - **The CWE mix differs from Tier A.** CWE-94, 113, 287, 347 and 400 are not in doc 11's list;
   real advisories did not line up with it.
 
@@ -626,7 +637,9 @@ prompts or the gates)
 **Work**
 5. Week 3, D15: run `inject_cwe.py` with the chosen teacher; write `prepare_dataset.py` (doc 09)
    with the dedupe and leakage checks. The ten Tier B projects join the exclusion list: no
-   training example may come from their repositories.
+   training example may come from their repositories. `inject_cwe.py`'s 13-token leakage set
+   now also covers the roughly 250 vendored library files, so measure in the first teacher
+   batch how many candidates it rejects for sharing common library idioms.
 6. Headers copied into edits on files over 60 lines (D13, finding 3): judge a change to the
    context format on dev; it makes a new config.
 7. The cascade costs more than the frontier alone on both tiers. Sending the full history on

@@ -134,11 +134,12 @@ server. Tier C waits for the teacher model of Week 3 (`NOTES.md`, 2026-10-05).
 - [x] Shortlist candidates. **Done from the GitHub advisory database instead of PatchEval-Verified
       and CVE-Bench:** 154 advisories since 2026-03-15 fit the shape (one small single-file fix
       with a test, permissive licence, pure Python); 16 fix commits were read.
-- [x] PoC tests come from the tests each upstream fix added; regression tests come from the
-      project's own suite (4 to 17 per scenario).
+- [x] PoC tests use the attack inputs of the tests each upstream fix added, or are rebuilt around
+      the advisory where that test would not work as a PoC (4 of 10). Regression tests are the
+      project's own in 1 scenario, the project's own plus additions in 4, and written in the
+      project's style in 5 (`NOTES.md`, 2026-10-05, "How each one is built").
 - [x] Same validator. 10 of the 16 were built and all 10 pass; the other 6 were dropped before
-      building (timing-only tests, fixes spread over several functions, heavy fixtures, or the
-      50-scenario ceiling).
+      building, for the reasons listed in `NOTES.md` (2026-10-05, "How the ten were chosen").
 - [x] `published_date`, the advisory URL, the CVE id and both commit hashes are in `scenario.json`.
       All ten were published after Qwen3.5's release, so there is no "before release" group.
 
