@@ -5,12 +5,19 @@ do. It fixes Python vulnerabilities locally, proves each fix in a network-less s
 with test feedback, and escalates to a frontier model only when needed. Every claim is measured
 on a contamination-controlled benchmark.
 
-Status: **Week 2 exit criteria met; the real-CVE and synthetic scenario tiers were not built** (see
-[NOTES.md](NOTES.md) and the plan in [docs/](docs/00-overall-plan.md)).
-Baselines with up to three attempts on the frozen test split (27 scenarios, 2026-10-03): untuned
-Qwen3.5-4B resolves 17/27 and 18/27 in two runs (95% CIs 44–78% and 48–81%) at $0, Claude Opus 5 resolves 27/27
-(88–100%), and the cascade resolves 27/27 with 16 of them fixed locally. All 40 scenarios are
-hand-built and were written by Claude models, so the test split is too easy to separate frontier models.
+Status: **Week 2 complete, except the held-out synthetic tier, which waits for Week 3's teacher model**
+(see [NOTES.md](NOTES.md) and the plan in [docs/](docs/00-overall-plan.md)). Baselines with up to
+three attempts, two runs for the local model:
+
+| | 27 hand-built test scenarios | 10 real-CVE scenarios |
+|---|---|---|
+| Qwen3.5-4B, untuned, local, $0 | 17/27 and 18/27 | 5/10 and 5/10 |
+| Claude Opus 5 | 27/27 | 10/10 |
+| Cascade (local, local, then Opus) | 27/27, 16 fixed locally | 10/10, 4 fixed locally |
+
+The hand-built scenarios were written by Claude models, so they are easy ground for Opus. The
+real-CVE ones use other projects' vulnerable code and their own upstream fixes, published between
+2026-03-31 and 2026-10-02; with ten of them the intervals are wide (5/10 is 24–76%).
 Outputs are **candidate fixes that need human review**.
 
 ## Pipeline
@@ -78,7 +85,7 @@ reads repositories under `evaluations/scenarios/`.
 | `src/aeropatch/mcp_server.py` | thin MCP wrapper over the tools (stdio) |
 | `docker/` | sandbox base + per-scenario Dockerfiles, `run.sh`, hash-pinned harness tools |
 | `rules/` | AeroPatch's own Opengrep ruleset (22 rules) |
-| `evaluations/scenarios/` | 40 Tier A scenarios over 16 CWEs; `split.json` is frozen at 13 dev, 27 test |
+| `evaluations/scenarios/` | 50 scenarios: 40 hand-built (Tier A, 16 CWEs) and 10 from real CVEs (Tier B, each with the upstream licence); `split.json` is frozen at 13 dev, 27 test and 10 real-CVE test |
 | `training/` | `inject_cwe.py`: synthetic, sandbox-verified training examples (Week 3 data) |
 | `runs/` | run logs (gitignored) |
 

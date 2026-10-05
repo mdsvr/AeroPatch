@@ -488,30 +488,155 @@ reason. `tests/test_inject_cwe.py` covers parsing and the static rejects.
   shows the pipeline runs end to end. It says nothing about yield, no example has been kept
   yet, and so the `--student` pass has never run.
 
+## Week 2 close-out (2026-10-05): Tier B from real CVEs, and the open evidence closed
+
+You asked for all of Week 2 to be completed, so Tier B was built. Tier C was not: it has to come
+from the teacher model that also produces the training data (doc 09), and that is not chosen.
+
+**Evidence that was missing on 2026-10-03**
+- **A model run killed and resumed.** `repair-local` on dev, hard-killed after 5 results and
+  resumed under the same run id: 13 results, 13 distinct, in sorted order, `dirty: false`
+  (`runs/20261005-150539-repair-local-dev-killed.jsonl`; it resolved 9/13).
+- **The MCP server called from Claude Code.** Headless Claude Code 2.1.239, with a throwaway
+  `--mcp-config` file and `--strict-mcp-config`, connected to `aeropatch mcp`, listed the four
+  tools and called `get_context` on A-089-01. Nothing was added to your Claude Code settings.
+- The stale "What's blocking D6?" prompt on the architecture page now asks about Week 3.
+
+**How the ten were chosen.** Not from PatchEval-Verified or CVE-Bench as doc 14 planned, but from
+the GitHub advisory database, which is what those benchmarks are built from and reaches CVEs
+published last week:
+1. 1,906 reviewed pip advisories were published between 2026-03-16 and 2026-10-02 (after
+   Qwen3.5's release). 811 name exactly one fix commit.
+2. 154 of those, in 71 projects, fit the harness: the commit changes exactly one non-test
+   Python file by at most 60 lines and also changes a test, the licence is MIT, BSD, Apache or
+   PSF, and the project has no native code.
+3. From the small, dependency-light projects among them, 16 fix commits were read. 10 were
+   built; all 10 pass. The other 6 were dropped before building: three for fixes spread over
+   several functions (two in scitokens, one in urllib3), one for a timing-only test (a second
+   mistune one), one for a fix on an obscure error path (a third PyJWT one; two per project
+   was the cap), and Authlib for needing integration-test fixtures, which would also have
+   gone past the plan's ceiling of 50. GitPython's thirteen advisories were skipped unread:
+   their tests need a `git` binary, which the sandbox image does not have.
+
+| ID | CWE | Project | Function to fix | Fix public | Advisory | Upstream fix | Target file |
+|---|---|---|---|---|---|---|---|
+| B-022-01 | 22 | Mako | `Template.__init__` | 2026-04-14 | 2026-04-16 | 4 lines | 711 lines |
+| B-079-01 | 79 | mistune | `HTMLRenderer.safe_url` | 2026-06-21 | 2026-07-20 | 20 lines | 153 lines |
+| B-094-01 | 94 | sqlparse | `OutputPythonFilter._process` | 2026-06-29 | 2026-08-17 | 16 lines | 123 lines |
+| B-113-01 | 113 | microdot | `Response.set_cookie` | 2026-04-24 | 2026-05-05 | 4 lines | 1,566 lines |
+| B-1333-01 | 1333 | geopy | `Point.from_string` | 2026-07-10 | 2026-10-02 | 11 lines | 480 lines |
+| B-287-01 | 287 | Flask-HTTPAuth | `HTTPTokenAuth.authenticate` | 2026-03-28 | 2026-03-31 | 4 lines | 669 lines |
+| B-347-01 | 347 | PyJWT | `PyJWS._verify_signature` | 2026-09-09 | 2026-09-29 | 2 lines | 472 lines |
+| B-347-02 | 347 | PyJWT | `is_pem_format` | 2026-09-09 | 2026-09-29 | 19 lines | 142 lines |
+| B-400-01 | 400 | hpack | `decode_integer` | 2026-06-21 | 2026-09-24 | 13 lines | 664 lines |
+| B-400-02 | 400 | pyasn1 | `Real.__float__` | 2026-07-08 | 2026-07-21 | 21 lines | 3,327 lines |
+
+**How each one is built**
+- `repo/` holds the project's package at the commit before the fix, with the upstream licence
+  file (MIT, BSD-2, BSD-3). `scenario.json` records the advisory URL, the CVE id, both commit
+  hashes and the advisory date. None of these is shown to a model: the finding's rule id is
+  `advisory.cwe-N` and the description states the flaw without naming the CVE.
+- The PoC comes from the tests the upstream fix added, the regression tests from the project's
+  own suite (4 to 17 per scenario), and the reference patch is the upstream fix. Where an
+  upstream test pinned one way of fixing (an exact error message, a literal `#harmful-link`),
+  the PoC asserts the outcome instead, so another correct fix passes.
+- Mako and Flask-HTTPAuth install hash-pinned dependencies at image build (MarkupSafe; Flask
+  and its six dependencies). The other eight need nothing beyond the standard library.
+- Same bar as the 27 Tier A test scenarios: validator, every PoC test failing on the vulnerable
+  code, repair prompts from PoC and regression feedback passing the secret filter, and a
+  second, differently written fix resolving. One alternative fix was wrong in a way the
+  project's own test caught (Flask-HTTPAuth must return `None`, not `False`, for "no user").
+- They are under their own key `test_b` in `split.json`, frozen at 10. dev and test are as they
+  were. `pytest -q -rs`: 296 passed, 0 skipped.
+
+**Harness changes for Tier B** (commit `e382773`; none touches the loop, the context, the
+prompts or the gates)
+- Validator check 4 is skipped when the finding does not come from a scanner, as doc 11 §6
+  says. The rule test in `test_scenarios.py` covers scanner findings only.
+- The report prints `-` for "Rule gone" when there is no rule to re-run.
+- Sandbox and build logs are written as UTF-8. Real code contains characters that Windows'
+  default encoding cannot write (geopy's prime signs), which would have crashed a run.
+
+**Limits of this tier**
+- **Selection bias.** Only small fixes inside one function of one file, in small pure-Python
+  libraries. Real fixes that span files, need native code or services are not represented, so
+  these ten are the easy end of real CVEs.
+- **Authoring bias is reduced, not gone.** The vulnerable code and the fixes are other people's.
+  The scenario descriptions, the choice of regression tests and the adaptation of the PoC
+  tests were done by a Claude model.
+- **Three scenarios depend on time** (geopy, hpack, pyasn1): their PoC runs the call in a child
+  process with a 5-second limit. On this laptop the vulnerable code needs well over that for
+  the PoC inputs (measured on smaller inputs: 18 s for hpack, over 12 s for pyasn1, over 8 s
+  for geopy); a much faster machine would need larger inputs.
+- **sqlparse's fix has a twin** in the PHP output filter. Only the Python filter is shown to the
+  model and checked by the PoC; the reference patch fixes both.
+- **No "before release" group.** All ten advisories are later than Qwen3.5's release, so the
+  memorisation comparison of doc 09 §9 cannot be made. Fix commits were public 2 days to 3
+  months before their advisories, and six of the ten fixes were public before July 2026.
+- **The CWE mix differs from Tier A.** CWE-94, 113, 287, 347 and 400 are not in doc 11's list;
+  real advisories did not line up with it.
+
+**Baselines on Tier B** (10 scenarios, `--jobs 1`, commit `e382773`, every header `dirty: false`)
+
+| Config | Resolved (95% CI) | By attempt 1 / 2 / 3 | Run | Notes |
+|---|---|---|---|---|
+| `repair-local` | 5/10 (24–76%) | 4 / 4 / 5 | `20261005-160032` | 47 tok/s, p50 10.3 s, $0 |
+| `repair-local` | 5/10 (24–76%) | 5 / 5 / 5 | `20261005-161537` | The same five scenarios |
+| `repair-claude-code` | **10/10** (72–100%) | 9 / 10 / 10 | `20261005-160526` | One repair; $0.45 API-equivalent |
+| `cascade-claude-code` | **10/10** (72–100%) | 3 / 4 / 10 | `20261005-160808` | 4 local, 6 escalated and resolved; $0.69 |
+| `oracle` | 10/10 | - | `20261005-160005` | |
+
+- **The local model resolves half of the real CVEs, and the same half each time**: Mako,
+  microdot, Flask-HTTPAuth, PyJWT's empty key and hpack. All five need one added guard or
+  condition (upstream fixes of 2 to 13 lines). It failed mistune, sqlparse, geopy, PyJWT's PEM
+  check and pyasn1 in both runs. In the cascade run microdot also went to Opus.
+- **5/10 here against 17 and 18 of 27 on Tier A is not a measured drop.** The intervals overlap
+  widely at n = 10. What can be said: the untuned model is not only solving home-written code.
+- **Opus resolved all ten, and needed the repair loop once.** Its first Flask-HTTPAuth fix
+  returned `False` for "no user" where the library's own test expects `None`; the second
+  attempt passed. That test came from the project, not from me.
+- **Local against Opus: 0 against 5 discordant scenarios, exact McNemar p = 0.062.** Not
+  significant at this size; with Tier A (p = 0.002) the direction is the same.
+- **The cascade cost more than Opus alone again**: $0.69 for 6 escalations ($0.115 each)
+  against $0.45 for 11 direct attempts ($0.041 each). An escalation carries two failed local
+  attempts and their test output, and these files are larger than Tier A's.
+- **Why the local model failed** (read from each attempt): on geopy it broke the docstring's
+  triple quotes three times, or changed the pattern and broke a valid format; on PyJWT's PEM
+  check it rewrote the regular expression and dropped two of the three closing quotes, then
+  repeated itself; on mistune it decoded the URL but blocked allowed data images or missed
+  double encoding; on sqlparse its first fix still let the snippet run code, then it repeated
+  itself; on pyasn1 its guards rejected ordinary values or missed the zero case. No failure
+  traces back to a scenario defect, a gate misfire or the secret filter.
+- No refusals and no secret blocks in any run.
+
+
 ## Next
 
-**Decisions that are yours** (the first three were taken as defaults on 2026-10-03):
-1. **Tier B (real CVEs): not built.** The set is 40 Tier A scenarios, the low end of the plan's
-   40–50, and Opus's 27/27 shows that test cannot separate frontier models. Tier B puts real
-   vulnerable project code and pinned dependencies in the repo. If it is added, it goes under
-   its own key in `split.json`.
-2. **Frontier reference: still `claude-opus-5`.** Moving to `claude-opus-5-5` means re-running
-   `repair-claude-code` and `cascade-claude-code` on dev and test, about 30 minutes.
-3. **Data mix from dev only** (D14), against doc 14 §5's wording.
-4. **Teacher model for `inject_cwe.py`** (doc 09 §4): open weights, stronger than the student,
-   hosted. Nothing can run unattended from D15 until this is chosen.
-5. **Push and PR.** This work is committed locally and not pushed.
+**Decisions that are yours**
+1. **Teacher model for `inject_cwe.py`** (doc 09 §4): open weights, stronger than the student,
+   hosted. Nothing can run unattended from D15 until this is chosen. **Tier C** (5 held-out
+   synthetic scenarios) waits for the same choice; the plan's risk R5 allows dropping it.
+2. **Frontier reference: still `claude-opus-5`** (a default, not your decision yet). Moving to
+   `claude-opus-5-5` means re-running `repair-claude-code` and `cascade-claude-code` on dev,
+   test and Tier B, about 40 minutes.
+3. **Data mix from dev only** (D14), against doc 14 §5's wording. Also a default.
+4. **Push and PR.** The commits up to `2b03f0c` are pushed; everything of 2026-10-05 is
+   committed locally only. No pull request is open.
 
 **Work**
-6. Week 3, D15: run `inject_cwe.py` with the chosen teacher; write `prepare_dataset.py` (doc 09)
-   with the dedupe and leakage checks.
-7. Headers copied into edits on files over 60 lines (D13, finding 3): judge a change to the
+5. Week 3, D15: run `inject_cwe.py` with the chosen teacher; write `prepare_dataset.py` (doc 09)
+   with the dedupe and leakage checks. The ten Tier B projects join the exclusion list: no
+   training example may come from their repositories.
+6. Headers copied into edits on files over 60 lines (D13, finding 3): judge a change to the
    context format on dev; it makes a new config.
-8. Week 4 (doc 12): pass@k, the bootstrap, CSV output, tokens and $ per resolved scenario.
-9. Not done from the plan: a model run killed and resumed (only the oracle was); the MCP call
-   from Claude Code or Inspector; `propose_fix` and `apply_edits` as MCP tools.
-10. The architecture pages (`docs/architecture*.html`) still carry a "What's blocking D6?"
-    prompt, and `architecture.html` and `architecture-interactive.html` are the same file twice.
+7. The cascade costs more than the frontier alone on both tiers. Sending the full history on
+   escalation (doc 04 §5) is the reason; whether a shorter escalation prompt keeps the
+   resolve rate is worth one dev experiment in Week 4.
+8. Week 4 (doc 12): pass@k, the bootstrap, CSV output, tokens and $ per resolved scenario, and
+   results reported per tier.
+9. Not done from the plan: `propose_fix` and `apply_edits` as MCP tools (`remediate` covers
+   them), and a Tier B "before release" group.
+10. `docs/architecture.html` and `docs/architecture-interactive.html` are the same file twice.
 
 **Cuts found by the over-engineering audit and left for after Week 4**, because they sit on the
 code path the baselines measured: the finding `fingerprint` that nothing reads

@@ -161,7 +161,9 @@ When both scanners report the same line, merge the two findings and keep both ru
 - [x] MCP server lists the tools; one successful call. Done on D12 (2026-10-03) with the SDK's own
       stdio client, not Inspector or Claude Code: `scan` and `validate` on A-327-02 against
       `uv run aeropatch mcp` as a separate process (`NOTES.md`). `tests/test_mcp_server.py` covers
-      the tool list, a real `get_context` call and the rejected inputs.
+      the tool list, a real `get_context` call and the rejected inputs. On 2026-10-05 headless
+      Claude Code (2.1.239) loaded the server from a throwaway `--mcp-config` file, listed the four
+      tools and called `get_context`; nothing was added to the user's Claude Code settings.
 - [x] Path-validation tests (`tests/test_paths.py`): traversal, symlink escape, and
       non-allowlisted repo are all rejected.
 

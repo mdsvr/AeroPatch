@@ -55,6 +55,11 @@ a re-check of them found and fixed a cascade bug (`NOTES.md`, D13). D14's analys
 and `training/inject_cwe.py` exists but has only had a smoke test: its teacher model is not
 chosen yet.
 
+**Status (2026-10-05): Tier B built and measured; Week 2 is closed except for Tier C.** Ten
+real-CVE scenarios were added under `test_b` (50 scenarios in total) and all three repair
+configs were run on them. A model run was killed and resumed, and Claude Code called the MCP
+server. Tier C waits for the teacher model of Week 3 (`NOTES.md`, 2026-10-05).
+
 | Day | Work | Output / acceptance check |
 |---|---|---|
 | D8 | Repair loop (doc 08 part 1): attempt plan, feedback builder, budgets, identical-edit detection, refusal-as-routing | A scenario that fails attempt 1 and succeeds on attempt 2, visible in the logs |
@@ -69,15 +74,17 @@ chosen yet.
 - [x] The full loop with repair runs unattended over the whole set and can resume. Evidence in
       two pieces: the three repair configs each ran unattended over the 27 test scenarios (and
       over the 13 dev ones that morning, as separate commands), and resume was shown with the
-      `oracle` config at `--jobs 2`, killed after 8 results and resumed to 27/27. A model run
-      has not been killed and resumed.
-- [x] 40–50 validated scenarios, with the dev/test split frozen and committed. 40, all Tier A.
+      `oracle` config at `--jobs 2`, killed after 8 results and resumed to 27/27. On 2026-10-05 a
+      `repair-local` run on dev was hard-killed after 5 results and resumed to 13 distinct results.
+- [x] 40–50 validated scenarios, with the dev/test split frozen and committed. 50: 40 Tier A and
+      10 Tier B.
 - [x] A baseline headline table for untuned SLM (`local`, `cascade`) and frontier, with CIs
       (`NOTES.md`, D13; `aeropatch report`).
 - [x] The failure-attribution chart for the untuned SLM exists; it guides the Week 3 data. It is
       the text chart in `aeropatch report`. The data mix uses the dev runs only (`NOTES.md`, D14).
-- [x] The MCP server lists tools and serves one real call. It's a thin wrapper, as planned. The
-      call came from the SDK's stdio client, not from Claude Code or MCP Inspector.
+- [x] The MCP server lists tools and serves one real call. It's a thin wrapper, as planned. Called
+      from the SDK's stdio client and, on 2026-10-05, from headless Claude Code with a throwaway
+      MCP config.
 
 ## 4. Detailed task lists for the riskiest days
 
@@ -124,12 +131,16 @@ chosen yet.
 - Accounts (Kaggle, Hugging Face, API console) are created by you; the code only reads keys from `.env`.
 
 **D11: Tier B real CVEs (slowest scenario type)**
-- [ ] Shortlist ~25 Python candidates from PatchEval-Verified and CVE-Bench (Gatti). Keep
-      those with small dependency sets and fast test suites.
-- [ ] Reuse the benchmark's own PoC tests where they exist; add 3+ regression tests if missing.
-- [ ] Put each one through the same validator; expect ~50% to be dropped for flaky tests,
-      heavy dependencies or build failures.
-- [ ] Record `published_date` and the source URL for the pre/post-release split (doc 09).
+- [x] Shortlist candidates. **Done from the GitHub advisory database instead of PatchEval-Verified
+      and CVE-Bench:** 154 advisories since 2026-03-15 fit the shape (one small single-file fix
+      with a test, permissive licence, pure Python); 16 fix commits were read.
+- [x] PoC tests come from the tests each upstream fix added; regression tests come from the
+      project's own suite (4 to 17 per scenario).
+- [x] Same validator. 10 of the 16 were built and all 10 pass; the other 6 were dropped before
+      building (timing-only tests, fixes spread over several functions, heavy fixtures, or the
+      50-scenario ceiling).
+- [x] `published_date`, the advisory URL, the CVE id and both commit hashes are in `scenario.json`.
+      All ten were published after Qwen3.5's release, so there is no "before release" group.
 
 ## 5. How Week 2 feeds Week 3 (don't skip this link)
 

@@ -46,10 +46,17 @@ A-089-02) were used to check the context builder and parser on files over 60 lin
 cannot be test scenarios. Every scenario added from here on goes to test.
 Status 2026-10-03: 27 Tier A test scenarios exist (40 in total) and **`split.json` is frozen at
 13 dev / 27 test**. Every CWE in section 4 has at least two scenarios; CWE-338 was added.
-Tier B and Tier C were not built for the freeze: Tier B puts real vulnerable project code
-and pinned dependencies in the repo, which is your call, and Tier C needs the doc 09
-script to produce verified examples first. If either is added later it goes under its own
-key in `split.json`, so the frozen dev and test lists stay as they are.
+Status 2026-10-05: **Tier B exists: 10 scenarios from real CVEs**, under their own key `test_b`
+in `split.json` (50 scenarios in total; dev and test are unchanged). They come from the GitHub
+advisory database, not from PatchEval-Verified or CVE-Bench: reviewed pip advisories published
+since 2026-03-15, kept when the upstream fix is one commit that changes one non-test file by
+at most 60 lines and adds a test, in a permissively licensed pure-Python project. Each
+scenario vendors the package at the commit before the fix, with its licence file; the PoC is
+taken from the tests the fix added and the regression tests from the project's own suite.
+Two of the ten install hash-pinned dependencies at image build. `scenario.json` carries the
+advisory URL, the CVE id, both commit hashes and the advisory date; none of these is shown
+to a model. **Tier C was not built**: it has to come from the same teacher model as the
+training data (doc 09), and that teacher is not chosen.
 
 ## 4. CWE coverage for Tier A (Python-relevant)
 
@@ -109,6 +116,7 @@ Each scenario must pass all four of these, or it doesn't enter the benchmark:
 3. With a **"delete the function body"** patch: at least one regression test **fails**,
    which shows the regression tests catch destructive fixes.
 4. The scanner finding is reported on the vulnerable code (Tier A), so the intake path is real.
+   A Tier B finding comes from the advisory, so the validator marks this check as skipped.
 
 ## 7. Evaluation settings (the axes of the results table)
 
@@ -150,8 +158,8 @@ multiplies generations by 5, so run it on the fine-tuned SLM and one frontier mo
 
 - [x] Week 1: 10 validated dev scenarios, and a baseline table for 3 models (2 local + Claude
       Opus 5; `NOTES.md`, doc 03 §5).
-- [x] Week 2: 40 validated scenarios (all Tier A), `split.json` frozen, and full baselines logged
-      (`NOTES.md`, 2026-10-03).
+- [x] Week 2: 50 validated scenarios (40 Tier A, 10 Tier B), `split.json` frozen, and full
+      baselines logged (`NOTES.md`, 2026-10-03 and 2026-10-05).
 - [ ] Week 4: final results with every number traceable to a run file (doc 12).
 
 Next: [12-metrics-and-reporting.md](12-metrics-and-reporting.md)
