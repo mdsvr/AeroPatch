@@ -1,0 +1,33 @@
+{
+  "id": "C-328-01",
+  "tier": "C",
+  "cwe": "CWE-328",
+  "cwe_name": "Use of weak hash",
+  "difficulty": "easy",
+  "split": "test_c",
+  "description": "hash_password ignores its salt and returns a plain SHA-256 hex digest of the password, so equal passwords are stored as equal values that are fast to guess.",
+  "finding": {
+    "tool": "synthetic",
+    "rule_id": "synthetic.cwe-328",
+    "path": "app/parking_permits.py",
+    "line": 12,
+    "severity": "high",
+    "message": "Password is stored as an unsalted SHA-256 digest."
+  },
+  "allowed_paths": [
+    "app/parking_permits.py"
+  ],
+  "target_function": "hash_password",
+  "poc_tests": [
+    "tests_poc/test_poc.py"
+  ],
+  "regression_tests": [
+    "tests_regression/test_regression.py"
+  ],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "generated",
+  "published_date": null,
+  "teacher": "qwen3.5:9b-q4_K_M",
+  "synthetic_id": "S-328-00030"
+}

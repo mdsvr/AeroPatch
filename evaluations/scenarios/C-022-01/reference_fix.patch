@@ -1,0 +1,18 @@
+diff --git a/app/library_loans.py b/app/library_loans.py
+index dc2a274..6564030 100644
+--- a/app/library_loans.py
++++ b/app/library_loans.py
+@@ -7,7 +7,12 @@ def read_loan_record(base_dir, record_name):
+     
+     Returns the record's text with surrounding whitespace removed.
+     """
+-    target_path = os.path.join(base_dir, record_name)
++    base_path = Path(base_dir).resolve()
++    target_path = (base_path / record_name).resolve()
++    
++    if not target_path.is_relative_to(base_path):
++        raise ValueError(f"Access denied: path escapes base directory")
++        
+     with open(target_path, 'r') as f:
+         return f.read().strip()
+ 

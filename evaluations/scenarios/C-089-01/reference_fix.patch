@@ -1,0 +1,13 @@
+diff --git a/app/chess_club_ladder.py b/app/chess_club_ladder.py
+index f63a575..94b14a7 100644
+--- a/app/chess_club_ladder.py
++++ b/app/chess_club_ladder.py
+@@ -102,6 +102,6 @@ def search_players_by_rating_range(conn: sqlite3.Connection, min_rating: int,
+     Both bounds are inclusive.
+     """
+     cursor = conn.cursor()
+-    query = "SELECT id, name, rating FROM players WHERE rating >= {} AND rating <= {}".format(min_rating, max_rating)
+-    cursor.execute(query)
++    query = "SELECT id, name, rating FROM players WHERE rating >= ? AND rating <= ?"
++    cursor.execute(query, (min_rating, max_rating))
+     return cursor.fetchall()

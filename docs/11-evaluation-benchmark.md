@@ -58,8 +58,16 @@ regression tests are the project's own, the project's own plus additions, or wri
 project's style (1, 4 and 5 scenarios; `NOTES.md`, 2026-10-05).
 Two of the ten install hash-pinned dependencies at image build. `scenario.json` carries the
 advisory URL, the CVE id, both commit hashes and the advisory date; none of these is shown
-to a model. **Tier C was not built**: it has to come from the same teacher model as the
-training data (doc 09), and that teacher is not chosen.
+to a model. Tier C was not built then: it has to come from the same teacher model as the
+training data (doc 09).
+
+Status 2026-10-06: **Tier C exists: 5 synthetic scenarios** under the key `test_c` (55 scenarios
+in total). They were written by the teacher of the training data (`qwen3.5:9b-q4_K_M`) and
+taken out of its pilot before the overnight run, one each for CWE-20, 22, 89, 328 and 601. The
+code and the code change of the reference fix are the teacher's. The descriptions and the PoC
+tests were rewritten to the Tier A bar, docstrings that described the missing protection were
+reworded, and a second, differently written fix resolves each one (`NOTES.md`, 2026-10-06).
+They are test-only and no model has been run on them.
 
 ## 4. CWE coverage for Tier A (Python-relevant)
 

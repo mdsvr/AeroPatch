@@ -1,0 +1,33 @@
+{
+  "id": "C-089-01",
+  "tier": "C",
+  "cwe": "CWE-89",
+  "cwe_name": "SQL injection",
+  "difficulty": "easy",
+  "split": "test_c",
+  "description": "search_players_by_rating_range formats the caller's minimum and maximum rating into the SQL text instead of binding them, so a rating value can change the query.",
+  "finding": {
+    "tool": "synthetic",
+    "rule_id": "synthetic.cwe-89",
+    "path": "app/chess_club_ladder.py",
+    "line": 96,
+    "severity": "high",
+    "message": "Rating bounds are formatted into the SQL statement."
+  },
+  "allowed_paths": [
+    "app/chess_club_ladder.py"
+  ],
+  "target_function": "search_players_by_rating_range",
+  "poc_tests": [
+    "tests_poc/test_poc.py"
+  ],
+  "regression_tests": [
+    "tests_regression/test_regression.py"
+  ],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "generated",
+  "published_date": null,
+  "teacher": "qwen3.5:9b-q4_K_M",
+  "synthetic_id": "S-89-00029"
+}

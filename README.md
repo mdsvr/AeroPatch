@@ -41,7 +41,7 @@ interpreter or test runner; use the sandbox for your own scenarios and pinned pu
 uv sync
 uv run aeropatch build-base              # sandbox base image (once)
 uv run aeropatch validate --all          # 4 checks per scenario; builds scenario images
-uv run aeropatch bench --config oracle   # harness self-check: must resolve every dev scenario (--split test, test_b for the others)
+uv run aeropatch bench --config oracle   # harness self-check: must resolve every dev scenario (--split test, test_b, test_c for the others)
 uv run pytest -q                         # unit + sandbox containment tests
 ```
 
@@ -85,8 +85,8 @@ reads repositories under `evaluations/scenarios/`.
 | `src/aeropatch/mcp_server.py` | thin MCP wrapper over the tools (stdio) |
 | `docker/` | sandbox base + per-scenario Dockerfiles, `run.sh`, hash-pinned harness tools |
 | `rules/` | AeroPatch's own Opengrep ruleset (22 rules) |
-| `evaluations/scenarios/` | 50 scenarios: 40 hand-built (Tier A, 16 CWEs) and 10 from real CVEs (Tier B, each with the upstream licence); `split.json` is frozen at 13 dev, 27 test and 10 real-CVE test |
-| `training/` | `inject_cwe.py`: synthetic, sandbox-verified training examples (Week 3 data) |
+| `evaluations/scenarios/` | 55 scenarios: 40 hand-built (Tier A, 16 CWEs), 10 from real CVEs (Tier B, each with the upstream licence) and 5 held out from the synthetic training data (Tier C); `split.json` is frozen at 13 dev, 27 test, 10 real-CVE test and 5 synthetic test |
+| `training/` | Week 3 data. `inject_cwe.py`: synthetic, sandbox-verified training examples from a local teacher model. `prepare_dataset.py`: real fix pairs from GitHub advisories as SEARCH/REPLACE targets |
 | `runs/` | run logs (gitignored) |
 
 ## Sandbox isolation (honest statement)

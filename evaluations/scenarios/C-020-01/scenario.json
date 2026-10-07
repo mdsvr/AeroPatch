@@ -1,0 +1,33 @@
+{
+  "id": "C-020-01",
+  "tier": "C",
+  "cwe": "CWE-20",
+  "cwe_name": "Improper input validation",
+  "difficulty": "easy",
+  "split": "test_c",
+  "description": "validate_budget rejects a budget below min_budget but never compares it with max_budget, so any larger amount is accepted.",
+  "finding": {
+    "tool": "synthetic",
+    "rule_id": "synthetic.cwe-20",
+    "path": "app/conference_talk_submissions.py",
+    "line": 32,
+    "severity": "high",
+    "message": "Requested budget is not checked against the upper limit."
+  },
+  "allowed_paths": [
+    "app/conference_talk_submissions.py"
+  ],
+  "target_function": "validate_budget",
+  "poc_tests": [
+    "tests_poc/test_poc.py"
+  ],
+  "regression_tests": [
+    "tests_regression/test_regression.py"
+  ],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "generated",
+  "published_date": null,
+  "teacher": "qwen3.5:9b-q4_K_M",
+  "synthetic_id": "S-20-00015"
+}

@@ -1,0 +1,20 @@
+diff --git a/app/library_loans.py b/app/library_loans.py
+index b81e6f3..2f5c6da 100644
+--- a/app/library_loans.py
++++ b/app/library_loans.py
+@@ -46,7 +46,7 @@ def validate_loan_redirect(url: str) -> str:
+     Return the redirect target for a loan request.
+     The site's fallback target is '/'.
+     """
+-    return url
++    return normalize_redirect(url)
+ 
+ 
+ def get_safe_path(request_path: str) -> str:
+@@ -65,5 +65,5 @@ def build_safe_response(target: str) -> dict:
+     Build a response dictionary containing a safe redirect path.
+     The target is sanitized before being included.
+     """
+-    safe_target = target
++    safe_target = normalize_redirect(target)
+     return {'redirect': safe_target}

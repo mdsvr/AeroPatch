@@ -20,9 +20,10 @@ IDS = scenario.list_ids()
 
 def test_split_covers_every_scenario_once():
     split = json.loads((SCENARIOS_DIR / "split.json").read_text())
-    assert sorted(split["dev"] + split["test"] + split["test_b"]) == IDS
+    assert sorted(split["dev"] + split["test"] + split["test_b"] + split["test_c"]) == IDS
     assert (len(split["dev"]), len(split["test"])) == (13, 27)  # frozen 2026-10-03
     assert len(split["test_b"]) == 10  # Tier B, frozen 2026-10-05
+    assert len(split["test_c"]) == 5  # Tier C, set aside from the teacher pilot on 2026-10-06
 
 
 def test_original_rule_rescan_reports_present_absent_or_unavailable(monkeypatch, tmp_path):

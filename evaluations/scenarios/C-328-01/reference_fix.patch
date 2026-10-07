@@ -1,0 +1,15 @@
+diff --git a/app/parking_permits.py b/app/parking_permits.py
+index 26f9d07..0960cdc 100644
+--- a/app/parking_permits.py
++++ b/app/parking_permits.py
+@@ -17,7 +17,9 @@ def hash_password(password, salt=None):
+     """
+     if salt is None:
+         salt = generate_salt()
+-    return hashlib.sha256(password.encode('utf-8')).hexdigest()
++    # Use PBKDF2 which is designed for password hashing, unlike raw hash functions.
++    return hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), 
++                              salt, 100000, dklen=32)
+ 
+ 
+ def store_permits(permit_data):
