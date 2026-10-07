@@ -1,0 +1,33 @@
+{
+  "id": "C-601-01",
+  "tier": "C",
+  "cwe": "CWE-601",
+  "cwe_name": "Open redirect",
+  "difficulty": "easy",
+  "split": "test_c",
+  "description": "validate_loan_redirect returns the caller-supplied redirect target unchanged, so a link can send the user to another site.",
+  "finding": {
+    "tool": "synthetic",
+    "rule_id": "synthetic.cwe-601",
+    "path": "app/library_loans.py",
+    "line": 44,
+    "severity": "high",
+    "message": "Redirect target from the request is returned without a local-path check."
+  },
+  "allowed_paths": [
+    "app/library_loans.py"
+  ],
+  "target_function": "validate_loan_redirect",
+  "poc_tests": [
+    "tests_poc/test_poc.py"
+  ],
+  "regression_tests": [
+    "tests_regression/test_regression.py"
+  ],
+  "allow_imports": [],
+  "source_url": "",
+  "license": "generated",
+  "published_date": null,
+  "teacher": "qwen3.5:9b-q4_K_M",
+  "synthetic_id": "S-601-00033"
+}

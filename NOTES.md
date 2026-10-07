@@ -622,26 +622,239 @@ prompts or the gates)
   traces back to a scenario defect, a gate misfire or the secret filter.
 - No refusals and no secret blocks in any run.
 
+## Week 3, D15 (2026-10-06 and 07): a free local teacher, a rebuilt generator, 531 real fix pairs
+
+**Teacher: `qwen3.5:9b-q4_K_M`, run on the laptop.** You asked for a model you can download and
+use at no cost, so no hosted model was used and no prompt left the machine.
+- Of the four hosted tags in your Ollama, `glm-5.1:cloud` was retired on 2026-09-25 and
+  `qwen3.5:cloud` answers 410. `kimi-k2.6:cloud` and `minimax-m2.7:cloud` work and bill per
+  token ($4.00 and $1.20 per million output tokens).
+- Qwen3.5-9B is Apache-2.0 and 6.6 GB at Q4_K_M. It is the largest Qwen3.5 that fits 16 GB of RAM
+  with 4 GB of VRAM; the next size, 27B, is 17 GB. Run locally, no host's terms apply, which
+  closes the "terms on training with outputs" item of doc 09 §4.
+- Speed on this laptop with a 4,096-token context: **7.3 tokens/s with 20 layers on the GPU**.
+  Ollama's own split gives 4.0 and all layers on the GPU 3.3 (it spills into shared memory).
+  `inject_cwe.py` has `--num-gpu` and `--num-ctx` for this.
+- The cost of this choice is speed: a candidate takes about 3 minutes, against the 60 s the plan
+  assumed, so 24 hours give about 475 candidates, not 1,440.
+
+**The generator was rebuilt during the pilot**, because the first 14 candidates kept nothing.
+What a 9B teacher got wrong, and what `training/inject_cwe.py` does now:
+
+| Fault seen | Change |
+|---|---|
+| Two full copies of the module differed in docstrings and helpers (`injection_size`, 3 of 7) | The teacher writes the fixed module and one SEARCH/REPLACE block that plants the flaw; the script builds the vulnerable copy with `aeropatch.agent.edits`. A third fewer output tokens |
+| PoC tests passed on both versions | Each CWE carries one PoC idea that separates them. The student never sees a test |
+| A test used a name it did not import, so the whole file failed | Missing imports are added: the module's names, stdlib modules, pytest |
+| One wrong test among six sank the candidate | Tests the sandbox does not bear out are removed. A PoC test stays if it fails on the vulnerable code and passes on the fixed code; a regression test stays if it passes on both. At least 1 and 2 must be left, and validator checks 1–3 then run unchanged |
+| Planted lines carried comments such as `# Missing upper bound check` | Every comment on a planted line is cut; give-away wording in a planted docstring rejects the candidate |
+| One shared idiom, `scheme not in ("http", "https")`, was a `leakage` reject | A candidate is dropped above 30 shared 13-token runs (about four copied lines). The count is in the manifest (`eval_overlap`) for the D16 leakage report to look at |
+
+Also new: rejected answers are saved under `training/synthetic/rejects/` with the failed check,
+the manifest records the prompt version, generation seconds and output tokens, and a run stopped
+mid-candidate cleans up its half-written directory on restart.
+
+**Pilot.** 47 candidates in all; the manifest's `prompt` field tells the versions apart.
+
+| Version | Candidates | Kept | Rejects |
+|---|---|---|---|
+| 1: two full modules | 7 | 0 | `injection_size` 3, check 1 twice, `leakage` 1, `no_target` 1 |
+| 2: fixed module and one block | 3 | 0 | check 1 twice, `gives_away` 1 |
+| 3: a PoC idea per CWE | 4 | 0 | `no_poc_separates` 2, `gives_away` 1, `format` 1 |
+| 4: imports added, tests pruned | 3 | 2 | check 3 once |
+| **5: planted comments cut (the pilot of 30)** | **30** | **10** | `no_poc_separates` 7, `injection_size` 4, check 3 three times, `no_target` 3, `secret` 2, a syntax error 1 |
+
+- **Yield 33% (10 of 30), 182 s per candidate**: 171 s to generate 1,577 tokens on average, and
+  about 15 s in the sandbox for a candidate that reaches it.
+- **No `leakage` reject under the new rule.** 13 of the 47 candidates share 1 to 4 runs of 13
+  tokens with benchmark code; the old rule would have dropped every one of them.
+- Kept by CWE in the 30: 328 (3 of 4), 22 (2 of 2), 89, 601, 798, 918 and 327 (1 each).
+  Nothing for 352 (0 of 4, two stopped by the secret filter), 338, 502 and 78 (0 of 2 each).
+- The yield is slightly understated: a test id with a dot in a parameter
+  (`test_x[http://127.0.0.1/x]`) was read wrongly by the pruning step until after the pilot.
+
+**Sizing.** Expected kept = 24 h × 3,600 × 0.33 ÷ 182 s = about 158. That is the bottom row of
+the plan's table (under 300), whose answer is "fix the prompt or change teacher". The prompt is
+fixed (0% to 33%) and the teacher is the largest that fits, so the gap is speed. Consequences:
+- The synthetic slice will be about 160 examples, not 800. Mined fix pairs carry the
+  first-attempt slice, and the repair-turn slice shrinks with it.
+- The total will probably land under R4's fallback of 1,500 unless the general bug-fix slice
+  grows or generation continues after D16. That is a D16 decision, once `stats.md` exists.
+- A hosted teacher would be several times faster (not measured; `kimi-k2.6:cloud`, an estimated
+  $12 to $20 for the night). You declined paid models; this is here so the trade is on record.
+
+**Overnight run.** Started 2026-10-06 15:19, detached, 500 candidates:
+`uv run python training/inject_cwe.py --teacher qwen3.5:9b-q4_K_M --count 500 --num-gpu 20 --num-ctx 4096`,
+log in `training/synthetic/overnight.log`. At the pilot's pace it ends about 16:40 on
+2026-10-07. It can be stopped and started again with the same command; never two at once.
+The laptop is on AC with sleep-on-AC off. Closing the lid may still suspend it.
+
+**Found while the run was going (evening of 2026-10-06).** After 98 candidates the kept rate was
+17%, not the pilot's 33%. Two checks were throwing away usable answers. Both are changed in
+`training/inject_cwe.py`; the process started at 15:19 still runs the old code.
+- **Class-based modules were rejected as `no_target`** (14 of 98). The target had to be a
+  top-level function. A method now counts and is named `Class.method`. Re-checked apart from the
+  run, 5 of the first 9 pass everything.
+- **Check 3 asked for more than training data needs** (13 of 98). It wants a regression test to
+  fail when the target's body is deleted. Pruning often leaves that to the PoC tests: in 16 of
+  17 such rejects the deleted body still fails a PoC test, so it is not judged resolved. Those
+  are now kept with `"note": "check 3 by a PoC test"` in the manifest. **This relaxes the
+  acceptance rule and is yours to overrule**; the note lets D16 leave them out.
+- **Nothing is lost by not restarting.** Every rejected answer is in
+  `training/synthetic/rejects/`, so the `no_target` and check-3 rejects can be re-checked with
+  the new code when the run ends. Expect roughly 20 more kept from the first 98.
+- Not a fault: the sandbox was checked twice during losing streaks (14 rejects in a row) and
+  reported real test results each time. At 98 candidates the teacher looked weakest on CWE-89
+  and CWE-918; the whole run says otherwise (below).
+
+**Result (2026-10-07): 189 training examples, 128 of them without the relaxed check 3.** The run
+ended by itself at 17:07 after 25 h 48 min: 500 candidates, 185 s each on average (175 s to
+generate 1,632 tokens, 9.3 tokens/s), nothing in `overnight.err.log`.
+
+| | Answers | Kept |
+|---|---|---|
+| The run as it ran, with the old code | 500 | 105 (21%) |
+| Its `no_target` and check-3 rejects, re-checked with the new code | 104 | 74 |
+| of them: a method as target, no rule changed | | 16 |
+| of them: check 3 met by a PoC test, the relaxed rule | | 58 |
+| **Overnight in all** | 500 | **179 (36%)** |
+| Pilot: 7 kept, and 3 more by the relaxed rule out of 7 re-checked | 47 | 10 |
+| **Training examples** | | **189** |
+
+- **The relaxed check 3 is still yours to overrule.** 61 of the 189 carry
+  `"note": "check 3 by a PoC test"`; without them the set is 128.
+- **Rejects of the run as it ran:** `no_poc_separates` 147, `injection_size` 67, check 3 60,
+  `no_target` 44, `gives_away` 18, `inject_not_applied` 16, `syntax` 13, `format` 10 (one looked
+  at: the fixed module alone used all 3,500 tokens), `regression_tests_wrong` 9, check 1 3,
+  `secret` 3, a test file that does not parse 2, `leakage` 1 (43 shared runs), check 2 1 (a
+  regression test passed while pruning and failed in the validator), a Docker error 1.
+- **The re-check** took the 112 saved answers of both kinds, pilot included, through today's
+  checks in the order `main()` uses. Its log is `training/synthetic/recheck.log`; the manifest
+  as the run left it is `manifest.before-recheck.jsonl`. A re-checked record has `"was"`, its
+  first status, and `"status"` is what today's code says.
+  - Check 3 (64): 59 kept by a PoC test; in 5 the deleted body passes every test.
+  - `no_target` (48): 18 kept (16 with no rule changed, 2 by a PoC test), 13
+    `no_poc_separates`, 7 `injection_size`, 6 still `no_target` (one answers the first pilot
+    prompt and was left alone), 2 `regression_tests_wrong`, 1 check 3, 1 a test file that does
+    not parse.
+- **Leakage: 46 of the 189 share text with Tier C, and the limit lets them all through.** A scan
+  of all 189 against today's benchmark finds none above the limit of 30 shared runs; 83 share
+  at least one run with some benchmark file. The 46 (32 of the 128) share runs found only in
+  Tier C: 4 share one run, 27 share 2 to 5, 10 share 6 to 10, 5 share 11 to 22 (`S-89-00164`
+  has the 22). They are mostly CWE-328 (20) and CWE-89 (13), the same teacher writing the same
+  kind of module as `C-328-01` and `C-089-01`. Dropping every one leaves 143 (96 without the
+  relaxed check 3). **Where to put the Tier C limit is yours to decide on D16.**
+- `eval_overlap` in the manifest is the count at the time of the check. Tier C was already in
+  the benchmark when the run started, with the docstrings it had before the rewording at 15:36,
+  so 5 of the counts recorded before the re-check differ by 1 to 3 from a scan today. D16
+  should recompute, not read the field.
+- The re-check script was a one-off and is not in the repository. It mirrored the order of
+  checks in `main()`; the generator's code today gives the same verdicts on a new run.
+- **By CWE** (candidates, kept, overnight only): 328 (72, 39), 918 (68, 27), 89 (56, 16),
+  327 (23, 16), 601 (40, 15), 20 (23, 12), 79 (21, 12), 798 (23, 9), 78 (44, 7), 22 (27, 6),
+  1333 (25, 6), 338 (16, 6), 352 (13, 4), 209 (30, 3), 502 (19, 1). The teacher is weakest on
+  CWE-502, CWE-209 and CWE-78.
+- The scanners flag 35 of the 189 (`scanner_flagged`).
+- **`no_poc_separates` is the largest loss** (169 with the pilot) and is not diagnosed. One
+  guess is ruled out: none of 156 PoC files imports a name its module lacks, and 2 import from
+  a wrong module path. The rest needs sandbox runs.
+
+**Tier C: 5 scenarios, set aside before the overnight run** (your default from the plan).
+`C-020-01`, `C-022-01`, `C-089-01`, `C-328-01` and `C-601-01` are the pilot's `S-20-00015`,
+`S-22-00019`, `S-89-00029`, `S-328-00030` and `S-601-00033`. Their manifest status is `tier_c`,
+their directories are in `evaluations/scenarios/`, and `split.json` has the key `test_c`.
+- They were set aside before the overnight run, not before every training example: 12 pilot
+  candidates were already kept, and these are 5 of those 12.
+- The code and the code change of the reference fix are the teacher's.
+- **Docstrings were reworded in four of the five.** The teacher's docstrings come from the fixed
+  module and described protection the vulnerable code lacks ("Uses parameterized queries to
+  prevent SQL injection", "using PBKDF2 with SHA256 and a unique salt", "Returns the validated
+  path or '/' if unsafe"). They now say only what is true of both versions, and the same words
+  went into both, so each reference patch keeps its code change. `C-020-01` needed none.
+- The descriptions, the finding messages and the PoC tests are mine, rewritten to the Tier A
+  bar: behaviour only, either valid rejection accepted (`PermissionError` or `ValueError`; no
+  rows or a refused non-number). `C-020-01` also got one regression test at the boundary.
+- Checked for each: the validator passes, every PoC test fails on the vulnerable code, the
+  repair prompt passes the secret filter, the reference fix passes the gates, and a second,
+  differently written fix resolves (a chained comparison; `realpath` with `commonpath` raising
+  `PermissionError`; `int()` with `BETWEEN`; `scrypt`; an inline `urlparse` check). The oracle
+  resolves 5 of 5 on `test_c`.
+- No model has been run on them. They are easy: one function, and in `C-022-01` and `C-601-01`
+  the fix pattern sits elsewhere in the same file.
+- The other 7 pilot examples are training data. How much overlap with these five a training
+  example may have is open: 46 of the 189 share at least one 13-token run with them (see the
+  result above), and `prepare_dataset.py` applies whatever limit is chosen (D16).
+
+**What to look for when reading 30 examples on D17**
+- A pruned PoC can separate the versions for a functional reason. In `S-328-00037` the PoC is
+  "the right password verifies": MD5 broke the verify function. The fix is still the real one.
+- Docstrings come from the fixed module and stay in the vulnerable one, so some name the fix
+  ("using PBKDF2") above code that does not do it. A keyword match, not a reading, finds such
+  wording in the target function's docstring of 6 of the first 9 kept examples. Tier C was
+  reworded for this; the training examples were not. A model that learns to make the code match
+  its docstring would look better on synthetic data than on real code, so decide on D16 whether
+  to reword or filter them.
+- `S-798-00017` and `S-798-00028` plant "changeme" in odd places; the teacher is weak on CWE-798.
+
+**Defaults taken today, yours to overrule:** fix pairs from the GitHub advisory database (not
+MoreFixes); Tier C built; the generator's leakage rule relaxed as in the table above, with every
+overlap recorded for D16; the context format and the CWE weights left as they were.
+
+**`training/prepare_dataset.py`, first part: real fix pairs.** `mine` lists the reviewed pip
+advisories published before 2026-01-01 and keeps one pair per fix commit; `spotcheck` re-applies
+random pairs.
+
+| Step | Advisories |
+|---|---|
+| Reviewed pip advisories before 2026-01-01 | 4,205 |
+| Not exactly one fix commit | 2,053 |
+| Not exactly one modified non-test Python file | 1,106 |
+| Commit not found (17) or a merge (258) | 286 |
+| Same commit as an earlier advisory | 185 |
+| More than 60 changed lines | 33 |
+| Benchmark project (exclusion list) | 7 |
+| Blocks do not re-apply byte-exact | 4 |
+| **Kept** | **531** |
+
+- 531 pairs from 296 repositories, advisories from 2018-07-12 to 2025-12-19. Most frequent:
+  CWE-22 (51), CWE-79 (40), CWE-200 (29), CWE-20 (25), CWE-502 (20), CWE-601 (19).
+- **Spot check: 20 of 20 re-apply byte-exact** (seed 3407), and none of the 531 comes from a
+  benchmark project or after the cutoff. The check parses the stored assistant message with
+  `edits.parse` and applies it with `edits.apply_edits`, as the loop does.
+- The exclusion list is the nine Tier B projects, matched on repository name and on package
+  name. `tests/test_prepare_dataset.py` fails if a Tier B scenario's project is missing from it.
+- A fix that only removes the file's final newline, or whose changed lines hold a line of
+  5 to 9 equals signs, has no target: `edits` cannot express either.
+- Not applied yet (D16): the filters of doc 09 §7. 370 pairs have one or two blocks; 23 have more
+  than six, and the largest file is 14,666 lines.
+- 258 advisories point at a merge commit and were dropped. Diffing a merge against its first
+  parent would recover some of them.
+
 
 ## Next
 
 **Decisions that are yours**
-1. **Teacher model for `inject_cwe.py`** (doc 09 §4): open weights, stronger than the student,
-   hosted. Nothing can run unattended from D15 until this is chosen. **Tier C** (5 held-out
-   synthetic scenarios) waits for the same choice; the plan's risk R5 allows dropping it.
+1. **How to fill the dataset** (D16, after `stats.md`): with a free local teacher the synthetic
+   slice is 189 examples (128 without the relaxed check 3), beside 531 real fix pairs. Grow the
+   general bug-fix slice, keep generating after D16, or accept a smaller dataset than R4's 1,500.
+   With it: keep or drop the 61 examples that pass check 3 only by a PoC test, and how many
+   shared runs with Tier C a training example may have (46 share at least one; dropping all of
+   them leaves 143).
 2. **Frontier reference: still `claude-opus-5`** (a default, not your decision yet). Moving to
    `claude-opus-5-5` means re-running `repair-claude-code` and `cascade-claude-code` on dev,
    test and Tier B, about 40 minutes.
 3. **Data mix from dev only** (D14), against doc 14 §5's wording. Also a default.
-4. **Push and PR.** The commits up to `2b03f0c` are pushed; everything of 2026-10-05 is
-   committed locally only. No pull request is open.
+4. **Pull request.** The D15 work is committed and pushed on `feat/week3-d15-data` (2026-10-07),
+   together with the Week 3 plan commit it is branched from. No pull request is open. The
+   training data itself (`training/synthetic/`, `training/data/`) is git-ignored and exists only
+   on the laptop.
 
 **Work**
-5. Week 3, D15: run `inject_cwe.py` with the chosen teacher; write `prepare_dataset.py` (doc 09)
-   with the dedupe and leakage checks. The ten Tier B projects join the exclusion list: no
-   training example may come from their repositories. `inject_cwe.py`'s 13-token leakage set
-   now also covers the roughly 250 vendored library files, so measure in the first teacher
-   batch how many candidates it rejects for sharing common library idioms.
+5. Week 3, D16: the student pass on the 189 kept examples (`--count 0 --student`; the overnight
+   run has ended); then in `prepare_dataset.py` the general bug-fix slice, the
+   filters of doc 09 §7, dedupe and the leakage report (every overlap above zero, recomputed
+   and not read from `eval_overlap`, and any training example that overlaps Tier C), and
+   `stats.md`. `--student` has never run.
 6. Headers copied into edits on files over 60 lines (D13, finding 3): judge a change to the
    context format on dev; it makes a new config.
 7. The cascade costs more than the frontier alone on both tiers. Sending the full history on

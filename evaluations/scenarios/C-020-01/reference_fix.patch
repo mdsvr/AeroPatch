@@ -1,0 +1,14 @@
+diff --git a/app/conference_talk_submissions.py b/app/conference_talk_submissions.py
+index 505726a..3341e2c 100644
+--- a/app/conference_talk_submissions.py
++++ b/app/conference_talk_submissions.py
+@@ -47,6 +47,9 @@ def validate_budget(budget: int, category: str = "general") -> float:
+     
+     if budget_int < min_budget:
+         raise ValueError(f"Budget must be at least {min_budget}.")
++    if budget_int > max_budget:
++        raise ValueError(f"Budget exceeds maximum allowed limit of {max_budget}.")
++        
+     return float(budget_int)
+ 
+ 

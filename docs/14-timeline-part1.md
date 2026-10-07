@@ -60,6 +60,9 @@ real-CVE scenarios were added under `test_b` (50 scenarios in total) and all thr
 configs were run on them. A model run was killed and resumed, and Claude Code called the MCP
 server. Tier C waits for the teacher model of Week 3 (`NOTES.md`, 2026-10-05).
 
+**Status (2026-10-06): Tier C built.** Five scenarios from the teacher pilot are under `test_c`
+(55 scenarios in total; `NOTES.md`, 2026-10-06).
+
 | Day | Work | Output / acceptance check |
 |---|---|---|
 | D8 | Repair loop (doc 08 part 1): attempt plan, feedback builder, budgets, identical-edit detection, refusal-as-routing | A scenario that fails attempt 1 and succeeds on attempt 2, visible in the logs |
