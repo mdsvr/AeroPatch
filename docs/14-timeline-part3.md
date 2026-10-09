@@ -116,7 +116,7 @@ are on D17. A later change (`NOTES.md`, D13, finding 3) means rendering and trai
 Part 2 §4 budgets 6–10 of Kaggle's 30 GPU hours a week. The rehearsal, the control and the
 checkpoint exports below are extra sessions inside that budget.
 
-**D17**
+**D17** (in detail, with the order changed after D16: [14-timeline-part4.md](14-timeline-part4.md))
 - [ ] Read 30 random verified examples, about an hour. More than 3 wrong or silly: tighten the
       filters before freezing (doc 09 §10).
 - [ ] Freeze dataset v1: `train.jsonl`, `val.jsonl` (5%), `stats.md`, the leakage report. SHA-256

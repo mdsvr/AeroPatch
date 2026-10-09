@@ -998,16 +998,16 @@ turns share some text with the benchmark, and I read every shared passage.**
    test and Tier B, about 40 minutes.
 3. **Data mix from dev only** (D14), against doc 14 §5's wording. Also a default.
 4. **Pull request.** The D15 work is committed and pushed on `feat/week3-d15-data` (2026-10-07),
-   together with the Week 3 plan commit it is branched from. No pull request is open. **The D16
-   work is not committed** (2026-10-09): `training/prepare_dataset.py`, `training/inject_cwe.py`,
-   `training/stats.md`, `tests/test_prepare_dataset.py`, one line of `src/aeropatch/agent/gates.py`
-   and these notes. The training data itself (`training/synthetic/`, `training/data/`) is
+   together with the Week 3 plan commit it is branched from. No pull request is open. The D16
+   work and the D17 plan are on the same branch, pushed on 2026-10-09. The training data itself (`training/synthetic/`, `training/data/`) is
    git-ignored and exists only on the laptop.
 
 **Work**
-5. Week 3, D17: read 30 examples (the list at the end of the D16 section says what to look
-   for), then freeze `train.jsonl` and `val.jsonl` with their SHA-256; `finetune.py`, which must
-   train on `target` only; the Kaggle pilot, the export rehearsal and the untuned control. The
+5. Week 3, D17, planned in `docs/14-timeline-part4.md`. It needs a Kaggle account with a
+   verified phone and an API token from you. Read 30 examples (the list at the end of the D16
+   section says what to look for); `finetune.py`, which must train on `target` only; the Kaggle
+   pilot and a memory probe at 4,096; then freeze `train.jsonl` and `val.jsonl` with their
+   SHA-256; the export rehearsal and the untuned control. The
    parity test of the messages exists (`tests/test_prepare_dataset.py`, and the build's check of
    240 prompts); the chat-template half is still to write. Rebuild with
    `uv run python training/prepare_dataset.py build --student-run 20261009-student-pass`
