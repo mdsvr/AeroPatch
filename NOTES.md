@@ -830,31 +830,188 @@ random pairs.
 - 258 advisories point at a merge commit and were dropped. Diffing a merge against its first
   parent would recover some of them.
 
+## Week 3, D16 (2026-10-09): student pass, bug-fix slice, filters, 554 examples
+
+**Result: 554 examples, 526 in `train.jsonl` and 28 in `val.jsonl`.** That is under R4's fallback
+of 1,500. `training/stats.md` has every count below and is written by the build;
+`training/data/leakage.md` has every overlap with the benchmark. Nothing is frozen: the spot
+check of 30 and the freeze are D17.
+
+| Slice | Examples | Share | Plan (doc 09 §8) | From |
+|---|---|---|---|---|
+| Security fix, first attempt | 374 | 68% | 55% | 228 advisory pairs, 146 synthetic |
+| Repair turns | 69 | 12% | 20% | 51 synthetic scenarios the student failed on |
+| General bug fixes | 111 | 20% | 20% | 44 SWE-Gym, 67 SWE-smith |
+| Format practice, counted inside the slices above | 47 | 8% | 5% | 11 repairs after a format failure, 36 fixes of 3 or more blocks |
+
+- 215 examples are checked by the sandbox (the synthetic ones). The other 339 re-apply
+  byte-exact and have no test.
+- Every written example was read back: 554 targets parse, every SEARCH is in its prompt, ids
+  are unique, and no repository or synthetic scenario is on both sides of the split.
+
+**Student pass: 111 of 189 resolved at the first attempt, 156 within three.** Run
+`20261009-student-pass`, `repair-local` (untuned `qwen3.5:4b`), 54 minutes, median 10 s a scenario.
+- 154 failed attempts: POC_FAIL 80, REGRESSION 35, FORMAT_FAIL 21, SEARCH_NOT_FOUND 10,
+  GATE_REJECT 4, SEARCH_AMBIGUOUS 3, IMPORT_ERROR 1. Weakest by CWE: 1333 (4 of 6), 20 (8 of 12),
+  918 (19 of 28).
+- **The run stopped once, and I caused it.** At 181 scenarios Windows refused to start a process
+  (`WinError 1455`, paging file too small) while a memory-heavy check of mine ran beside it.
+  `inject_cwe.py` has `--run-id` since this morning, so the same command finished the last 9.
+  One scenario (`S-89-00111`) lost its third attempt to an Ollama out-of-memory error.
+- **Parity: 0 mismatches.** A repair turn is rebuilt from the run file with the loop's own
+  functions, and the build compares it with every `prompt.txt` the student was sent for a
+  scenario in the set (240 prompts). The first message of each synthetic example is checked
+  the same way. That covers 64 of the 69 repair turns in the set. The other 5 end a
+  conversation (the feedback on a last attempt, which was never sent on), so no prompt on disk
+  holds them. 3 turns follow a third attempt, a conversation that `repair-local` never sends.
+
+**General bug fixes** (`prepare_dataset.py general`, about 15 minutes): 894 pairs through the
+advisory converter. Rows come from the Hugging Face datasets-server as JSON, so no new dependency.
+- SWE-Gym, all 2,438 rows: 555 pairs from 11 repositories (at most 60 files fetched per
+  repository). Its patch is the fix.
+- SWE-smith, 4,300 of 59,136 rows (one page in fourteen): 339 pairs from 37 repositories. Its
+  patch plants the bug in a clean copy, so the fix is the reverse.
+- **The exclusion list dropped 100 SWE-smith rows from benchmark projects.** SWE-smith names a
+  repository `owner__name.commit`; `smith_repo()` turns that back before the check, and a test
+  covers it.
+
+**Filters** (pairs left after each step; the full table is in `stats.md`):
+
+| Step | Advisory | Synthetic | SWE-Gym | SWE-smith |
+|---|---|---|---|---|
+| Converted, or kept by the sandbox | 531 | 189 | 555 | 339 |
+| A CWE on the advisory | 510 | 189 | 555 | 339 |
+| At most 60 changed lines in at most 2 functions | 419 | 189 | 472 | 288 |
+| At most 6 hunks, none whitespace only | 401 | 189 | 460 | 238 |
+| **Every SEARCH line is in the prompt** (new) | 304 | 189 | 384 | 179 |
+| The fix passes the loop's gates (new) | 293 | 189 | 381 | 179 |
+| Dedupe | 293 | 188 | 380 | 179 |
+| **Within 2,048 tokens** | 238 | 188 | 206 | 157 |
+| Secrets | 232 | 188 | 192 | 157 |
+| Leakage | 228 | 146 | 191 | 157 |
+| At most 30 per CWE and repository | 228 | 146 | 189 | 157 |
+| General bug fixes held to 20% | 228 | 146 | 44 | 67 |
+
+- **Two filters are not in doc 09.** A file over 60 lines is shown as one function, so a fix
+  that also edits code outside it would train the model to edit what it cannot see: 232 pairs
+  dropped. And a fix the loop's gates reject is not a target: 14 dropped (8 do not parse as
+  Python 3, 5 add a `# noqa` or `# nosec` comment, 1 adds a risky import).
+- **Two changes rescued pairs.** The finding of a mined pair now points at the first changed
+  line inside a function, not at the import the fix adds above it (about 50 advisory pairs).
+  The converter also tries blocks with less context, or context on one side only, when a
+  neighbouring line is out of view.
+- **Dedupe and leakage compare function with function**, on 5-token runs with identifiers
+  blanked, as section 3 of the Week 3 plan decided. Comparing a benchmark function with a whole
+  prompt flagged 196 pairs falsely on the first try. Two near-duplicates were dropped (more than
+  two functions 80% alike); 56 pairs of functions are that alike in all, mostly two bugs in one
+  SWE-Gym or SWE-smith function, and stay.
+- **Length is the largest loss after context: 251 pairs and 46 repair turns** are over 2,048
+  tokens. Tokens are estimated at 3.6 characters each (Ollama counted 4.05 on average over the
+  student's prompts, under 3.7 for 5% of them); a repair turn the student was sent uses Ollama's
+  own count. **At 4,096 the set is 661 examples**: 420 first attempts, 109 repair turns, 132
+  general. `build --max-tokens 4096` writes that set.
+
+**Leakage: 47 pairs and 4 repair turns dropped. 48 of the 485 kept pairs and 6 of the 69 kept
+turns share some text with the benchmark, and I read every shared passage.**
+- No pair comes from a benchmark project and no advisory is from 2026.
+- 35 synthetic examples share at least one 13-token run with a Tier C scenario and are dropped
+  (the limit is zero, your default). D15 counted 46 on the whole module, and that count is 48
+  today; the build counts on the prompt and the target, and a module over 60 lines is shown as
+  one function.
+- **12 more are dropped by a rule I added: no shared run may touch a line that a benchmark
+  reference fix removes or adds.** Four synthetic CWE-327 examples held
+  `hashlib.md5(data).hexdigest()` and its `sha256` twin, which is the whole reference fix of
+  `A-327-01`; two held the fixed regular expression of `A-1333-02`. The rest: one synthetic
+  CWE-328, four advisory pairs and one SWE-Gym pair with a common idiom on a fix line
+  (`os.path.realpath(os.path.join(`, `.encode("utf-8")).hexdigest()`, a `.replace` escape).
+- **A repair turn is checked on what it adds to the prompt**: the student's edits and the test
+  output. 4 turns are dropped. In the first turns of `S-328-00127` and `S-328-00525` the student
+  wrote the fix line of `C-328-01`; both turns of `S-918-00185` share 2 runs with `C-601-01`.
+  The 6 kept turns share a typing signature, a number pattern, `.decode('utf-8'))` and
+  `scheme not in ("http", "https")`.
+- **The format example in the system prompt shares a line with the reference fix of `A-089-01`**
+  (dev): `... FROM users WHERE name = ?", (name,))`. Every model has seen it in every prompt
+  since Week 1, so it is a property of the benchmark, not of the training set. The scan of a
+  repair turn leaves the example out, or every repair after FORMAT_FAIL would be dropped.
+- No training function overlaps a benchmark target function by half; the closest is 47%, a
+  three-line getter.
+- What the 48 kept pairs share, at most 9 runs with one scenario: comment rulers and docstring
+  underlines, import and typing lines, `open(path, "w", encoding="utf-8")`,
+  `os.path.abspath(os.path.join(`, `def __init__(self, *args, **kwargs)`, two URLs, and the
+  host list `("localhost", "127.0.0.1", ...` of `A-918-02` in three synthetic CWE-918 examples.
+  That list is an unchanged line there; the fix of `A-918-02` resolves the host name.
+
+**Defaults taken today, yours to overrule**
+- The 61 examples that pass check 3 only by a PoC test are kept (46 of the 146 synthetic first
+  attempts). They are ordered last, so a cap drops them first.
+- Tier C limit zero; the fix-line rule above; general bug fixes at 20%; the 2,048 limit.
+- **No generator for format practice.** Real examples already make 8%: repairs after a format
+  failure and fixes of three or more blocks.
+- **Finding wording.** Synthetic prompts keep `synthetic rule synthetic.cwe-N`, as Tier C has it.
+  Advisory pairs read as Tier B does (`advisory rule advisory.cwe-N`). A bug fix reads `Bug
+  reported by issue rule issue.bug`, with the issue title as the message and the issue text as
+  the description. No training prompt says `opengrep` or `bandit`, which is what Tier A says.
+- Docstrings that name the fix are left in: 32 of the 146 synthetic first attempts by a keyword
+  match.
+- `stats.md` is in git (`training/stats.md`), because it holds counts only. The examples and
+  `leakage.md` stay in `training/data/`, which is ignored.
+- One line changed in `src/`: `gates.check` built a set of the file's lines once per line, which
+  took seconds on a 5,000-line file. Same result, and the gate tests pass. The first 180
+  scenarios of the student run ran before the change and the last 9 after it. The run header
+  says commit `4c43b51` and not dirty for all of them: it is written once, at the start, and
+  `dirty` does not watch `training/`, where `--run-id` was added.
+
+**For the reading of 30 on D17**
+- **33 of the 485 first targets call a function the prompt does not show** (20 synthetic, 9
+  advisory, 4 SWE-Gym), such as `validate_quantity` in `S-20-00162`. A regular expression found
+  them, not a reading. Decide whether to filter them: they teach calling a helper on faith.
+- The RATIONALE of every target is the finding's message, so it states the flaw, not the fix.
+  For advisory and synthetic pairs the message and the description are the same sentence.
+- **Only `target` may be trained on.** The assistant messages inside `messages` are the student's
+  failed edits; `finetune.py` has to mask them, which `train_on_responses_only` alone does not.
+- Call sites in a training prompt come from the same file only; at inference they can come from
+  the whole repository.
+- The length limit is an estimate until the real tokenizer runs on Kaggle.
+
 
 ## Next
 
 **Decisions that are yours**
-1. **How to fill the dataset** (D16, after `stats.md`): with a free local teacher the synthetic
-   slice is 189 examples (128 without the relaxed check 3), beside 531 real fix pairs. Grow the
-   general bug-fix slice, keep generating after D16, or accept a smaller dataset than R4's 1,500.
-   With it: keep or drop the 61 examples that pass check 3 only by a PoC test, and how many
-   shared runs with Tier C a training example may have (46 share at least one; dropping all of
-   them leaves 143).
+1. **How large the dataset should be.** It is 554 examples against R4's 1,500 (D16). The default
+   is to go to D17 with it. What each alternative adds:
+   - **Sequence length 4,096 instead of 2,048: 661 examples**, measured. The cost is memory and
+     time on the T4; the D17 pilot of 50 steps gives the number (doc 10 §3 allows it "only if
+     the length histogram needs it", and 297 examples are over 2,048).
+   - **A second generation run: about 270 more per 500 candidates**, my estimate from the first
+     run's rates (146 usable examples, 69 repair turns, a fifth more as bug fixes). It takes
+     about 26 hours of laptop time and can run at night; overlaps with Tier C and near-duplicates
+     may rise, because the 16 themes repeat. Nothing was started.
+   - More bug fixes: 346 pass every filter and 111 are used. Using all gives 789 with bug fixes
+     at 44% of the set, against the plan's 20%.
+   - More advisory pairs: 258 advisories point at a merge commit and were never converted. The
+     yield is unknown.
+   With it, the D16 defaults: the 61 examples that pass check 3 only by a PoC test are kept, a
+   training example may share no 13-token run with Tier C, and none with a line that a
+   benchmark reference fix changes.
 2. **Frontier reference: still `claude-opus-5`** (a default, not your decision yet). Moving to
    `claude-opus-5-5` means re-running `repair-claude-code` and `cascade-claude-code` on dev,
    test and Tier B, about 40 minutes.
 3. **Data mix from dev only** (D14), against doc 14 §5's wording. Also a default.
 4. **Pull request.** The D15 work is committed and pushed on `feat/week3-d15-data` (2026-10-07),
-   together with the Week 3 plan commit it is branched from. No pull request is open. The
-   training data itself (`training/synthetic/`, `training/data/`) is git-ignored and exists only
-   on the laptop.
+   together with the Week 3 plan commit it is branched from. No pull request is open. **The D16
+   work is not committed** (2026-10-09): `training/prepare_dataset.py`, `training/inject_cwe.py`,
+   `training/stats.md`, `tests/test_prepare_dataset.py`, one line of `src/aeropatch/agent/gates.py`
+   and these notes. The training data itself (`training/synthetic/`, `training/data/`) is
+   git-ignored and exists only on the laptop.
 
 **Work**
-5. Week 3, D16: the student pass on the 189 kept examples (`--count 0 --student`; the overnight
-   run has ended); then in `prepare_dataset.py` the general bug-fix slice, the
-   filters of doc 09 §7, dedupe and the leakage report (every overlap above zero, recomputed
-   and not read from `eval_overlap`, and any training example that overlaps Tier C), and
-   `stats.md`. `--student` has never run.
+5. Week 3, D17: read 30 examples (the list at the end of the D16 section says what to look
+   for), then freeze `train.jsonl` and `val.jsonl` with their SHA-256; `finetune.py`, which must
+   train on `target` only; the Kaggle pilot, the export rehearsal and the untuned control. The
+   parity test of the messages exists (`tests/test_prepare_dataset.py`, and the build's check of
+   240 prompts); the chat-template half is still to write. Rebuild with
+   `uv run python training/prepare_dataset.py build --student-run 20261009-student-pass`
+   (about a minute).
 6. Headers copied into edits on files over 60 lines (D13, finding 3): judge a change to the
    context format on dev; it makes a new config.
 7. The cascade costs more than the frontier alone on both tiers. Sending the full history on

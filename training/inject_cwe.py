@@ -352,6 +352,7 @@ def main() -> None:
     # A teacher larger than the VRAM needs its own split; the student's "all layers on the GPU" would not load.
     p.add_argument("--num-gpu", type=int, help="teacher layers on the GPU (default: the student's setting)")
     p.add_argument("--num-ctx", type=int, help="teacher context size (default: the student's)")
+    p.add_argument("--run-id", help="name of the student run; a stopped run resumes under the same name")
     args = p.parse_args()
 
     eval_ngrams = set().union(*(ngrams(f.read_text(encoding="utf-8")) for f in SCENARIOS_DIR.glob("*/repo/**/*.py")))
@@ -422,7 +423,7 @@ def main() -> None:
     print("all candidates so far:", dict(Counter(rec["status"] for rec in records).most_common()))
     kept = [rec["id"] for rec in records if rec["status"] == "kept"]
     if args.student and kept:
-        print("student run:", bench.run_benchmark(load_config("repair-local"), "train", ids=kept))
+        print("student run:", bench.run_benchmark(load_config("repair-local"), "train", args.run_id, kept))
 
 
 if __name__ == "__main__":
