@@ -87,7 +87,8 @@ def check(originals: dict[str, str], changed: dict[str, str], allowed_paths: lis
         if path not in allowed_paths:
             flag("OUT_OF_SCOPE", f"{path} is not in the allowed files {allowed_paths}")
         total += _changed_lines(before, after)
-        added = [line for line in after.splitlines() if line not in set(before.splitlines())]
+        old_lines = set(before.splitlines())  # built once: per line it took seconds on a file of 5,000 lines
+        added = [line for line in after.splitlines() if line not in old_lines]
         if any(SUPPRESS_RE.search(line) for line in added):
             flag("SUPPRESSES_CHECKS", f"{path} adds a check-suppression marker")
         if not path.endswith(".py"):
