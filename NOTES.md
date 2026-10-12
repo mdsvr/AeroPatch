@@ -976,7 +976,7 @@ turns share some text with the benchmark, and I read every shared passage.**
 ## Week 3, D17, first part (2026-10-12): the reading, `finetune.py`, the template check
 
 Steps 1 to 4 of `docs/14-timeline-part4.md` are done. **Steps 5 to 9 wait for the Kaggle API
-token**: there is none in `C:\Users\vardh\.kaggle\`. Nothing is frozen, because the sequence
+token**: there is none in `%USERPROFILE%\.kaggle\`. Nothing is frozen, because the sequence
 length depends on the pilot.
 
 **The set after the reading: 470 examples at 2,048 tokens (445 train, 25 validation), or 541 at
@@ -1049,7 +1049,7 @@ back exactly.
   on its first run, and the pins come from that.
 
 **Kaggle, later the same day.** You created the account and the token (username
-`vardhanreddy1`; the token is in `C:\Users\vardh\.kaggle\access_token`).
+`<kaggle-username>`; the token is in `%USERPROFILE%\.kaggle\access_token`).
 - Both sets are uploaded as private datasets, `aeropatch-train` (470 examples) and
   `aeropatch-train-4096` (541). Kaggle reports them ready and private.
 - **The kernel ran twice and had neither a GPU nor internet** ("GPU: False, internet: False" in
