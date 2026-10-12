@@ -1082,10 +1082,10 @@ back exactly.
    `claude-opus-5-5` means re-running `repair-claude-code` and `cascade-claude-code` on dev,
    test and Tier B, about 40 minutes.
 3. **Data mix from dev only** (D14), against doc 14 §5's wording. Also a default.
-4. **Pull request.** The D15 work is committed and pushed on `feat/week3-d15-data` (2026-10-07),
-   together with the Week 3 plan commit it is branched from. No pull request is open. The D16
-   work and the D17 plan are on the same branch, pushed on 2026-10-09. The training data itself (`training/synthetic/`, `training/data/`) is
-   git-ignored and exists only on the laptop.
+4. **Pull requests.** Week 3 lives on `feat/week3-d15-data`, and you merge it into `main` as it
+   goes: #11 (D15, 2026-10-07), #12 (D16 and the D17 plan, 2026-10-09), #13 (D17, first part,
+   2026-10-12). The Kaggle kernel clones that branch. The training data itself
+   (`training/synthetic/`, `training/data/`) is git-ignored and exists only on the laptop.
 
 **Work**
 5. Week 3, D17, second part (`docs/14-timeline-part4.md`, steps 5 to 9). **It needs a Kaggle
