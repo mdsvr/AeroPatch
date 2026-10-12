@@ -90,7 +90,7 @@ def main() -> None:
 
     # Imported here: the laptop has no GPU libraries, and the tests need encode() only.
     import torch
-    from unsloth import FastLanguageModel  # isort: skip - Unsloth asks to be imported before transformers
+    from unsloth import FastLanguageModel, is_bfloat16_supported  # isort: skip - before transformers, as Unsloth asks
     from transformers import AutoTokenizer, DataCollatorForSeq2Seq, Trainer, TrainingArguments  # isort: skip
 
     model, processor = FastLanguageModel.from_pretrained(
@@ -113,7 +113,7 @@ def main() -> None:
             model, r=args.rank, lora_alpha=args.rank, lora_dropout=0, bias="none", random_state=SEED,
             target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
             use_gradient_checkpointing="unsloth", max_seq_length=args.max_seq_length)
-        bf16 = torch.cuda.is_bf16_supported()  # a T4 has no bf16 (doc 10 §3)
+        bf16 = is_bfloat16_supported()  # False on a T4 (doc 10 §3); torch's own check counts emulation and says True
         # ponytail: transformers' Trainer, not TRL's SFTTrainer: the examples arrive tokenised and
         # masked, so nothing of TRL's text handling (templates, packing) is wanted.
         trainer = Trainer(
