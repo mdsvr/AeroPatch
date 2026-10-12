@@ -90,9 +90,12 @@ pushed first. Then, once:
   `uvx kaggle kernels status <user>/aeropatch-finetune` follows it;
   `uvx kaggle kernels output <user>/aeropatch-finetune -p training/data/pilot` fetches
   `pilot.json`, the frozen requirements and the GGUF.
-- For the memory probe, change `RUN` in `kernel.py` to `--max-steps 6 --longest 50
-  --max-seq-length 4096` and the data path to the second dataset, push to GitHub, push the
-  kernel again. Check in the log which GPU Kaggle gave.
+- For the memory probe, set `RUN = RUNS["probe"]` in `kernel.py` and push the kernel again.
+  The push uploads `kernel.py` itself, and both datasets are already mounted, so nothing goes
+  to GitHub for this.
+- **The kernel asks for a T4** (`"machine_shape": "NvidiaTeslaT4"`, Kaggle's "GPU T4 x2") and
+  runs on one of the two. Unsloth needs CUDA capability 7.0, which a T4 has and a P100 does
+  not. The first line of the log names the GPU.
 
 **Step 8.** On Kaggle: merge the pilot adapter and export `q4_k_m` (doc 10 §6). On the laptop:
 a Modelfile with `FROM`, `RENDERER qwen3.5`, `PARSER qwen3.5` and the parameters of doc 10 §8;
@@ -100,6 +103,9 @@ a Modelfile with `FROM`, `RENDERER qwen3.5`, `PARSER qwen3.5` and the parameters
 `uv run aeropatch remediate A-089-01 --config repair-local --local-model aeropatch-pilot`.
 A pilot adapter of 50 steps does not have to resolve anything. It has to load, stop, and write
 SEARCH/REPLACE blocks inside 3,891 MiB of VRAM (the untuned model peaked at 3,787).
+**The Modelfile also copies `top_k 20` and `presence_penalty 1.5` from the library model.**
+The client sends neither, so every baseline ran with them; without them the control would
+differ from the library model in sampling as well as in the export path.
 
 **Step 9.** The same export with no adapter gives `aeropatch-control`; then
 `uv run aeropatch bench --config repair-local --split dev --local-model aeropatch-control`

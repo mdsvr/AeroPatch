@@ -44,7 +44,7 @@ Run `20261009-student-pass`: the untuned student on every kept synthetic scenari
 - 189 scenarios: 111 resolved at the first attempt, 156 within three.
 - 57 failed attempts on scenarios in the set; 24 are over the length limit and 2 fail the leakage check, so 31 repair turns are in the set: 23 after POC_FAIL, 5 after REGRESSION, 1 after SEARCH_NOT_FOUND, 1 after GATE_REJECT, 1 after IMPORT_ERROR.
 - Scenarios whose rebuilt conversation differs from a prompt on disk: 0. 30 of the repair turns in the set were sent to the student as its next prompt and were compared with it; the others end a conversation, so no prompt on disk holds them.
-- 1 repair turns follow a third attempt, a conversation that `repair-local` never sends.
+- Repair turns that follow a third attempt, a conversation `repair-local` never sends: 1.
 
 ## By CWE
 

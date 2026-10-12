@@ -91,11 +91,15 @@ def main() -> None:
     # Imported here: the laptop has no GPU libraries, and the tests need encode() only.
     import torch
     from unsloth import FastLanguageModel  # isort: skip - Unsloth asks to be imported before transformers
-    from transformers import DataCollatorForSeq2Seq, Trainer, TrainingArguments  # isort: skip
+    from transformers import AutoTokenizer, DataCollatorForSeq2Seq, Trainer, TrainingArguments  # isort: skip
 
-    model, tokenizer = FastLanguageModel.from_pretrained(
+    model, processor = FastLanguageModel.from_pretrained(
         model_name=BASE, max_seq_length=args.max_seq_length, load_in_4bit=False, load_in_16bit=True,
         full_finetuning=False)  # LoRA on the 16-bit base: Unsloth advises against QLoRA for Qwen3.5 (doc 10 §1)
+    # Tokens are built and read with the plain tokenizer, the one the template check was made
+    # with. The model also takes images, so what Unsloth returns may be a processor; it is kept
+    # for saving, because the export may want its files.
+    tokenizer = AutoTokenizer.from_pretrained(BASE)
     train, report = prepare(tokenizer, _jsonl(args.data / "train.jsonl"), args.max_seq_length)
     val_examples = _jsonl(args.data / "val.jsonl")
     val, _ = prepare(tokenizer, val_examples, args.max_seq_length)
@@ -129,7 +133,7 @@ def main() -> None:
                        "peak_vram_gb": round(torch.cuda.max_memory_allocated() / 2**30, 2),
                        "log": trainer.state.log_history})
         model.save_pretrained(str(args.out / "adapter"))
-        tokenizer.save_pretrained(str(args.out / "adapter"))
+        processor.save_pretrained(str(args.out / "adapter"))
 
     # A few validation prompts through the trained model, judged by the parser the loop uses (doc 10 §4).
     FastLanguageModel.for_inference(model)
@@ -147,7 +151,7 @@ def main() -> None:
     print("validation outputs that parse:", sum(s["parses"] for s in report["samples"]), "of", len(report["samples"]))
 
     if args.gguf:  # merged with the adapter when one was trained; the bare base when --max-steps 0
-        model.save_pretrained_gguf(str(args.out / "gguf"), tokenizer, quantization_method=args.gguf)
+        model.save_pretrained_gguf(str(args.out / "gguf"), processor, quantization_method=args.gguf)
 
 
 if __name__ == "__main__":

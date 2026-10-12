@@ -1040,8 +1040,11 @@ back exactly.
 - Arguments cover the pilot (`--max-steps 50`), the memory probe (`--longest 50
   --max-seq-length 4096`), the full run and the untuned control (`--max-steps 0 --gguf q4_k_m`).
   Everything measured goes to `pilot.json`.
+- Tokens are built with the plain tokenizer the check above was made with. The model also
+  takes images, so Unsloth may return a processor; that object is used for saving only.
 - `training/kaggle/kernel.py` is a script kernel that clones the repository and calls the
-  script. It reads the code from GitHub, so this work has to be pushed before the pilot.
+  script. It reads the code from GitHub, so this work has to be pushed before the pilot. It
+  asks for a T4: Unsloth needs CUDA capability 7.0, and Kaggle's other GPU, the P100, has 6.0.
 - `training/requirements.txt` says `unsloth` and is not pinned: the kernel saves `pip freeze`
   on its first run, and the pins come from that.
 
@@ -1095,16 +1098,23 @@ back exactly.
    `uv run --with transformers --with jinja2 python training/prepare_dataset.py build
    --student-run 20261009-student-pass --tokenizer Qwen/Qwen3.5-4B`
    (add `--max-tokens 4096 --out training/data/seq4096` for the longer one).
-6. Headers copied into edits on files over 60 lines (D13, finding 3): judge a change to the
+6. **Every local run so far very likely used `presence_penalty 1.5` and `top_k 20`** (found
+   2026-10-12, read from the files, not tested). They are in the Modelfile of the library
+   `qwen3.5:4b`, a Modelfile parameter applies unless the request overrides it, and
+   `local_client.py` sends temperature, `top_p`, the context size, the GPU layers and the token
+   limit, nothing else. A penalty on repeated tokens may work against copying SEARCH lines
+   exactly; whether it does is one dev experiment, as a new config. The D17 control copies
+   both values, so it stays comparable with the baselines.
+7. Headers copied into edits on files over 60 lines (D13, finding 3): judge a change to the
    context format on dev; it makes a new config.
-7. The cascade costs more than the frontier alone on both tiers. Sending the full history on
+8. The cascade costs more than the frontier alone on both tiers. Sending the full history on
    escalation (doc 04 §5) is the reason; whether a shorter escalation prompt keeps the
    resolve rate is worth one dev experiment in Week 4.
-8. Week 4 (doc 12): pass@k, the bootstrap, CSV output, tokens and $ per resolved scenario, and
+9. Week 4 (doc 12): pass@k, the bootstrap, CSV output, tokens and $ per resolved scenario, and
    results reported per tier.
-9. Not done from the plan: `propose_fix` and `apply_edits` as MCP tools (`remediate` covers
+10. Not done from the plan: `propose_fix` and `apply_edits` as MCP tools (`remediate` covers
    them), and a Tier B "before release" group.
-10. `docs/architecture.html` and `docs/architecture-interactive.html` are the same file twice.
+11. `docs/architecture.html` and `docs/architecture-interactive.html` are the same file twice.
 
 **Cuts found by the over-engineering audit and left for after Week 4**, because they sit on the
 code path the baselines measured: the finding `fingerprint` that nothing reads

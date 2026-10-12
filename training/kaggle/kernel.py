@@ -1,14 +1,18 @@
 """Kaggle script kernel: clone the repository and run training/finetune.py. No logic lives here (doc 10 §2).
 
-Pushed with `uvx kaggle kernels push -p training/kaggle`. RUN is the one line that changes between
-the pilot, the memory probe, the full run and the untuned control; finetune.py's docstring lists them.
-The kernel reads the code from GitHub, so a change has to be pushed there before it runs here.
+Pushed with `uvx kaggle kernels push -p training/kaggle`, which uploads this file: changing RUN
+needs no push to GitHub. A change to finetune.py does, because the kernel clones it from there.
 """
 
 import subprocess
 
 BRANCH = "feat/week3-d15-data"
-RUN = "--max-steps 50 --gguf q4_k_m"  # the pilot
+RUNS = {
+    "pilot": "--data /kaggle/input/aeropatch-train --max-steps 50 --gguf q4_k_m",
+    "probe": "--data /kaggle/input/aeropatch-train-4096 --max-steps 6 --longest 50 --max-seq-length 4096",
+    "control": "--data /kaggle/input/aeropatch-train --max-steps 0 --gguf q4_k_m",
+}
+RUN = RUNS["pilot"]
 
 
 def sh(command: str) -> None:
@@ -16,7 +20,9 @@ def sh(command: str) -> None:
     subprocess.run(command, shell=True, check=True)
 
 
+sh("nvidia-smi --query-gpu=name,memory.total --format=csv")
 sh(f"git clone --depth 1 --branch {BRANCH} https://github.com/mdsvr/AeroPatch.git")
 sh("pip install -q -r AeroPatch/training/requirements.txt")
 sh("pip freeze > /kaggle/working/requirements-frozen.txt")
-sh(f"python AeroPatch/training/finetune.py --data /kaggle/input/aeropatch-train --out /kaggle/working/run {RUN}")
+# One GPU: the kernel asks for "GPU T4 x2" (kernel-metadata.json), and the numbers are for one T4.
+sh(f"CUDA_VISIBLE_DEVICES=0 python AeroPatch/training/finetune.py --out /kaggle/working/run {RUN}")
