@@ -19,7 +19,7 @@ say what changed on the way.
   build's check of 240 student prompts).
 - **Not written yet:** `training/finetune.py`, `training/requirements.txt`, the Kaggle notebook,
   the Modelfile.
-- **No Kaggle token on the laptop:** `C:\Users\vardh\.kaggle\access_token` does not exist. The
+- **No Kaggle token on the laptop:** `%USERPROFILE%\.kaggle\access_token` does not exist. The
   Kaggle command line itself runs (`uvx kaggle --version` answers 2.2.4).
 - **Ollama's `qwen3.5:4b` does not carry a chat template in its Modelfile.** It says
   `TEMPLATE {{ .Prompt }}` with `RENDERER qwen3.5` and `PARSER qwen3.5`, thinking on by default,
@@ -35,7 +35,7 @@ Nothing on Kaggle runs before the first two.
 | Item | How | Note |
 |---|---|---|
 | Kaggle account, phone-verified | kaggle.com, in the account settings | Unlocks the GPU and internet in notebooks |
-| Kaggle API token | kaggle.com/settings/api, "Generate New Token"; save it as the file `C:\Users\vardh\.kaggle\access_token`, which is where the command line (2.2.4) looks | Lets the pilot be started and its files fetched from the laptop, with no clicking in the browser |
+| Kaggle API token | kaggle.com/settings/api, "Generate New Token"; save it as the file `%USERPROFILE%\.kaggle\access_token`, which is where the command line (2.2.4) looks | Lets the pilot be started and its files fetched from the laptop, with no clicking in the browser |
 | Hugging Face token in Kaggle Secrets | Only if `Qwen/Qwen3.5-4B` asks for one | Same as part 3 |
 | Look at the spot-check sheet | Optional, 15 minutes | Section 4, step 1 |
 
