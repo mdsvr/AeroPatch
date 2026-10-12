@@ -12,9 +12,10 @@ import subprocess
 
 BRANCH = "feat/week3-d15-data"
 RUNS = {  # {data}: where Kaggle mounted the dataset named first
-    "pilot": ("aeropatch-train", "--data {data} --max-steps 50 --gguf q4_k_m"),
+    "pilot": ("aeropatch-train", "--data {data} --max-seq-length 2048 --max-steps 50 --gguf q4_k_m"),
     "probe": ("aeropatch-train-4096", "--data {data} --max-steps 6 --longest 50 --max-seq-length 4096"),
-    "control": ("aeropatch-train", "--data {data} --max-steps 0 --gguf q4_k_m"),
+    "control": ("aeropatch-train", "--data {data} --max-seq-length 2048 --max-steps 0 --gguf q4_k_m"),
+    "full": ("aeropatch-train-4096", "--data {data} --gguf q4_k_m"),  # dataset v1, 2 epochs
 }
 ORDER = ["pilot", "probe", "control"]  # the first has to pass; a later one may fail and the rest still run
 

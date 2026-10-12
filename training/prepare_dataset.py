@@ -482,8 +482,10 @@ def _general(raw: httpx.Client, dataset: str, inst: dict, fetched: Counter[str],
 
 SOURCES = ("ghsa", "synthetic", "swe-gym", "swe-smith")
 MAX_FUNCTIONS, MAX_HUNKS = 2, 6
-# doc 10 §3 trains at this sequence length: a longer example would lose the end of its target.
-MAX_TOKENS = 2048
+# The sequence length of training: a longer example would lose the end of its target. 4,096 and
+# not doc 10 §3's 2,048 since the memory probe of 2026-10-12: the 50 longest examples peaked at
+# 12.99 GB on a T4, and the longer limit keeps 71 more examples, 22 of them repair turns.
+MAX_TOKENS = 4096
 # Without --tokenizer, tokens are estimated from characters. Ollama counted 4.0 characters per token
 # over the student's prompts of 2026-10-09 (prompt_eval_count), and under 3.7 for 5% of them; the
 # lower figure is used, so the estimate errs high (by 10% on average, measured 2026-10-12).

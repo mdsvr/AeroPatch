@@ -2,9 +2,9 @@
 
 Runs on a 16 GB GPU (a Kaggle or Colab T4), not on the laptop:
 
-    python training/finetune.py --data <dir> --out <dir> --max-steps 50 --gguf q4_k_m   # the pilot
-    python training/finetune.py --data <dir> --out <dir> --max-steps 6 --longest 50 --max-seq-length 4096   # memory probe
-    python training/finetune.py --data <dir> --out <dir>                                # the full run
+    python training/finetune.py --data <dir> --out <dir> --gguf q4_k_m                  # the full run: 2 epochs
+    python training/finetune.py --data <dir> --out <dir> --max-steps 50 --gguf q4_k_m   # a pilot
+    python training/finetune.py --data <dir> --out <dir> --max-steps 6 --longest 50     # memory probe: the longest examples
     python training/finetune.py --data <dir> --out <dir> --max-steps 0 --gguf q4_k_m    # untuned control: export only
 
 <dir> holds train.jsonl and val.jsonl. An example is {"messages": [...], "target": ...}. The
@@ -80,7 +80,7 @@ def main() -> None:
     p = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     p.add_argument("--data", type=Path, required=True, help="directory with train.jsonl and val.jsonl")
     p.add_argument("--out", type=Path, required=True)
-    p.add_argument("--max-seq-length", type=int, default=2048)
+    p.add_argument("--max-seq-length", type=int, default=4096, help="as prepare_dataset.py built the set")
     p.add_argument("--max-steps", type=int, default=-1, help="50 for the pilot, 0 to export the untuned base")
     p.add_argument("--epochs", type=float, default=2)
     p.add_argument("--rank", type=int, default=16, help="LoRA r, and alpha with it (doc 10 §3)")

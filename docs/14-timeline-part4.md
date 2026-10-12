@@ -6,8 +6,9 @@ Expands the D17 list in section 6 of [14-timeline-part3.md](14-timeline-part3.md
 Lines marked **Change** differ from part 3 or doc 10, and give the reason. Times are estimates
 unless they say "measured".
 
-**State on 2026-10-12: steps 1 to 4 are done**, and their results are in `NOTES.md` ("D17, first
-part"). Steps 5 to 9 wait for the Kaggle token. Sections 4 and 5 say what changed on the way.
+**State on 2026-10-12: all ten steps are done**, and their results are in `NOTES.md` ("D17, first
+part"). The sequence length is 4,096 and dataset v1 is frozen at 541 examples. Sections 4 and 5
+say what changed on the way.
 
 ## 1. Where D17 starts
 
@@ -60,12 +61,12 @@ the sequence length, and the length depends on a memory number that only the pil
 | 2 | Done. Apply what the reading decides; build both candidate sets | 30 minutes | `stats.md` for each; tests pass |
 | 3 | Done. `finetune.py`, `requirements.txt`, the kernel | 2 to 3 hours | The self-checks of section 5 pass on the laptop where they can |
 | 4 | Done, on the laptop. Template half of the parity test | 30 minutes | Token counts match Ollama's for every sampled prompt |
-| 5 | Upload the data; pilot of 50 steps on 400 examples at 2,048 | 15 minutes of GPU (doc 10 §4), plus queue | Loss falls; peak VRAM under 14 GB; 5 validation outputs parse |
-| 6 | Memory probe at 4,096: 6 steps on the 50 longest examples | 10 minutes of GPU | A peak VRAM number and a time per step |
-| 7 | Choose the length; freeze dataset v1 | 20 minutes | SHA-256 of `train.jsonl` and `val.jsonl` in `NOTES.md` |
-| 8 | Export rehearsal with the pilot adapter | 1 hour, mostly download | The GGUF answers one dev scenario in the edit format on the laptop |
-| 9 | Untuned control through the same export | 45 minutes | The control resolves a dev scenario; one dev run recorded |
-| 10 | Notes, commit | 30 minutes | Pilot log and both decisions in `NOTES.md` |
+| 5 | Done. Upload the data; pilot of 50 steps on 400 examples at 2,048 | 15 minutes of GPU (doc 10 §4), plus queue | Loss falls; peak VRAM under 14 GB; 5 validation outputs parse |
+| 6 | Done. Memory probe at 4,096: 6 steps on the 50 longest examples | 10 minutes of GPU | A peak VRAM number and a time per step |
+| 7 | Done. Choose the length; freeze dataset v1 | 20 minutes | SHA-256 of `train.jsonl` and `val.jsonl` in `NOTES.md` |
+| 8 | Done. Export rehearsal with the pilot adapter | 1 hour, mostly download | The GGUF answers one dev scenario in the edit format on the laptop |
+| 9 | Done. Untuned control through the same export | 45 minutes | The control resolves a dev scenario; one dev run recorded |
+| 10 | Done. Notes, commit | 30 minutes | Pilot log and both decisions in `NOTES.md` |
 
 About 7 to 8 hours. It fits one day only if the Kaggle account and token are ready in the
 morning. Steps 1 to 4 need neither, so they go first.
@@ -166,14 +167,14 @@ dropped on Kaggle.
 
 ## 7. Done when
 
-- [ ] 30 examples read, with the verdict and any new filter in `NOTES.md`.
-- [ ] Dataset v1 frozen: `train.jsonl`, `val.jsonl`, `stats.md`, the leakage report; SHA-256 of
+- [x] 30 examples read, with the verdict and any new filter in `NOTES.md`.
+- [x] Dataset v1 frozen: `train.jsonl`, `val.jsonl`, `stats.md`, the leakage report; SHA-256 of
       both files in `NOTES.md`.
-- [ ] Parity: the message test (exists) and the template counts.
-- [ ] Pilot log: the loss falls, peak VRAM, seconds per step, the estimated time of the full
+- [x] Parity: the message test (exists) and the template counts.
+- [x] Pilot log: the loss falls, peak VRAM, seconds per step, the estimated time of the full
       run, 5 parsed outputs.
-- [ ] The rehearsal GGUF runs a dev scenario on the laptop.
-- [ ] The control GGUF resolves a dev scenario, and its dev run is in `runs/`.
+- [x] The rehearsal GGUF runs a dev scenario on the laptop.
+- [x] The control GGUF resolves a dev scenario, and its dev run is in `runs/`.
 
 **Not on D17:** the full run (D18), anything on `test`, `test_b` or `test_c`, a second
 generation run, the quant ablations, and the laptop QLoRA demo unless the day has room.
