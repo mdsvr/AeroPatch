@@ -1,5 +1,12 @@
 # For the GPU machine (Kaggle or Colab) that runs training/finetune.py, not for the laptop.
-# Unsloth brings transformers, trl, peft, bitsandbytes and accelerate with it.
-# Not pinned yet: the kernel saves `pip freeze` as requirements-frozen.txt on its first run, and
-# the versions of that file go here after the pilot (doc 10 §2).
-unsloth
+# The versions of the pilot of 2026-10-12 on a Kaggle T4 (Python 3.13, torch 2.11.0+cu128 from the
+# image, xformers 0.0.35, triton 3.6.0). Unsloth asks for transformers 5 for Qwen3.5.
+unsloth==2026.10.3
+unsloth_zoo==2026.10.3
+transformers==5.16.1
+trl==1.13.0
+peft==0.20.0
+accelerate==1.14.0
+bitsandbytes==0.50.2
+datasets==4.8.5
+tokenizers==0.23.1

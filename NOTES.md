@@ -1048,7 +1048,101 @@ back exactly.
 - `training/requirements.txt` says `unsloth` and is not pinned: the kernel saves `pip freeze`
   on its first run, and the pins come from that.
 
+**Kaggle, later the same day.** You created the account and the token (username
+`vardhanreddy1`; the token is in `C:\Users\vardh\.kaggle\access_token`).
+- Both sets are uploaded as private datasets, `aeropatch-train` (470 examples) and
+  `aeropatch-train-4096` (541). Kaggle reports them ready and private.
+- **The kernel ran twice and had neither a GPU nor internet** ("GPU: False, internet: False" in
+  its log, 40 seconds each), although its settings ask for both and for a T4. That is what
+  Kaggle gives an account whose phone number is not verified. Nothing else ran on it.
+- Two things learned about the command line on Windows: `datasets create` has to be run from
+  inside the folder (with a relative `-p` path it fails on its own temporary file), and `-t`
+  keeps the `.jsonl` files from being turned into CSV.
+- The kernel now runs the pilot, the memory probe and the control in one session, under
+  `/tmp`, and stops at once with a clear message when it has no GPU or no internet.
+- `finetune.py` asks Unsloth, not torch, whether bf16 is supported: torch counts emulation and
+  says yes on a T4. That fix is committed but not on GitHub yet, and the kernel clones from
+  there.
+
+**The pilot ran (kernel version 8, 47 min 49 s on one Kaggle T4): it trains, it fits, and the
+export works.** Your phone was verified by then, and Kaggle gave two T4s and internet.
+
+| Check (doc 10 §4) | Result |
+|---|---|
+| Loss over 50 steps of 8 examples | 0.40 at step 5, 0.21 at step 50; validation 0.242 at step 25, 0.233 at step 50 |
+| Peak VRAM | 9.89 GB, against the limit of 14 |
+| Speed | about 34 s a step once the first step's kernels are compiled (that step took 5 min 16 s); 33 min 44 s for the 50 |
+| Examples dropped for length | 0 of 445; the longest is exactly 2,048 tokens |
+| Prompts equal to Ollama's count | 129 of 129 in the training split |
+| Validation outputs that parse | 5 of 5. This counts the format only: at least 3 of the 5 are wrong fixes (second part, below) |
+| Export | `Qwen3.5-4B.Q4_K_M.gguf`, and `Qwen3.5-4B.F16-mmproj.gguf` for the model's image input |
+
+- A full run of 2 epochs on this 2,048-token set would be about 111 steps, a little over an
+  hour. The set that is trained is the 4,096-token one: 128 steps, about 90 minutes (second
+  part, below).
+- **Precision on a T4.** A T4 has no bf16. Unsloth prints "float16 precision for qwen3_5 won't
+  work, using float32", yet the weights report float16 and the peak is 9.89 GB, so most of the
+  model is 16-bit. `finetune.py` asks for bf16 only where Unsloth says the GPU has it and never
+  for fp16 autocast.
+- Kaggle has no L4 for this account: a kernel that asks for one gets no GPU.
+- Versions on Kaggle that day are pinned in `training/requirements.txt` (Unsloth 2026.10.3,
+  transformers 5.16.1, torch 2.11.0). transformers 5 has no `warmup_ratio`; the script passes
+  5% as a number of steps.
+- Unsloth writes no Ollama Modelfile for this model ("no template mapping found"), so the
+  renderer lines of `docs/14-timeline-part4.md` §1 are needed by hand, as expected.
+- Kaggle mounts a dataset under `/kaggle/input/datasets/<user>/<name>`; the kernel looks the
+  folder up.
+- **The pilot ran from the laptop's `finetune.py`, laid over the cloned one** (SHA-256
+  `cacba103...` in the kernel's log), so that fixes could be tried without a push each time.
+  The file in the repository is that one plus a renamed report key. A run that counts (D18) has
+  to use pushed code.
+- Kaggle's command line shows no log while a kernel runs. The website does, and its training
+  lines appear in blocks, at each evaluation.
+
+**D17 is complete (second part, the same afternoon).** Every item of `docs/14-timeline-part4.md`
+§7 holds.
+
+| Step | Result |
+|---|---|
+| Memory probe at 4,096 (kernel version 9) | **12.99 GB peak** on the 50 longest examples, 0 dropped, longest 4,087 tokens, 139 prompts equal to Ollama's count |
+| Sequence length | **4,096**: the peak is under 14 GB and the full run is estimated at about 90 minutes of training (511 examples, 683,663 tokens, 2 epochs, 128 steps, 3.86 ms a token in the pilot) |
+| **Dataset v1, frozen** | 541 examples: 511 train, 30 validation. 380 first attempts, 53 repair turns, 108 bug fixes |
+| Export rehearsal | The pilot GGUF loads in Ollama with `training/Modelfile`, 100% on the GPU, 3,041 MiB, 47.5 tokens/s; it stops and writes the edit format. It resolved `A-089-01`, which shows nothing about fixing: that scenario's fix is the line of the system prompt's format example |
+| Untuned control | Same export, no adapter: **9 of 13 on dev** (run `20261012-164903-repair-local-dev`), inside the library model's 7 to 10 |
+
+- **SHA-256 of dataset v1**, the same files as the private Kaggle dataset `aeropatch-train-4096`:
+  - `train.jsonl` `9ba0dec85a726cc090ad350fdedc6ce831fb46a195ca2a9293542a86b5e8870b`
+  - `val.jsonl` `9ee09d3037df16669618a6e5dd297ca009ec4c6e64c8c30bd2fe074f1c18c916`
+  `prepare_dataset.py` builds exactly these with its defaults (the limit is 4,096 now) and
+  `--tokenizer Qwen/Qwen3.5-4B`; `training/stats.md` describes them.
+- **The control matches the library model on the checks that were run**, and they are few. For
+  one prompt Ollama counts 584 tokens for `qwen3.5:4b`, the control and the pilot, and at
+  temperature 0 the control begins its answer with the same words as the library model. It
+  failed `A-328-01`, `A-601-01` and `A-918-01`, the three the untuned model failed on
+  2026-10-03, and `A-089-02`. The weights were not compared.
+- **Untuned, 2 of 5 validation outputs parse; after 50 pilot steps, 5 of 5; after 6 probe
+  steps, 4 of 5.** The format is learned early. The pilot also learned to write the finding's
+  message as its RATIONALE, which is what every target does. **Parsing says nothing about the
+  fix.** Of the pilot's 5 outputs at least 3 are wrong, read against their targets: one calls
+  `exec` with four arguments (it takes three), one puts quotes around an escaped value where
+  the reference refuses a dict, and one turns case-sensitive matching off where the reference
+  replaces `unquote_plus` with `unquote`. Only the dev runs of D18 measure fixing.
+- The exported text model reports 4.3B parameters; the image projector is a second file
+  (`mmproj`) that the Modelfile does not load.
+- One run of the control cannot be told from the library model's spread. D18 runs it three
+  times, as planned. The pilot model was not run on dev.
+- **Kaggle's command line downloads only the newest version's output.** Its API takes a version
+  label such as `v8`; a scratch script used it to fetch the pilot's files after version 9 had
+  started. Version 9 waited 15 minutes in Kaggle's queue.
+- **The laptop ran out of memory again**, for about 40 minutes, while I polled Kaggle's live
+  log through the browser. Commands could not start. You closed programs and it recovered.
+- **Disk: 7.6 GB free on `F:`.** The two downloaded GGUFs and the projector (6.2 GB under
+  `training/data/pilot` and `training/data/control`) are copies of what Ollama now holds, and
+  the teacher `qwen3.5:9b` is 6.6 GB. D18 downloads up to three more GGUFs of 2.8 GB, and
+  Ollama keeps its own copy of each.
+
 **Defaults taken today, yours to overrule**
+- **The sequence length is 4,096**, by the rule of the D17 plan.
 - The 20 rejections. Each is one line in `training/rejected.txt`; delete a line to take the
   scenario back.
 - The names filter and the SWE-smith comment filter.
@@ -1057,47 +1151,69 @@ back exactly.
 - Leakage was read again for the new set: 45 of the 439 pairs and 4 of the 31 repair turns
   share text with the benchmark, the same kinds as on D16 and none on a fix line.
 
+**D18 preparation (the same evening): checkpoints, their exports, and what LoRA reaches**
+- **The run now keeps a checkpoint at every evaluation: steps 32, 64, 96 and 128.** Before, the
+  kernel deleted them, and only the last adapter left Kaggle. 64 and 128 are the ends of the
+  two epochs (511 examples in groups of 8 are 64 steps; transformers 5.16.1 counts the short
+  last group as a step, read from its source). Each checkpoint is the adapter alone, about
+  85 MB.
+- **Each earlier checkpoint gets its own GGUF in the same Kaggle session.** D18 judges
+  checkpoints through Ollama, and a later session cannot read this one's files.
+  `finetune.py --max-steps 0 --adapter <checkpoint folder> --gguf q4_k_m` exports a saved
+  adapter; the kernel runs it for steps 32, 64 and 96 after the training. The image projector
+  is no longer copied out. Expected output: four GGUFs of 2.6 GB, 10.4 GB of Kaggle's 20.
+- **The whole session should take about 2 hours 30 minutes**: 90 minutes of training, 14
+  minutes of setup and the first export (the pilot's figure), and three more exports at about
+  9 minutes each. That is my estimate; only the training speed is measured.
+- **LoRA reaches the MLP of all 32 layers and the attention of 8.** Read from the pilot's
+  adapter (256 tensors, 21.2 M parameters): `gate_proj`, `up_proj` and `down_proj` carry an
+  adapter in every layer; `q_proj`, `k_proj`, `v_proj` and `o_proj` exist only in the 8
+  full-attention layers. The other 24 layers are Gated DeltaNet, whose mixing weights are named
+  `in_proj_qkv`, `in_proj_z` and `out_proj`, and they have no adapter.
+  - **Default taken, yours to overrule: the first full run keeps these 7 module names.** They
+    are the list of Unsloth's Qwen3.5 guide, the pilot's loss fell with them, and memory at
+    4,096 tokens is already 12.99 GB of 14.
+  - If dev does not move, adding the three DeltaNet projections is the first thing to try. It
+    needs a memory probe first.
+
 
 ## Next
 
 **Decisions that are yours**
-1. **How large the dataset should be.** After the D17 reading it is 470 examples at 2,048 tokens,
-   against R4's 1,500. The default is to go on with it. What each alternative adds:
-   - **Sequence length 4,096: 541 examples**, counted with the tokenizer; 22 of the 71 more are
-     repair turns. The cost is memory and time on the T4, and the pilot's memory probe gives
-     the number (doc 10 §3 allows it "only if the length histogram needs it").
-   - **A second generation run: about 170 more per 500 candidates**, my estimate from the first
-     run's rates after the reading (105 usable examples, 31 repair turns, a fifth more as bug
-     fixes). It takes about 26 hours of laptop time, and every new fix has to be read: the
-     reading rejected 20 of 124. Nothing was started.
-   - More bug fixes: 346 pass every filter and 94 are used. Using all gives 722 with bug fixes
-     at 48% of the set, against the plan's 20%.
+1. **Whether to grow the dataset before or after the first training run.** Dataset v1 is frozen
+   at 541 examples (D17), against R4's 1,500, with repair turns at 10% against the plan's 20%.
+   The default is to train on it on D18 and let dev decide. What would add examples, as a v2:
+   - **A second generation run: about 200 more per 500 candidates** at 4,096 tokens, my estimate
+     from the first run's rates after the reading (105 usable examples, 53 repair turns, a
+     fifth more as bug fixes). It takes about 26 hours of laptop time, and every new fix has to
+     be read: the reading rejected 20 of 124. Nothing was started.
+   - More bug fixes: 450 pass every filter and 108 are used. Using all would put bug
+     fixes near half of the set, against the plan's 20%.
    - More advisory pairs: 258 advisories point at a merge commit and were never converted. The
      yield is unknown.
-   With it, the defaults of D16 and D17: the 61 examples that pass check 3 only by a PoC test
-   are kept, a training example may share no 13-token run with Tier C and none with a line
-   that a benchmark reference fix changes, and the 20 scenarios in `training/rejected.txt`
-   are out.
+   The defaults that made v1: the sequence length is 4,096; the 61 examples that pass check 3
+   only by a PoC test are kept; a training example may share no 13-token run with Tier C and
+   none with a line that a benchmark reference fix changes; the 20 scenarios in
+   `training/rejected.txt` are out.
 2. **Frontier reference: still `claude-opus-5`** (a default, not your decision yet). Moving to
    `claude-opus-5-5` means re-running `repair-claude-code` and `cascade-claude-code` on dev,
    test and Tier B, about 40 minutes.
 3. **Data mix from dev only** (D14), against doc 14 §5's wording. Also a default.
-4. **Pull request.** The D15 work is committed and pushed on `feat/week3-d15-data` (2026-10-07),
-   together with the Week 3 plan commit it is branched from. No pull request is open. The D16
-   work and the D17 plan are on the same branch, pushed on 2026-10-09. The training data itself (`training/synthetic/`, `training/data/`) is
-   git-ignored and exists only on the laptop.
+4. **Pull requests.** Week 3 lives on `feat/week3-d15-data`, and you merge it into `main` as it
+   goes: #11 (D15, 2026-10-07), #12 (D16 and the D17 plan, 2026-10-09), #13 (D17, first part,
+   2026-10-12). The Kaggle kernel clones that branch. The training data itself
+   (`training/synthetic/`, `training/data/`) is git-ignored and exists only on the laptop.
 
 **Work**
-5. Week 3, D17, second part (`docs/14-timeline-part4.md`, steps 5 to 9). **It needs a Kaggle
-   account with a verified phone and an API token from you**, and the D17 commits pushed,
-   because the kernel clones the repository from GitHub. Then: your Kaggle username into the
-   two files under `training/kaggle/`; upload `train.jsonl` and `val.jsonl` as a private
-   dataset; the pilot of 50 steps and the memory probe at 4,096; choose the length and freeze
-   the set with its SHA-256; the export rehearsal and the untuned control. Rebuild either set
-   in about a minute with
-   `uv run --with transformers --with jinja2 python training/prepare_dataset.py build
-   --student-run 20261009-student-pass --tokenizer Qwen/Qwen3.5-4B`
-   (add `--max-tokens 4096 --out training/data/seq4096` for the longer one).
+5. Week 3, D18: the full run on Kaggle (`ORDER = ["full"]` in `training/kaggle/kernel.py`: 2
+   epochs on dataset v1, about 90 minutes of training on one T4, then four exports; about 2
+   hours 30 minutes in all, see "D18 preparation"). At most 3
+   checkpoints are judged, each with 3 dev runs, beside 3 dev runs of the control
+   (`aeropatch-control` is in Ollama; one run exists). **Free disk on `F:` first**: 7.6 GB are
+   left and each checkpoint needs about 5.6 GB (the download and Ollama's copy). To rebuild
+   dataset v1: `uv run --with transformers --with jinja2 python training/prepare_dataset.py
+   build --student-run 20261009-student-pass --tokenizer Qwen/Qwen3.5-4B` (about a minute; the
+   SHA-256 values are in the D17 section).
 6. **Every local run so far very likely used `presence_penalty 1.5` and `top_k 20`** (found
    2026-10-12, read from the files, not tested). They are in the Modelfile of the library
    `qwen3.5:4b`, a Modelfile parameter applies unless the request overrides it, and

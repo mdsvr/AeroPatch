@@ -1,0 +1,18 @@
+# Ollama Modelfile for a GGUF exported by training/finetune.py (doc 10 §8): the fine-tuned model
+# and the untuned control use this same file, apart from FROM.
+#
+#     copy it beside the .gguf, set FROM to that file's name, then: ollama create <name> -f Modelfile
+#
+# Everything below FROM is what the library model `qwen3.5:4b` has (`ollama show --modelfile`),
+# so a difference in results comes from the weights. The chat format is Ollama's built-in
+# renderer, not a template: Unsloth writes no Modelfile for this model, and without these lines
+# the model would get the bare prompt. The client sends its own temperature and top_p with each
+# request; top_k and presence_penalty it does not send, so every baseline ran with these values.
+FROM ./Qwen3.5-4B.Q4_K_M.gguf
+TEMPLATE {{ .Prompt }}
+RENDERER qwen3.5
+PARSER qwen3.5
+PARAMETER top_k 20
+PARAMETER top_p 0.95
+PARAMETER presence_penalty 1.5
+PARAMETER temperature 1

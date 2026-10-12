@@ -2,9 +2,9 @@
 
 Runs on a 16 GB GPU (a Kaggle or Colab T4), not on the laptop:
 
-    python training/finetune.py --data <dir> --out <dir> --max-steps 50 --gguf q4_k_m   # the pilot
-    python training/finetune.py --data <dir> --out <dir> --max-steps 6 --longest 50 --max-seq-length 4096   # memory probe
-    python training/finetune.py --data <dir> --out <dir>                                # the full run
+    python training/finetune.py --data <dir> --out <dir> --gguf q4_k_m                  # the full run: 2 epochs
+    python training/finetune.py --data <dir> --out <dir> --max-steps 50 --gguf q4_k_m   # a pilot
+    python training/finetune.py --data <dir> --out <dir> --max-steps 6 --longest 50     # memory probe: the longest examples
     python training/finetune.py --data <dir> --out <dir> --max-steps 0 --gguf q4_k_m    # untuned control: export only
 
 <dir> holds train.jsonl and val.jsonl. An example is {"messages": [...], "target": ...}. The
@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import sys
 import time
@@ -68,7 +69,7 @@ def prepare(tokenizer, examples: list[dict], max_seq_length: int) -> tuple[list[
             report["dropped_for_length"] += 1
         else:
             rows.append(row)
-    report["longest"] = max((len(r["input_ids"]) for r in rows), default=0)
+    report["longest_example"] = max((len(r["input_ids"]) for r in rows), default=0)
     return rows, report
 
 
@@ -80,21 +81,25 @@ def main() -> None:
     p = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     p.add_argument("--data", type=Path, required=True, help="directory with train.jsonl and val.jsonl")
     p.add_argument("--out", type=Path, required=True)
-    p.add_argument("--max-seq-length", type=int, default=2048)
+    p.add_argument("--max-seq-length", type=int, default=4096, help="as prepare_dataset.py built the set")
     p.add_argument("--max-steps", type=int, default=-1, help="50 for the pilot, 0 to export the untuned base")
     p.add_argument("--epochs", type=float, default=2)
     p.add_argument("--rank", type=int, default=16, help="LoRA r, and alpha with it (doc 10 §3)")
     p.add_argument("--longest", type=int, default=0, help="train on the N longest examples only: the memory probe")
     p.add_argument("--gguf", help="merge and export at this quantisation, such as q4_k_m")
+    p.add_argument("--adapter", type=Path, help="with --max-steps 0: export this saved adapter (a checkpoint "
+                                                "folder of an earlier run) and not the bare base")
     args = p.parse_args()
+    if args.adapter and args.max_steps != 0:
+        p.error("--adapter exports a saved adapter; pass --max-steps 0 with it")
 
     # Imported here: the laptop has no GPU libraries, and the tests need encode() only.
     import torch
-    from unsloth import FastLanguageModel  # isort: skip - Unsloth asks to be imported before transformers
+    from unsloth import FastLanguageModel, is_bfloat16_supported  # isort: skip - before transformers, as Unsloth asks
     from transformers import AutoTokenizer, DataCollatorForSeq2Seq, Trainer, TrainingArguments  # isort: skip
 
     model, processor = FastLanguageModel.from_pretrained(
-        model_name=BASE, max_seq_length=args.max_seq_length, load_in_4bit=False, load_in_16bit=True,
+        model_name=str(args.adapter or BASE), max_seq_length=args.max_seq_length, load_in_4bit=False, load_in_16bit=True,
         full_finetuning=False)  # LoRA on the 16-bit base: Unsloth advises against QLoRA for Qwen3.5 (doc 10 §1)
     # Tokens are built and read with the plain tokenizer, the one the template check was made
     # with. The model also takes images, so what Unsloth returns may be a processor; it is kept
@@ -105,15 +110,31 @@ def main() -> None:
     val, _ = prepare(tokenizer, val_examples, args.max_seq_length)
     if args.longest:
         train = sorted(train, key=lambda r: -len(r["input_ids"]))[:args.longest]
-    report.update(vars(args) | {"data": str(args.data), "out": str(args.out), "base": BASE, "trained_on": len(train)})
+    # The weights' precision and where they sit. On a T4, which has no bf16, Unsloth announces
+    # float32 for Qwen3.5; the pilot's weights reported float16 and peaked at 9.89 GB.
+    report.update(vars(args) | {"data": str(args.data), "out": str(args.out), "base": BASE, "trained_on": len(train),
+                                "dtype": str(model.dtype), "gpu": torch.cuda.get_device_name(0),
+                                "devices": sorted({str(d) for d in getattr(model, "hf_device_map", {}).values()})})
     args.out.mkdir(parents=True, exist_ok=True)
 
     if args.max_steps != 0:
+        # The module list of Unsloth's Qwen3.5 guide. It reaches the MLP of all 32 layers and the
+        # attention of the 8 layers that have one. The 24 Gated DeltaNet layers name their mixing
+        # projections in_proj_qkv, in_proj_z and out_proj, and those get no adapter (read from the
+        # pilot's adapter, 2026-10-12). Adding them is the first thing to try if dev stays flat,
+        # after a memory probe: the peak at 4,096 tokens is already 12.99 GB.
         model = FastLanguageModel.get_peft_model(
             model, r=args.rank, lora_alpha=args.rank, lora_dropout=0, bias="none", random_state=SEED,
             target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
             use_gradient_checkpointing="unsloth", max_seq_length=args.max_seq_length)
-        bf16 = torch.cuda.is_bf16_supported()  # a T4 has no bf16 (doc 10 §3)
+        # bf16 where the GPU has it. Never fp16: Unsloth reports that float16 does not work for
+        # Qwen3.5, so a GPU without bf16 (a T4) trains in float32.
+        bf16 = is_bfloat16_supported()
+        per_epoch = math.ceil(len(train) / 8)
+        steps = args.max_steps if args.max_steps > 0 else round(per_epoch * args.epochs)
+        # Evaluate and keep the adapter twice an epoch, so that the end of each epoch and the
+        # lowest validation loss are all saved checkpoints (D18 judges at most three of them).
+        every = max(1, (steps if args.max_steps > 0 else per_epoch) // 2)
         # ponytail: transformers' Trainer, not TRL's SFTTrainer: the examples arrive tokenised and
         # masked, so nothing of TRL's text handling (templates, packing) is wanted.
         trainer = Trainer(
@@ -121,10 +142,11 @@ def main() -> None:
             data_collator=DataCollatorForSeq2Seq(tokenizer, padding=True, label_pad_token_id=-100),
             args=TrainingArguments(
                 output_dir=str(args.out / "checkpoints"), per_device_train_batch_size=1, per_device_eval_batch_size=1,
-                gradient_accumulation_steps=8, learning_rate=2e-4, lr_scheduler_type="linear", warmup_ratio=0.05,
+                gradient_accumulation_steps=8, learning_rate=2e-4, lr_scheduler_type="linear",
+                warmup_steps=max(1, round(0.05 * steps)),  # 5%; transformers 5 has no warmup_ratio
                 num_train_epochs=args.epochs, max_steps=args.max_steps, optim="adamw_8bit", seed=SEED,
-                fp16=not bf16, bf16=bf16, logging_steps=5, eval_strategy="steps", eval_steps=25,
-                save_strategy="epoch", report_to="none"))
+                bf16=bf16, logging_steps=5, eval_strategy="steps", eval_steps=every,
+                save_strategy="steps", save_steps=every, save_only_model=True, report_to="none"))
         torch.cuda.reset_peak_memory_stats()
         start = time.monotonic()
         result = trainer.train()
@@ -150,7 +172,7 @@ def main() -> None:
     print(json.dumps({k: v for k, v in report.items() if k not in ("log", "samples")}, indent=2, default=str))
     print("validation outputs that parse:", sum(s["parses"] for s in report["samples"]), "of", len(report["samples"]))
 
-    if args.gguf:  # merged with the adapter when one was trained; the bare base when --max-steps 0
+    if args.gguf:  # merged with the adapter that was trained or loaded; the bare base otherwise
         model.save_pretrained_gguf(str(args.out / "gguf"), processor, quantization_method=args.gguf)
 
 
