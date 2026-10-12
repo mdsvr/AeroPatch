@@ -32,6 +32,9 @@ sh(f"git clone --depth 1 --branch {BRANCH} https://github.com/mdsvr/AeroPatch.gi
 sh("git -C AeroPatch log --oneline -1")
 sh("pip install -q -r AeroPatch/training/requirements.txt")
 sh("pip freeze > /kaggle/working/requirements-frozen.txt")
+# torch version, GPU, bf16 as torch sees it (emulation counts), bf16 as Unsloth sees it
+sh('python -c "import torch; from unsloth import is_bfloat16_supported as u; '
+   'print(torch.__version__, torch.cuda.get_device_name(0), torch.cuda.is_bf16_supported(), u())"', check=False)
 for name in ORDER:
     out = f"/kaggle/working/{name}"
     # One GPU: the kernel asks for "GPU T4 x2" (kernel-metadata.json), and the numbers are for one T4.
