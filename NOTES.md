@@ -1048,6 +1048,22 @@ back exactly.
 - `training/requirements.txt` says `unsloth` and is not pinned: the kernel saves `pip freeze`
   on its first run, and the pins come from that.
 
+**Kaggle, later the same day.** You created the account and the token (username
+`vardhanreddy1`; the token is in `C:\Users\vardh\.kaggle\access_token`).
+- Both sets are uploaded as private datasets, `aeropatch-train` (470 examples) and
+  `aeropatch-train-4096` (541). Kaggle reports them ready and private.
+- **The kernel ran twice and had neither a GPU nor internet** ("GPU: False, internet: False" in
+  its log, 40 seconds each), although its settings ask for both and for a T4. That is what
+  Kaggle gives an account whose phone number is not verified. Nothing else ran on it.
+- Two things learned about the command line on Windows: `datasets create` has to be run from
+  inside the folder (with a relative `-p` path it fails on its own temporary file), and `-t`
+  keeps the `.jsonl` files from being turned into CSV.
+- The kernel now runs the pilot, the memory probe and the control in one session, under
+  `/tmp`, and stops at once with a clear message when it has no GPU or no internet.
+- `finetune.py` asks Unsloth, not torch, whether bf16 is supported: torch counts emulation and
+  says yes on a T4. That fix is committed but not on GitHub yet, and the kernel clones from
+  there.
+
 **Defaults taken today, yours to overrule**
 - The 20 rejections. Each is one line in `training/rejected.txt`; delete a line to take the
   scenario back.

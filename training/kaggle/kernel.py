@@ -16,7 +16,7 @@ RUNS = {
     "probe": "--data /kaggle/input/aeropatch-train-4096 --max-steps 6 --longest 50 --max-seq-length 4096",
     "control": "--data /kaggle/input/aeropatch-train --max-steps 0 --gguf q4_k_m",
 }
-ORDER = ["pilot"]  # the first has to pass; a later one may fail and the rest still run
+ORDER = ["pilot", "probe", "control"]  # the first has to pass; a later one may fail and the rest still run
 
 
 def sh(command: str, check: bool = True) -> int:
