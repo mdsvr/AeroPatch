@@ -1162,9 +1162,16 @@ export works.** Your phone was verified by then, and Kaggle gave two T4s and int
   `finetune.py --max-steps 0 --adapter <checkpoint folder> --gguf q4_k_m` exports a saved
   adapter; the kernel runs it for steps 32, 64 and 96 after the training. The image projector
   is no longer copied out. Expected output: four GGUFs of 2.6 GB, 10.4 GB of Kaggle's 20.
+- **The rehearsal passed (kernel version 10, 23 min 27 s).** 4 training steps saved
+  checkpoints 2 and 4, each with its validation loss (0.428, then 0.349), and the kernel then
+  exported checkpoint 2 to a GGUF with `--adapter`; both steps ended with exit code 0. The
+  export carries the adapter: its 5 validation outputs differ from the untuned control's on
+  the same prompts, and 4 of 5 parse against the control's 2. The run used the laptop's
+  `finetune.py` laid over the clone (SHA-256 `b68aae38...`), the same file as commit `97ae347`.
 - **The whole session should take about 2 hours 30 minutes**: 90 minutes of training, 14
-  minutes of setup and the first export (the pilot's figure), and three more exports at about
-  9 minutes each. That is my estimate; only the training speed is measured.
+  minutes of setup and the first export (the pilot's figure), and three more exports at 11
+  minutes each (measured in the rehearsal). The total is my estimate.
+- **The full run started at 17:38: kernel version 11**, from the pushed commit `97ae347`.
 - **LoRA reaches the MLP of all 32 layers and the attention of 8.** Read from the pilot's
   adapter (256 tensors, 21.2 M parameters): `gate_proj`, `up_proj` and `down_proj` carry an
   adapter in every layer; `q_proj`, `k_proj`, `v_proj` and `o_proj` exist only in the 8
@@ -1175,6 +1182,18 @@ export works.** Your phone was verified by then, and Kaggle gave two T4s and int
     4,096 tokens is already 12.99 GB of 14.
   - If dev does not move, adding the three DeltaNet projections is the first thing to try. It
     needs a memory probe first.
+- **The control's three dev runs are done: 9, 8 and 9 of 13.** This is the number a tuned
+  checkpoint has to beat. Every run failed `A-089-02`, `A-328-01`, `A-601-01` and `A-918-01`;
+  the second also failed `A-078-01`.
+
+  | Run | Resolved |
+  |---|---|
+  | `20261012-164903-repair-local-dev` | 9 of 13 |
+  | `20261012-171355-repair-local-dev` | 8 of 13 |
+  | `20261012-171917-repair-local-dev` | 9 of 13 |
+- **Disk: 15.9 GB free on `F:`** after you agreed to the deletion: the three downloaded GGUF
+  files and the Ollama model `aeropatch-pilot` are gone. The pilot's adapter and both
+  `pilot.json` files are kept, and so is the teacher `qwen3.5:9b`.
 
 
 ## Next
@@ -1208,9 +1227,10 @@ export works.** Your phone was verified by then, and Kaggle gave two T4s and int
 5. Week 3, D18: the full run on Kaggle (`ORDER = ["full"]` in `training/kaggle/kernel.py`: 2
    epochs on dataset v1, about 90 minutes of training on one T4, then four exports; about 2
    hours 30 minutes in all, see "D18 preparation"). At most 3
-   checkpoints are judged, each with 3 dev runs, beside 3 dev runs of the control
-   (`aeropatch-control` is in Ollama; one run exists). **Free disk on `F:` first**: 7.6 GB are
-   left and each checkpoint needs about 5.6 GB (the download and Ollama's copy). To rebuild
+   checkpoints are judged, each with 3 dev runs, beside the control's 3 dev runs (done: 9, 8
+   and 9 of 13). **It is running** (kernel version 11, started 2026-10-12 at 17:38). Disk:
+   `F:` has 15.9 GB free; each judged checkpoint takes 2.8 GB there as Ollama's copy, and the
+   downloads go to `C:`. To rebuild
    dataset v1: `uv run --with transformers --with jinja2 python training/prepare_dataset.py
    build --student-run 20261009-student-pass --tokenizer Qwen/Qwen3.5-4B` (about a minute; the
    SHA-256 values are in the D17 section).
