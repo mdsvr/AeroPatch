@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import sys
 import time
@@ -86,7 +87,11 @@ def main() -> None:
     p.add_argument("--rank", type=int, default=16, help="LoRA r, and alpha with it (doc 10 §3)")
     p.add_argument("--longest", type=int, default=0, help="train on the N longest examples only: the memory probe")
     p.add_argument("--gguf", help="merge and export at this quantisation, such as q4_k_m")
+    p.add_argument("--adapter", type=Path, help="with --max-steps 0: export this saved adapter (a checkpoint "
+                                                "folder of an earlier run) and not the bare base")
     args = p.parse_args()
+    if args.adapter and args.max_steps != 0:
+        p.error("--adapter exports a saved adapter; pass --max-steps 0 with it")
 
     # Imported here: the laptop has no GPU libraries, and the tests need encode() only.
     import torch
@@ -94,7 +99,7 @@ def main() -> None:
     from transformers import AutoTokenizer, DataCollatorForSeq2Seq, Trainer, TrainingArguments  # isort: skip
 
     model, processor = FastLanguageModel.from_pretrained(
-        model_name=BASE, max_seq_length=args.max_seq_length, load_in_4bit=False, load_in_16bit=True,
+        model_name=str(args.adapter or BASE), max_seq_length=args.max_seq_length, load_in_4bit=False, load_in_16bit=True,
         full_finetuning=False)  # LoRA on the 16-bit base: Unsloth advises against QLoRA for Qwen3.5 (doc 10 §1)
     # Tokens are built and read with the plain tokenizer, the one the template check was made
     # with. The model also takes images, so what Unsloth returns may be a processor; it is kept
@@ -105,14 +110,19 @@ def main() -> None:
     val, _ = prepare(tokenizer, val_examples, args.max_seq_length)
     if args.longest:
         train = sorted(train, key=lambda r: -len(r["input_ids"]))[:args.longest]
-    # The weights' precision and where they sit: Unsloth loads Qwen3.5 in float32 on a GPU without
-    # bf16 (a T4), which is twice the memory, and layers that do not fit go to the CPU.
+    # The weights' precision and where they sit. On a T4, which has no bf16, Unsloth announces
+    # float32 for Qwen3.5; the pilot's weights reported float16 and peaked at 9.89 GB.
     report.update(vars(args) | {"data": str(args.data), "out": str(args.out), "base": BASE, "trained_on": len(train),
                                 "dtype": str(model.dtype), "gpu": torch.cuda.get_device_name(0),
                                 "devices": sorted({str(d) for d in getattr(model, "hf_device_map", {}).values()})})
     args.out.mkdir(parents=True, exist_ok=True)
 
     if args.max_steps != 0:
+        # The module list of Unsloth's Qwen3.5 guide. It reaches the MLP of all 32 layers and the
+        # attention of the 8 layers that have one. The 24 Gated DeltaNet layers name their mixing
+        # projections in_proj_qkv, in_proj_z and out_proj, and those get no adapter (read from the
+        # pilot's adapter, 2026-10-12). Adding them is the first thing to try if dev stays flat,
+        # after a memory probe: the peak at 4,096 tokens is already 12.99 GB.
         model = FastLanguageModel.get_peft_model(
             model, r=args.rank, lora_alpha=args.rank, lora_dropout=0, bias="none", random_state=SEED,
             target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
@@ -120,7 +130,11 @@ def main() -> None:
         # bf16 where the GPU has it. Never fp16: Unsloth reports that float16 does not work for
         # Qwen3.5, so a GPU without bf16 (a T4) trains in float32.
         bf16 = is_bfloat16_supported()
-        steps = args.max_steps if args.max_steps > 0 else round(len(train) / 8 * args.epochs)
+        per_epoch = math.ceil(len(train) / 8)
+        steps = args.max_steps if args.max_steps > 0 else round(per_epoch * args.epochs)
+        # Evaluate and keep the adapter twice an epoch, so that the end of each epoch and the
+        # lowest validation loss are all saved checkpoints (D18 judges at most three of them).
+        every = max(1, (steps if args.max_steps > 0 else per_epoch) // 2)
         # ponytail: transformers' Trainer, not TRL's SFTTrainer: the examples arrive tokenised and
         # masked, so nothing of TRL's text handling (templates, packing) is wanted.
         trainer = Trainer(
@@ -131,8 +145,8 @@ def main() -> None:
                 gradient_accumulation_steps=8, learning_rate=2e-4, lr_scheduler_type="linear",
                 warmup_steps=max(1, round(0.05 * steps)),  # 5%; transformers 5 has no warmup_ratio
                 num_train_epochs=args.epochs, max_steps=args.max_steps, optim="adamw_8bit", seed=SEED,
-                bf16=bf16, logging_steps=5, eval_strategy="steps", eval_steps=25,
-                save_strategy="epoch", report_to="none"))
+                bf16=bf16, logging_steps=5, eval_strategy="steps", eval_steps=every,
+                save_strategy="steps", save_steps=every, save_only_model=True, report_to="none"))
         torch.cuda.reset_peak_memory_stats()
         start = time.monotonic()
         result = trainer.train()
@@ -158,7 +172,7 @@ def main() -> None:
     print(json.dumps({k: v for k, v in report.items() if k not in ("log", "samples")}, indent=2, default=str))
     print("validation outputs that parse:", sum(s["parses"] for s in report["samples"]), "of", len(report["samples"]))
 
-    if args.gguf:  # merged with the adapter when one was trained; the bare base when --max-steps 0
+    if args.gguf:  # merged with the adapter that was trained or loaded; the bare base otherwise
         model.save_pretrained_gguf(str(args.out / "gguf"), processor, quantization_method=args.gguf)
 
 

@@ -1074,10 +1074,12 @@ export works.** Your phone was verified by then, and Kaggle gave two T4s and int
 | Speed | about 34 s a step once the first step's kernels are compiled (that step took 5 min 16 s); 33 min 44 s for the 50 |
 | Examples dropped for length | 0 of 445; the longest is exactly 2,048 tokens |
 | Prompts equal to Ollama's count | 129 of 129 in the training split |
-| Validation outputs that parse | 5 of 5 |
+| Validation outputs that parse | 5 of 5. This counts the format only: at least 3 of the 5 are wrong fixes (second part, below) |
 | Export | `Qwen3.5-4B.Q4_K_M.gguf`, and `Qwen3.5-4B.F16-mmproj.gguf` for the model's image input |
 
-- **A full run of 2 epochs is about 111 steps: a little over an hour** at this speed.
+- A full run of 2 epochs on this 2,048-token set would be about 111 steps, a little over an
+  hour. The set that is trained is the 4,096-token one: 128 steps, about 90 minutes (second
+  part, below).
 - **Precision on a T4.** A T4 has no bf16. Unsloth prints "float16 precision for qwen3_5 won't
   work, using float32", yet the weights report float16 and the peak is 9.89 GB, so most of the
   model is 16-bit. `finetune.py` asks for bf16 only where Unsloth says the GPU has it and never
@@ -1105,7 +1107,7 @@ export works.** Your phone was verified by then, and Kaggle gave two T4s and int
 | Memory probe at 4,096 (kernel version 9) | **12.99 GB peak** on the 50 longest examples, 0 dropped, longest 4,087 tokens, 139 prompts equal to Ollama's count |
 | Sequence length | **4,096**: the peak is under 14 GB and the full run is estimated at about 90 minutes of training (511 examples, 683,663 tokens, 2 epochs, 128 steps, 3.86 ms a token in the pilot) |
 | **Dataset v1, frozen** | 541 examples: 511 train, 30 validation. 380 first attempts, 53 repair turns, 108 bug fixes |
-| Export rehearsal | The pilot GGUF loads in Ollama with `training/Modelfile`, 100% on the GPU, 3,041 MiB; it resolved `A-089-01` at the first attempt at 47.5 tokens/s |
+| Export rehearsal | The pilot GGUF loads in Ollama with `training/Modelfile`, 100% on the GPU, 3,041 MiB, 47.5 tokens/s; it stops and writes the edit format. It resolved `A-089-01`, which shows nothing about fixing: that scenario's fix is the line of the system prompt's format example |
 | Untuned control | Same export, no adapter: **9 of 13 on dev** (run `20261012-164903-repair-local-dev`), inside the library model's 7 to 10 |
 
 - **SHA-256 of dataset v1**, the same files as the private Kaggle dataset `aeropatch-train-4096`:
@@ -1113,13 +1115,18 @@ export works.** Your phone was verified by then, and Kaggle gave two T4s and int
   - `val.jsonl` `9ee09d3037df16669618a6e5dd297ca009ec4c6e64c8c30bd2fe074f1c18c916`
   `prepare_dataset.py` builds exactly these with its defaults (the limit is 4,096 now) and
   `--tokenizer Qwen/Qwen3.5-4B`; `training/stats.md` describes them.
-- **The control is the library model in all but name.** For one prompt Ollama counts 584 tokens
-  for `qwen3.5:4b`, the control and the pilot, and at temperature 0 the control begins its
-  answer with the same words as the library model. It failed `A-328-01`, `A-601-01` and
-  `A-918-01`, the three the untuned model failed on 2026-10-03, and `A-089-02`.
+- **The control matches the library model on the checks that were run**, and they are few. For
+  one prompt Ollama counts 584 tokens for `qwen3.5:4b`, the control and the pilot, and at
+  temperature 0 the control begins its answer with the same words as the library model. It
+  failed `A-328-01`, `A-601-01` and `A-918-01`, the three the untuned model failed on
+  2026-10-03, and `A-089-02`. The weights were not compared.
 - **Untuned, 2 of 5 validation outputs parse; after 50 pilot steps, 5 of 5; after 6 probe
   steps, 4 of 5.** The format is learned early. The pilot also learned to write the finding's
-  message as its RATIONALE, which is what every target does.
+  message as its RATIONALE, which is what every target does. **Parsing says nothing about the
+  fix.** Of the pilot's 5 outputs at least 3 are wrong, read against their targets: one calls
+  `exec` with four arguments (it takes three), one puts quotes around an escaped value where
+  the reference refuses a dict, and one turns case-sensitive matching off where the reference
+  replaces `unquote_plus` with `unquote`. Only the dev runs of D18 measure fixing.
 - The exported text model reports 4.3B parameters; the image projector is a second file
   (`mmproj`) that the Modelfile does not load.
 - One run of the control cannot be told from the library model's spread. D18 runs it three
@@ -1143,6 +1150,31 @@ export works.** Your phone was verified by then, and Kaggle gave two T4s and int
   string prefix (`S-22-00265`).
 - Leakage was read again for the new set: 45 of the 439 pairs and 4 of the 31 repair turns
   share text with the benchmark, the same kinds as on D16 and none on a fix line.
+
+**D18 preparation (the same evening): checkpoints, their exports, and what LoRA reaches**
+- **The run now keeps a checkpoint at every evaluation: steps 32, 64, 96 and 128.** Before, the
+  kernel deleted them, and only the last adapter left Kaggle. 64 and 128 are the ends of the
+  two epochs (511 examples in groups of 8 are 64 steps; transformers 5.16.1 counts the short
+  last group as a step, read from its source). Each checkpoint is the adapter alone, about
+  85 MB.
+- **Each earlier checkpoint gets its own GGUF in the same Kaggle session.** D18 judges
+  checkpoints through Ollama, and a later session cannot read this one's files.
+  `finetune.py --max-steps 0 --adapter <checkpoint folder> --gguf q4_k_m` exports a saved
+  adapter; the kernel runs it for steps 32, 64 and 96 after the training. The image projector
+  is no longer copied out. Expected output: four GGUFs of 2.6 GB, 10.4 GB of Kaggle's 20.
+- **The whole session should take about 2 hours 30 minutes**: 90 minutes of training, 14
+  minutes of setup and the first export (the pilot's figure), and three more exports at about
+  9 minutes each. That is my estimate; only the training speed is measured.
+- **LoRA reaches the MLP of all 32 layers and the attention of 8.** Read from the pilot's
+  adapter (256 tensors, 21.2 M parameters): `gate_proj`, `up_proj` and `down_proj` carry an
+  adapter in every layer; `q_proj`, `k_proj`, `v_proj` and `o_proj` exist only in the 8
+  full-attention layers. The other 24 layers are Gated DeltaNet, whose mixing weights are named
+  `in_proj_qkv`, `in_proj_z` and `out_proj`, and they have no adapter.
+  - **Default taken, yours to overrule: the first full run keeps these 7 module names.** They
+    are the list of Unsloth's Qwen3.5 guide, the pilot's loss fell with them, and memory at
+    4,096 tokens is already 12.99 GB of 14.
+  - If dev does not move, adding the three DeltaNet projections is the first thing to try. It
+    needs a memory probe first.
 
 
 ## Next
@@ -1174,7 +1206,8 @@ export works.** Your phone was verified by then, and Kaggle gave two T4s and int
 
 **Work**
 5. Week 3, D18: the full run on Kaggle (`ORDER = ["full"]` in `training/kaggle/kernel.py`: 2
-   epochs on dataset v1, about 90 minutes of training on one T4, then the export). At most 3
+   epochs on dataset v1, about 90 minutes of training on one T4, then four exports; about 2
+   hours 30 minutes in all, see "D18 preparation"). At most 3
    checkpoints are judged, each with 3 dev runs, beside 3 dev runs of the control
    (`aeropatch-control` is in Ollama; one run exists). **Free disk on `F:` first**: 7.6 GB are
    left and each checkpoint needs about 5.6 GB (the download and Ollama's copy). To rebuild

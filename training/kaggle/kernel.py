@@ -5,9 +5,11 @@ needs no push to GitHub. A change to finetune.py does, because the kernel clones
 
 Everything runs under /tmp. /kaggle/working holds 20 GB and becomes the kernel's output, and one
 export alone writes the merged model, a 16-bit GGUF and the quantised one. Only what is worth
-downloading is copied there: pilot.json, the adapter and the quantised GGUF of each run.
+downloading is copied there: pilot.json, the adapter, the checkpoints' adapters and the quantised
+GGUF of each run.
 """
 
+import glob
 import subprocess
 
 BRANCH = "feat/week3-d15-data"
@@ -16,8 +18,12 @@ RUNS = {  # {data}: where Kaggle mounted the dataset named first
     "probe": ("aeropatch-train-4096", "--data {data} --max-steps 6 --longest 50 --max-seq-length 4096"),
     "control": ("aeropatch-train", "--data {data} --max-seq-length 2048 --max-steps 0 --gguf q4_k_m"),
     "full": ("aeropatch-train-4096", "--data {data} --gguf q4_k_m"),  # dataset v1, 2 epochs
+    "rehearsal": ("aeropatch-train", "--data {data} --max-seq-length 2048 --max-steps 4"),  # checkpoints 2 and 4
 }
-ORDER = ["pilot", "probe", "control"]  # the first has to pass; a later one may fail and the rest still run
+# Runs whose earlier checkpoints each get a GGUF in the same session: D18 judges checkpoints
+# through Ollama, and a later session cannot read this one's files.
+EARLIER = {"full", "rehearsal"}
+ORDER = ["full"]  # the first has to pass; a later one may fail and the rest still run
 
 
 def sh(command: str, check: bool = True) -> int:
@@ -48,14 +54,27 @@ sh("pip freeze > /kaggle/working/requirements-frozen.txt")
 # torch version, GPU, bf16 as torch sees it (emulation counts), bf16 as Unsloth sees it
 sh('python -c "import torch; from unsloth import is_bfloat16_supported as u; '
    'print(torch.__version__, torch.cuda.get_device_name(0), torch.cuda.is_bf16_supported(), u())"', check=False)
-for name in ORDER:
+def run(name: str, args: str) -> int:
+    """One finetune.py run. What is worth downloading goes to /kaggle/working/<name>; the rest is deleted."""
     out = f"/kaggle/working/{name}"
     # One GPU: the kernel asks for "GPU T4 x2" (kernel-metadata.json), and the numbers are for one T4.
-    code = sh(f"CUDA_VISIBLE_DEVICES=0 python AeroPatch/training/finetune.py --out /tmp/runs/{name} "
-              + RUNS[name][1].format(data=data[name]),
+    code = sh(f"CUDA_VISIBLE_DEVICES=0 python AeroPatch/training/finetune.py --out /tmp/runs/{name} {args}",
               check=False)
-    sh(f"mkdir -p {out}; cp /tmp/runs/{name}/pilot.json {out}/; cp -r /tmp/runs/{name}/adapter {out}/; "
-       f"find /tmp/runs -name '*.gguf' -size -6G -exec mv {{}} {out}/ ';'; rm -rf /tmp/runs/{name}; "
-       f"echo {name} exit {code} >> /kaggle/working/status.txt", check=False)
+    # Not the image projector (mmproj, 0.6 GB a run): training/Modelfile does not load it.
+    sh(f"mkdir -p {out}; cp /tmp/runs/{name}/pilot.json {out}/; "
+       f"cp -r /tmp/runs/{name}/adapter /tmp/runs/{name}/checkpoints {out}/; "
+       f"find /tmp/runs -name '*.gguf' ! -name '*mmproj*' -size -6G -exec mv {{}} {out}/ ';'; "
+       f"rm -rf /tmp/runs/{name}; echo {name} exit {code} >> /kaggle/working/status.txt", check=False)
+    return code
+
+
+for name in ORDER:
+    code = run(name, RUNS[name][1].format(data=data[name]))
     if code and name == ORDER[0]:
         raise SystemExit(code)
+    if name in EARLIER:
+        saved = sorted(glob.glob(f"/kaggle/working/{name}/checkpoints/checkpoint-*"),
+                       key=lambda folder: int(folder.rsplit("-", 1)[1]))
+        for folder in saved[:-1]:  # the last checkpoint is the adapter that the run itself exported
+            run(f"{name}-step{folder.rsplit('-', 1)[1]}",
+                f"--data {data[name]} --max-steps 0 --adapter {folder} --gguf q4_k_m")
