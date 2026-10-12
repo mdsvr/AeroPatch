@@ -1,0 +1,32 @@
+# Synthetic scenarios whose reference fix was read and found wrong or silly (doc 09 §10).
+# `prepare_dataset.py build` leaves them out, with their repair turns. One per line: id, colon, reason.
+# Read on 2026-10-12: every synthetic fix in the set (124), and the PoC tests of the 36 scenarios
+# the student failed on.
+
+# The fix does the opposite of what the CWE asks for.
+S-798-00263: replaces an environment lookup with a hardcoded credential
+S-918-00313: allows only localhost and 127.0.0.1, which is what an SSRF check must refuse
+S-918-00488: dispatches only to handlers for localhost URLs
+
+# The fix cannot work, or changes what the function does for its callers.
+S-328-00090: makes a random salt and throws it away, so the stored hash can never be verified
+S-328-00431: makes a random salt and throws it away, so the stored hash can never be verified
+S-209-00199: turns raised exceptions into returned tuples; that is a new contract, not less leaked detail
+S-78-00144: renames the parameter and rewrites the docstring
+S-338-00032: doubles the token length; its PoC test checks that length and failed the student's correct fix
+S-798-00149: puts the caller's password into a hint string
+S-798-00291: returns None for every login and calls it a secure default
+
+# The fix is too weak to teach.
+S-78-00198: refuses three characters and still builds a shell command from the input
+S-601-00473: still returns //host unchanged; its PoC test failed the student's stricter fix
+S-918-00185: allows one hardcoded URL
+
+# The planted flaw is nonsense, so the fix teaches nothing about the CWE.
+S-352-00118: the planted line is `username = "hacker"`
+S-78-00507: the planted code appends `; echo pwned` to the command itself
+S-601-00137: the fix adds a missing variable; it has nothing to do with the redirect
+S-798-00063: the fix flips `return True` to `return False`
+S-798-00192: the fix raises on the literal "changeme"
+S-798-00242: the fix adds a comparison with the literal "changeme"
+S-798-00275: the fix flips a boolean under comments about "a real system"

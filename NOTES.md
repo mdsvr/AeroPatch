@@ -973,55 +973,148 @@ turns share some text with the benchmark, and I read every shared passage.**
   the whole repository.
 - The length limit is an estimate until the real tokenizer runs on Kaggle.
 
+## Week 3, D17, first part (2026-10-12): the reading, `finetune.py`, the template check
+
+Steps 1 to 4 of `docs/14-timeline-part4.md` are done. **Steps 5 to 9 wait for the Kaggle API
+token**: there is none in `C:\Users\vardh\.kaggle\`. Nothing is frozen, because the sequence
+length depends on the pilot.
+
+**The set after the reading: 470 examples at 2,048 tokens (445 train, 25 validation), or 541 at
+4,096.** It was 554 on D16. Three filters and exact token counts changed it.
+
+| Slice | At 2,048 | At 4,096 | From |
+|---|---|---|---|
+| Security fix, first attempt | 345 | 380 | 240 or 275 advisory pairs, 105 synthetic |
+| Repair turns | 31 | 53 | synthetic scenarios the student failed on |
+| General bug fixes | 94 | 108 | SWE-Gym and SWE-smith |
+
+**The reading (doc 09 §10): 3 of the 30 random examples were wrong or silly, which is the
+limit, and 3 of the 8 repair turns I read were bad.** So I read every synthetic fix in the set
+(124) and the PoC tests of the 36 scenarios the student had failed on.
+- **20 synthetic scenarios are rejected by name, with a reason each, in `training/rejected.txt`.**
+  The build leaves them out with their repair turns. Three fixes do the opposite of what the
+  CWE asks: `S-798-00263` replaces an environment lookup with a hardcoded credential, and two
+  CWE-918 fixes allow only localhost. Seven cannot work or change the function's contract (a
+  salt that is made and thrown away, a renamed parameter). Three are too weak to teach. In
+  seven the planted flaw is nonsense (`username = "hacker"`). 7 of the 11 CWE-798 scenarios
+  are among them; D15 already found the teacher weak there.
+- **Two PoC tests failed a correct fix of the student** (`S-338-00032`, `S-601-00473`): the test
+  checked a side effect of the teacher's own fix. Their repair turns would have taught the
+  model to give up a right answer.
+- Of the 18 advisory pairs in the sample none was wrong. `GHSA-74xw-82v7-hmrm` is odd but
+  real: the upstream fix uses `exec` and the `imp` module. Of the 5 bug fixes one was bad, a
+  SWE-smith bug with a comment that says what is broken; the second filter below removes those.
+- Two things hold for the whole set and were not counted per example: every RATIONALE repeats
+  the finding's message, and some docstrings name the fix.
+
+**Three filters came out of it** (pairs dropped at the step, in the 2,048 build):
+
+| Filter | Dropped | Why |
+|---|---|---|
+| The fix uses no function, class or constant of the file that the prompt hides | 37 | The target of `S-20-00162` called `validate_quantity`, which the prompt did not show. An AST check replaces the D16 pattern match: 25 synthetic, 11 SWE-Gym, 1 advisory |
+| No SWE-smith bug that a comment announces | 35 | Its bug writer sometimes says what it broke: `# Off-by-one error: Starts from 1 instead of 0`. The general slice refilled from spare pairs |
+| Not a fix that was read and rejected | 20 | The list above |
+
+**Template check: the Hugging Face chat template and Ollama build the same prompt.** The
+tokenizer of `Qwen/Qwen3.5-4B` is public and runs on the laptop without a GPU.
+- 25 sampled student prompts (12 first prompts, 8 with one repair turn, 5 with two): the token
+  count with thinking off equals Ollama's `prompt_eval_count` every time. With thinking on it
+  is 2 lower, so Ollama does send the empty think block.
+- `finetune.py` repeats the check on every example that carries Ollama's count and stops the
+  run on a mismatch: 135 prompts in the 2,048 set and 148 in the 4,096 set, all equal.
+- A final assistant turn rendered by the template is the generation prompt, the target and
+  `<|im_end|>`. Earlier assistant turns carry no think block.
+
+**Token counts are exact now.** `build --tokenizer Qwen/Qwen3.5-4B` counts each example as
+`finetune.py` encodes it (run it with `uv run --with transformers --with jinja2`; the project
+gains no dependency). The D16 estimate was 10% high on average, so the 2,048 set grew from 452
+to 470. Run on both sets, `finetune.prepare` drops nothing for length, and every target decodes
+back exactly.
+
+**`training/finetune.py`** (not run on a GPU yet; the pilot is its first run):
+- Each example is the rendered prompt, then the target's tokens, then the end-of-turn token.
+  Labels are -100 over the whole prompt, so the student's failed edits inside a repair turn are
+  never learned. A test with a stand-in tokenizer checks this on the laptop.
+- **Change from doc 10 §2: `transformers.Trainer`, not TRL's `SFTTrainer`.** The examples arrive
+  tokenised and masked, so nothing of TRL's text handling is wanted.
+- Arguments cover the pilot (`--max-steps 50`), the memory probe (`--longest 50
+  --max-seq-length 4096`), the full run and the untuned control (`--max-steps 0 --gguf q4_k_m`).
+  Everything measured goes to `pilot.json`.
+- Tokens are built with the plain tokenizer the check above was made with. The model also
+  takes images, so Unsloth may return a processor; that object is used for saving only.
+- `training/kaggle/kernel.py` is a script kernel that clones the repository and calls the
+  script. It reads the code from GitHub, so this work has to be pushed before the pilot. It
+  asks for a T4: Unsloth needs CUDA capability 7.0, and Kaggle's other GPU, the P100, has 6.0.
+- `training/requirements.txt` says `unsloth` and is not pinned: the kernel saves `pip freeze`
+  on its first run, and the pins come from that.
+
+**Defaults taken today, yours to overrule**
+- The 20 rejections. Each is one line in `training/rejected.txt`; delete a line to take the
+  scenario back.
+- The names filter and the SWE-smith comment filter.
+- I did not reject fixes that are imperfect but point the right way, such as a path check by
+  string prefix (`S-22-00265`).
+- Leakage was read again for the new set: 45 of the 439 pairs and 4 of the 31 repair turns
+  share text with the benchmark, the same kinds as on D16 and none on a fix line.
+
 
 ## Next
 
 **Decisions that are yours**
-1. **How large the dataset should be.** It is 554 examples against R4's 1,500 (D16). The default
-   is to go to D17 with it. What each alternative adds:
-   - **Sequence length 4,096 instead of 2,048: 661 examples**, measured. The cost is memory and
-     time on the T4; the D17 pilot of 50 steps gives the number (doc 10 §3 allows it "only if
-     the length histogram needs it", and 297 examples are over 2,048).
-   - **A second generation run: about 270 more per 500 candidates**, my estimate from the first
-     run's rates (146 usable examples, 69 repair turns, a fifth more as bug fixes). It takes
-     about 26 hours of laptop time and can run at night; overlaps with Tier C and near-duplicates
-     may rise, because the 16 themes repeat. Nothing was started.
-   - More bug fixes: 346 pass every filter and 111 are used. Using all gives 789 with bug fixes
-     at 44% of the set, against the plan's 20%.
+1. **How large the dataset should be.** After the D17 reading it is 470 examples at 2,048 tokens,
+   against R4's 1,500. The default is to go on with it. What each alternative adds:
+   - **Sequence length 4,096: 541 examples**, counted with the tokenizer; 22 of the 71 more are
+     repair turns. The cost is memory and time on the T4, and the pilot's memory probe gives
+     the number (doc 10 §3 allows it "only if the length histogram needs it").
+   - **A second generation run: about 170 more per 500 candidates**, my estimate from the first
+     run's rates after the reading (105 usable examples, 31 repair turns, a fifth more as bug
+     fixes). It takes about 26 hours of laptop time, and every new fix has to be read: the
+     reading rejected 20 of 124. Nothing was started.
+   - More bug fixes: 346 pass every filter and 94 are used. Using all gives 722 with bug fixes
+     at 48% of the set, against the plan's 20%.
    - More advisory pairs: 258 advisories point at a merge commit and were never converted. The
      yield is unknown.
-   With it, the D16 defaults: the 61 examples that pass check 3 only by a PoC test are kept, a
-   training example may share no 13-token run with Tier C, and none with a line that a
-   benchmark reference fix changes.
+   With it, the defaults of D16 and D17: the 61 examples that pass check 3 only by a PoC test
+   are kept, a training example may share no 13-token run with Tier C and none with a line
+   that a benchmark reference fix changes, and the 20 scenarios in `training/rejected.txt`
+   are out.
 2. **Frontier reference: still `claude-opus-5`** (a default, not your decision yet). Moving to
    `claude-opus-5-5` means re-running `repair-claude-code` and `cascade-claude-code` on dev,
    test and Tier B, about 40 minutes.
 3. **Data mix from dev only** (D14), against doc 14 §5's wording. Also a default.
 4. **Pull request.** The D15 work is committed and pushed on `feat/week3-d15-data` (2026-10-07),
-   together with the Week 3 plan commit it is branched from. No pull request is open. **The D16
-   work is not committed** (2026-10-09): `training/prepare_dataset.py`, `training/inject_cwe.py`,
-   `training/stats.md`, `tests/test_prepare_dataset.py`, one line of `src/aeropatch/agent/gates.py`
-   and these notes. The training data itself (`training/synthetic/`, `training/data/`) is
+   together with the Week 3 plan commit it is branched from. No pull request is open. The D16
+   work and the D17 plan are on the same branch, pushed on 2026-10-09. The training data itself (`training/synthetic/`, `training/data/`) is
    git-ignored and exists only on the laptop.
 
 **Work**
-5. Week 3, D17: read 30 examples (the list at the end of the D16 section says what to look
-   for), then freeze `train.jsonl` and `val.jsonl` with their SHA-256; `finetune.py`, which must
-   train on `target` only; the Kaggle pilot, the export rehearsal and the untuned control. The
-   parity test of the messages exists (`tests/test_prepare_dataset.py`, and the build's check of
-   240 prompts); the chat-template half is still to write. Rebuild with
-   `uv run python training/prepare_dataset.py build --student-run 20261009-student-pass`
-   (about a minute).
-6. Headers copied into edits on files over 60 lines (D13, finding 3): judge a change to the
+5. Week 3, D17, second part (`docs/14-timeline-part4.md`, steps 5 to 9). **It needs a Kaggle
+   account with a verified phone and an API token from you**, and the D17 commits pushed,
+   because the kernel clones the repository from GitHub. Then: your Kaggle username into the
+   two files under `training/kaggle/`; upload `train.jsonl` and `val.jsonl` as a private
+   dataset; the pilot of 50 steps and the memory probe at 4,096; choose the length and freeze
+   the set with its SHA-256; the export rehearsal and the untuned control. Rebuild either set
+   in about a minute with
+   `uv run --with transformers --with jinja2 python training/prepare_dataset.py build
+   --student-run 20261009-student-pass --tokenizer Qwen/Qwen3.5-4B`
+   (add `--max-tokens 4096 --out training/data/seq4096` for the longer one).
+6. **Every local run so far very likely used `presence_penalty 1.5` and `top_k 20`** (found
+   2026-10-12, read from the files, not tested). They are in the Modelfile of the library
+   `qwen3.5:4b`, a Modelfile parameter applies unless the request overrides it, and
+   `local_client.py` sends temperature, `top_p`, the context size, the GPU layers and the token
+   limit, nothing else. A penalty on repeated tokens may work against copying SEARCH lines
+   exactly; whether it does is one dev experiment, as a new config. The D17 control copies
+   both values, so it stays comparable with the baselines.
+7. Headers copied into edits on files over 60 lines (D13, finding 3): judge a change to the
    context format on dev; it makes a new config.
-7. The cascade costs more than the frontier alone on both tiers. Sending the full history on
+8. The cascade costs more than the frontier alone on both tiers. Sending the full history on
    escalation (doc 04 §5) is the reason; whether a shorter escalation prompt keeps the
    resolve rate is worth one dev experiment in Week 4.
-8. Week 4 (doc 12): pass@k, the bootstrap, CSV output, tokens and $ per resolved scenario, and
+9. Week 4 (doc 12): pass@k, the bootstrap, CSV output, tokens and $ per resolved scenario, and
    results reported per tier.
-9. Not done from the plan: `propose_fix` and `apply_edits` as MCP tools (`remediate` covers
+10. Not done from the plan: `propose_fix` and `apply_edits` as MCP tools (`remediate` covers
    them), and a Tier B "before release" group.
-10. `docs/architecture.html` and `docs/architecture-interactive.html` are the same file twice.
+11. `docs/architecture.html` and `docs/architecture-interactive.html` are the same file twice.
 
 **Cuts found by the over-engineering audit and left for after Week 4**, because they sit on the
 code path the baselines measured: the finding `fingerprint` that nothing reads

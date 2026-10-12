@@ -89,6 +89,14 @@ def test_the_filters_read_a_fix_as_the_plan_describes_it():
     assert prep.grams("total = price * count", 5) != prep.grams("s = a * b", 5)
     # The runs that touch a benchmark fix line: all of a text's runs when every line counts, none for a line it lacks.
     assert prep.runs_on(PRE, set(range(20))) == prep.grams(PRE, 13) > prep.runs_on(PRE, {13}) > prep.runs_on(PRE, {99}) == set()
+    # A planted bug that says so in a comment gives the answer away; a comment the fix keeps does not.
+    assert prep.announces(PRE.replace("return f.read()", "return f.readline()  # wrong: reads one line"), PRE)
+    assert not prep.announces(PRE.replace("BASE = \"/srv/files\"", "BASE = \"/srv\"  # noqa"), PRE + "# noqa\n")
+    # A fix that calls a helper of the file is a target only when the prompt shows that helper.
+    helper = PRE.replace("def size", "def safe(name):\n    return name.isalnum()\n\n\ndef size")
+    calls_it = helper.replace("    return os.path.getsize(path)", "    return os.path.getsize(path) if safe(name) else 0")
+    assert prep.unseen_names(helper, calls_it, helper[helper.index("def size"):]) == {"safe"}
+    assert prep.unseen_names(helper, calls_it, helper) == set() == prep.unseen_names(PRE, post, "import os")
     # SWE-smith names its copy of a repository "owner__name.commit": the exclusion list has to see through it.
     assert prep.excluded(prep.smith_repo("swesmith/andialbrecht__sqlparse.e57923b3"))
     assert not prep.excluded(prep.smith_repo("swesmith/getnikola__nikola.0f4c230e"))
