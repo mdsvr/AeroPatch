@@ -44,7 +44,7 @@ def test_only_the_target_is_learned_and_never_the_students_failed_edit():
 def test_an_example_over_the_length_is_dropped_whole_and_a_different_prompt_stops_the_run():
     tokens = len(finetune.encode(Tokenizer(), REPAIR)["input_ids"])
     rows, report = finetune.prepare(Tokenizer(), [REPAIR, {**REPAIR, "target": REPAIR["target"] + "!"}], tokens)
-    assert len(rows) == 1 and report["dropped_for_length"] == 1 and report["longest"] == tokens
+    assert len(rows) == 1 and report["dropped_for_length"] == 1 and report["longest_example"] == tokens
     prompt_tokens = tokens - len(REPAIR["target"]) - 1
     _, report = finetune.prepare(Tokenizer(), [{**REPAIR, "prompt_tokens": prompt_tokens}], tokens)
     assert report["prompts_checked_against_ollama"] == 1

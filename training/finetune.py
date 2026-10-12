@@ -68,7 +68,7 @@ def prepare(tokenizer, examples: list[dict], max_seq_length: int) -> tuple[list[
             report["dropped_for_length"] += 1
         else:
             rows.append(row)
-    report["longest"] = max((len(r["input_ids"]) for r in rows), default=0)
+    report["longest_example"] = max((len(r["input_ids"]) for r in rows), default=0)
     return rows, report
 
 
@@ -105,7 +105,11 @@ def main() -> None:
     val, _ = prepare(tokenizer, val_examples, args.max_seq_length)
     if args.longest:
         train = sorted(train, key=lambda r: -len(r["input_ids"]))[:args.longest]
-    report.update(vars(args) | {"data": str(args.data), "out": str(args.out), "base": BASE, "trained_on": len(train)})
+    # The weights' precision and where they sit: Unsloth loads Qwen3.5 in float32 on a GPU without
+    # bf16 (a T4), which is twice the memory, and layers that do not fit go to the CPU.
+    report.update(vars(args) | {"data": str(args.data), "out": str(args.out), "base": BASE, "trained_on": len(train),
+                                "dtype": str(model.dtype), "gpu": torch.cuda.get_device_name(0),
+                                "devices": sorted({str(d) for d in getattr(model, "hf_device_map", {}).values()})})
     args.out.mkdir(parents=True, exist_ok=True)
 
     if args.max_steps != 0:
@@ -113,7 +117,10 @@ def main() -> None:
             model, r=args.rank, lora_alpha=args.rank, lora_dropout=0, bias="none", random_state=SEED,
             target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
             use_gradient_checkpointing="unsloth", max_seq_length=args.max_seq_length)
-        bf16 = is_bfloat16_supported()  # False on a T4 (doc 10 §3); torch's own check counts emulation and says True
+        # bf16 where the GPU has it. Never fp16: Unsloth reports that float16 does not work for
+        # Qwen3.5, so a GPU without bf16 (a T4) trains in float32.
+        bf16 = is_bfloat16_supported()
+        steps = args.max_steps if args.max_steps > 0 else round(len(train) / 8 * args.epochs)
         # ponytail: transformers' Trainer, not TRL's SFTTrainer: the examples arrive tokenised and
         # masked, so nothing of TRL's text handling (templates, packing) is wanted.
         trainer = Trainer(
@@ -121,9 +128,10 @@ def main() -> None:
             data_collator=DataCollatorForSeq2Seq(tokenizer, padding=True, label_pad_token_id=-100),
             args=TrainingArguments(
                 output_dir=str(args.out / "checkpoints"), per_device_train_batch_size=1, per_device_eval_batch_size=1,
-                gradient_accumulation_steps=8, learning_rate=2e-4, lr_scheduler_type="linear", warmup_ratio=0.05,
+                gradient_accumulation_steps=8, learning_rate=2e-4, lr_scheduler_type="linear",
+                warmup_steps=max(1, round(0.05 * steps)),  # 5%; transformers 5 has no warmup_ratio
                 num_train_epochs=args.epochs, max_steps=args.max_steps, optim="adamw_8bit", seed=SEED,
-                fp16=not bf16, bf16=bf16, logging_steps=5, eval_strategy="steps", eval_steps=25,
+                bf16=bf16, logging_steps=5, eval_strategy="steps", eval_steps=25,
                 save_strategy="epoch", report_to="none"))
         torch.cuda.reset_peak_memory_stats()
         start = time.monotonic()

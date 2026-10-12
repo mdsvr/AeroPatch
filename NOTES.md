@@ -1064,6 +1064,39 @@ back exactly.
   says yes on a T4. That fix is committed but not on GitHub yet, and the kernel clones from
   there.
 
+**The pilot ran (kernel version 8, 47 min 49 s on one Kaggle T4): it trains, it fits, and the
+export works.** Your phone was verified by then, and Kaggle gave two T4s and internet.
+
+| Check (doc 10 §4) | Result |
+|---|---|
+| Loss over 50 steps of 8 examples | 0.40 at step 5, 0.21 at step 50; validation 0.242 at step 25, 0.233 at step 50 |
+| Peak VRAM | 9.89 GB, against the limit of 14 |
+| Speed | about 34 s a step once the first step's kernels are compiled (that step took 5 min 16 s); 33 min 44 s for the 50 |
+| Examples dropped for length | 0 of 445; the longest is exactly 2,048 tokens |
+| Prompts equal to Ollama's count | 129 of 129 in the training split |
+| Validation outputs that parse | 5 of 5 |
+| Export | `Qwen3.5-4B.Q4_K_M.gguf`, and `Qwen3.5-4B.F16-mmproj.gguf` for the model's image input |
+
+- **A full run of 2 epochs is about 111 steps: a little over an hour** at this speed.
+- **Precision on a T4.** A T4 has no bf16. Unsloth prints "float16 precision for qwen3_5 won't
+  work, using float32", yet the weights report float16 and the peak is 9.89 GB, so most of the
+  model is 16-bit. `finetune.py` asks for bf16 only where Unsloth says the GPU has it and never
+  for fp16 autocast.
+- Kaggle has no L4 for this account: a kernel that asks for one gets no GPU.
+- Versions on Kaggle that day are pinned in `training/requirements.txt` (Unsloth 2026.10.3,
+  transformers 5.16.1, torch 2.11.0). transformers 5 has no `warmup_ratio`; the script passes
+  5% as a number of steps.
+- Unsloth writes no Ollama Modelfile for this model ("no template mapping found"), so the
+  renderer lines of `docs/14-timeline-part4.md` §1 are needed by hand, as expected.
+- Kaggle mounts a dataset under `/kaggle/input/datasets/<user>/<name>`; the kernel looks the
+  folder up.
+- **The pilot ran from the laptop's `finetune.py`, laid over the cloned one** (SHA-256
+  `cacba103...` in the kernel's log), so that fixes could be tried without a push each time.
+  The file in the repository is that one plus a renamed report key. A run that counts (D18) has
+  to use pushed code.
+- Kaggle's command line shows no log while a kernel runs. The website does, and its training
+  lines appear in blocks, at each evaluation.
+
 **Defaults taken today, yours to overrule**
 - The 20 rejections. Each is one line in `training/rejected.txt`; delete a line to take the
   scenario back.
