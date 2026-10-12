@@ -5,6 +5,9 @@
     uv run python training/prepare_dataset.py general     # SWE-Gym, SWE-smith -> training/data/general_pairs.jsonl
     uv run python training/prepare_dataset.py build --student-run <run id>
                                                           # -> train.jsonl, val.jsonl, leakage.md, training/stats.md
+    uv run --with transformers --with jinja2 python training/prepare_dataset.py build --student-run <run id> \\
+        --tokenizer Qwen/Qwen3.5-4B                       # the same, with lengths counted, not estimated
+    uv run python training/prepare_dataset.py sheet       # 30 random examples to read -> spotcheck-30.md
 
 `mine` lists the reviewed pip advisories published before CUTOFF, keeps those whose one fix commit
 changes exactly one non-test Python file by at most 60 lines, and turns each fix into the
@@ -26,8 +29,11 @@ training/data/cache/, so a second run costs nothing and a stopped run resumes.
 from __future__ import annotations
 
 import argparse
+import ast
+import builtins
 import difflib
 import hashlib
+import importlib.util
 import itertools
 import json
 import keyword
@@ -56,6 +62,7 @@ PAIRS = DATA / "fix_pairs.jsonl"
 GENERAL = DATA / "general_pairs.jsonl"
 SYNTHETIC = ROOT / "training" / "synthetic"  # written by inject_cwe.py
 STATS = ROOT / "training" / "stats.md"  # counts only, so it is published; leakage.md quotes code and is not
+REJECTED = ROOT / "training" / "rejected.txt"  # "id: reason" for each fix that a reading found wrong or silly
 
 # Training CVEs are published before this date; Tier B's advisories start on 2026-03-16 (doc 09 §9).
 CUTOFF = "2026-01-01"
@@ -477,9 +484,9 @@ SOURCES = ("ghsa", "synthetic", "swe-gym", "swe-smith")
 MAX_FUNCTIONS, MAX_HUNKS = 2, 6
 # doc 10 §3 trains at this sequence length: a longer example would lose the end of its target.
 MAX_TOKENS = 2048
-# ponytail: tokens are estimated from characters. Ollama counted 4.0 characters per token over the
-# student's prompts of 2026-10-09 (prompt_eval_count), and under 3.7 for 5% of them; the lower
-# figure is used, so the estimate errs high. The real tokenizer is on Kaggle, with finetune.py.
+# Without --tokenizer, tokens are estimated from characters. Ollama counted 4.0 characters per token
+# over the student's prompts of 2026-10-09 (prompt_eval_count), and under 3.7 for 5% of them; the
+# lower figure is used, so the estimate errs high (by 10% on average, measured 2026-10-12).
 CHARS_PER_TOKEN = 3.6
 # Two pairs are near-duplicates when the functions their findings point at overlap this far, in
 # 5-token runs with identifiers blanked (Jaccard). The first DUP_CAP stay: one function with two
@@ -591,6 +598,30 @@ def runs_on(text: str, rows: set[int]) -> set[tuple[str, ...]]:
     return {tuple(tok for tok, _ in t[i:i + 13]) for i in range(len(t) - 12) if any(row in rows for _, row in t[i:i + 13])}
 
 
+def announces(pre: str, post: str) -> bool:
+    """True when a line the fix removes carries a comment that the fixed file has nowhere.
+    SWE-smith's bug writer sometimes says what it broke ("# Off-by-one error: Starts from 1
+    instead of 0"), and a prompt with that comment gives the answer away."""
+    lost = [line for op in opcodes(pre, post) if op[0] != "equal" for line in pre.split("\n")[op[1]:op[2]]]
+    return any((m := re.search(r"#\s*(\S.*)$", line)) and m[1] not in post for line in lost)
+
+
+def unseen_names(pre: str, post: str, shown: str) -> set[str]:
+    """Names the fix starts to use that the file defines at module level and the prompt does not
+    show: a helper function, a class, a constant. A target with one teaches the model to call
+    something on faith (`validate_quantity` in S-20-00162, 2026-10-09)."""
+    try:
+        before, after = ast.parse(pre), ast.parse(post)
+    except SyntaxError:
+        return set()
+    defined = {n.name for n in before.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))}
+    defined |= {t.id for n in before.body if isinstance(n, ast.Assign) for t in n.targets if isinstance(t, ast.Name)}
+    rows = {r + 1 for op in opcodes(pre, post) if op[0] != "equal" for r in range(op[3], op[4])}
+    used = {n.id for n in ast.walk(after) if isinstance(n, ast.Name) and n.lineno in rows}
+    # A file's own class named like a builtin (PermissionError in S-352-00293) needs no showing.
+    return {name for name in used & defined - set(dir(builtins)) if not re.search(rf"\b{re.escape(name)}\b", shown)}
+
+
 def benchmark() -> tuple[dict[str, set], dict[str, set], dict[str, list[set]]]:
     """Per scenario: the 13-token runs of its Python files, each patched file's fixed version
     included; those of them that touch a line its reference fix removes or adds; and the blanked
@@ -644,6 +675,8 @@ def repair_turns(run: str, items: dict[str, dict]) -> tuple[list[dict], Counter]
         if it is None:
             continue
         messages, older = [{"role": "user", "content": it["prompt"]}], []
+        if mine:  # Ollama's token count of the first prompt, for size() and for finetune.py's template check
+            it["sent"] = mine[0]["proposal"]["usage"].get("input_tokens")
         for i, att in enumerate(mine):
             adir = RUNS_DIR / run / it["id"] / f"attempt_{att['n']}"
             said = prompts.SYSTEM_PROMPT + "\n\n" + "\n\n".join(m["content"] for m in messages)
@@ -662,15 +695,28 @@ def repair_turns(run: str, items: dict[str, dict]) -> tuple[list[dict], Counter]
     return out, stats
 
 
-def size(it: dict) -> int:
-    """Tokens of an example, system prompt to target: Ollama's count of the prompt where the
-    student was sent it, an estimate from characters for the rest."""
-    said = it.get("sent") or n_tokens(prompts.SYSTEM_PROMPT + "".join(m["content"] for m in it["messages"]))
-    return said + n_tokens(it["target"])
-
-
-def build(student_run: str | None, max_tokens: int) -> None:
+def build(student_run: str | None, max_tokens: int, out_dir: Path, tokenizer: str | None) -> None:
     warnings.simplefilter("ignore", SyntaxWarning)  # old code under ast.parse, in the gates
+    if tokenizer:
+        # Not a dependency of the project: uv run --with transformers --with jinja2. Only the
+        # tokenizer files are fetched, and finetune.py's own encode() does the counting.
+        from transformers import AutoTokenizer
+
+        spec = importlib.util.spec_from_file_location("finetune", Path(__file__).with_name("finetune.py"))
+        finetune = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(finetune)
+        tok = AutoTokenizer.from_pretrained(tokenizer)
+
+    def size(it: dict) -> int:
+        """Tokens of an example, system prompt to target. With a tokenizer, as finetune.py will
+        encode it; without, Ollama's count of the prompt where the student was sent it and an
+        estimate from characters for the rest."""
+        if tokenizer:
+            return len(finetune.encode(tok, {"target": it["target"], "messages": [
+                {"role": "system", "content": prompts.SYSTEM_PROMPT}, *it["messages"]]})["input_ids"])
+        said = it.get("sent") or n_tokens(prompts.SYSTEM_PROMPT + "".join(m["content"] for m in it["messages"]))
+        return said + n_tokens(it["target"])
+
     items = load_items()
     funnel = [("Converted pairs, and synthetic examples kept by the sandbox", Counter(it["source"] for it in items))]
 
@@ -683,19 +729,27 @@ def build(student_run: str | None, max_tokens: int) -> None:
         return [it for it, good in verdicts if not good]
 
     keep("Language: a Python file, and a CWE on the advisory", lambda it: it["path"].endswith(".py") and it["cwe"])
+    rejected = {line.split(": ", 1)[0] for line in REJECTED.read_text(encoding="utf-8").splitlines()
+                if line.strip() and not line.startswith("#")}
+    keep("Reading: not a fix that was read and rejected (training/rejected.txt, doc 09 §10)",
+         lambda it: it["id"] not in rejected)
     keep(f"Size: at most {MAX_CHANGED_LINES} changed lines, in at most {MAX_FUNCTIONS} functions",
          lambda it: gates._changed_lines(it["pre"], it["post"]) <= MAX_CHANGED_LINES
          and functions_touched(it["pre"], it["post"]) <= MAX_FUNCTIONS)
-    keep(f"Noise: at most {MAX_HUNKS} hunks, none of them whitespace only", lambda it: not noisy(it["pre"], it["post"]))
+    keep(f"Noise: at most {MAX_HUNKS} hunks, none of them whitespace only; no SWE-smith bug that a comment announces",
+         lambda it: not noisy(it["pre"], it["post"])
+         and not (it["source"] == "swe-smith" and announces(it["pre"], it["post"])))
 
     def in_view(it: dict) -> bool:
-        shown, it["prompt"], function = rendered(it)
+        it["shown"], it["prompt"], function = rendered(it)
         it["messages"] = [{"role": "user", "content": it["prompt"]}]
         it["grams"] = grams(function, 5, blank=True)
-        it["target"] = convert(it["pre"], it["post"], it["path"], it["message"], shown)
+        it["target"] = convert(it["pre"], it["post"], it["path"], it["message"], it["shown"])
         return it["target"] is not None
 
     keep("Context: every SEARCH line is in the prompt (not in doc 09)", in_view)
+    keep("Names: the fix uses no function, class or constant of the file that the prompt hides (not in doc 09)",
+         lambda it: not unseen_names(it["pre"], it["post"], it["shown"]))
     keep("Gates: the fix passes the loop's safety gates (not in doc 09)",
          lambda it: gates.check({it["path"]: it["pre"]}, {it["path"]: it["post"]}, [it["path"]]).ok)
 
@@ -708,7 +762,11 @@ def build(student_run: str | None, max_tokens: int) -> None:
         return twins < DUP_CAP
 
     keep(f"Dedupe: at most {DUP_CAP} functions that share {DUP_SIM:.0%} of their blanked 5-token runs", fresh)
-    long = keep(f"Length: prompt and target within about {max_tokens} tokens", lambda it: size(it) <= max_tokens)
+    def fits(it: dict) -> bool:
+        it["tokens"] = size(it)
+        return it["tokens"] <= max_tokens
+
+    long = keep(f"Length: prompt and target within {'' if tokenizer else 'about '}{max_tokens} tokens", fits)
     keep("Secrets: no key or token pattern",
          lambda it: not prompts._secret_reason(f"{prompts.SYSTEM_PROMPT}\n\n{it['prompt']}\n\n{it['target']}"))
 
@@ -737,8 +795,10 @@ def build(student_run: str | None, max_tokens: int) -> None:
     keep(f"Diversity: at most {CAP} per CWE and repository", under_cap)
 
     repairs, student = repair_turns(student_run, {it["id"]: it for it in items}) if student_run else ([], Counter())
-    long_turns = [r for r in repairs if size(r) > max_tokens]
-    repairs = [r for r in repairs if size(r) <= max_tokens
+    for r in repairs:
+        r["tokens"] = size(r)
+    long_turns = [r for r in repairs if r["tokens"] > max_tokens]
+    repairs = [r for r in repairs if r["tokens"] <= max_tokens
                and not prompts._secret_reason("\n\n".join(m["content"] for m in r["messages"]))]
     student["failed attempts"], student["too long"] = len(repairs) + len(long_turns), len(long_turns)
     # A repair turn adds the student's edits and the sandbox's output to its scenario's prompt: the
@@ -751,8 +811,12 @@ def build(student_run: str | None, max_tokens: int) -> None:
     student.update({"leaked": len(leaked_turns), "sent": sum(bool(r["sent"]) for r in repairs),
                     "after a third attempt": sum(r["id"][-1] == "3" for r in repairs)})
     lengths = (f"Over the limit of {max_tokens}: {len(long)} pairs at the length step and {len(long_turns)} repair "
-               f"turns. Within {2 * max_tokens}: {sum(size(x) <= 2 * max_tokens for x in long)} and "
-               f"{sum(size(x) <= 2 * max_tokens for x in long_turns)} of them.")
+               f"turns. Within {2 * max_tokens}: {sum(x['tokens'] <= 2 * max_tokens for x in long)} and "
+               f"{sum(x['tokens'] <= 2 * max_tokens for x in long_turns)} of them.")
+    lengths = ((f"Tokens of prompt and target together, counted with the tokenizer of `{tokenizer}` as "
+                "`finetune.py` encodes an example. " if tokenizer else
+                f"Tokens of prompt and target together, estimated at {CHARS_PER_TOKEN} characters per token; for a "
+                "repair turn the student was sent, Ollama's own count of the prompt. ") + lengths)
     # General bug fixes are GENERAL_SHARE of the set, taken one repository after another.
     seen: Counter[str] = Counter()
     turn = {}
@@ -773,7 +837,9 @@ def build(student_run: str | None, max_tokens: int) -> None:
         "format": it["after"] in FORMAT_LABELS if "after" in it else it["target"].count("<<<<<<< SEARCH") >= 3,
         # Validation holds whole repositories and whole synthetic scenarios, so no code is on both sides.
         "group": it["id"].split("#")[0] if it["source"] == "synthetic" else it["repo"],
-        "relaxed": it.get("relaxed", False), "tokens": size(it),
+        "relaxed": it.get("relaxed", False), "tokens": it["tokens"],
+        # Ollama's count of the prompt, where the student was sent it: finetune.py's must equal it.
+        "prompt_tokens": it.get("sent"),
         "messages": [{"role": "system", "content": prompts.SYSTEM_PROMPT}, *it["messages"]], "target": it["target"],
     } for it in items + repairs]
     groups = sorted({e["group"] for e in examples})
@@ -785,15 +851,31 @@ def build(student_run: str | None, max_tokens: int) -> None:
         held.add(g)
     for e in examples:
         e["split"] = "val" if e["group"] in held else "train"
+    out_dir.mkdir(parents=True, exist_ok=True)
     for split in ("train", "val"):
-        with (DATA / f"{split}.jsonl").open("w", encoding="utf-8", newline="\n") as out:
+        with (out_dir / f"{split}.jsonl").open("w", encoding="utf-8", newline="\n") as out:
             out.writelines(json.dumps(e) + "\n" for e in examples if e["split"] == split)
     leaks = (items, leaked, repairs, leaked_turns)
-    (DATA / "leakage.md").write_text(leakage_report(*leaks, runs), encoding="utf-8", newline="\n")
-    STATS.write_text(stats_report(funnel, examples, student, student_run, leak_counts(*leaks), lengths),
+    (out_dir / "leakage.md").write_text(leakage_report(*leaks, runs), encoding="utf-8", newline="\n")
+    stats = STATS if out_dir == DATA else out_dir / "stats.md"  # a second candidate set keeps its own counts
+    stats.write_text(stats_report(funnel, examples, student, student_run, leak_counts(*leaks), lengths),
                      encoding="utf-8", newline="\n")
     print(f"{len(examples)} examples, {sum(e['split'] == 'val' for e in examples)} of them in val.jsonl; "
-          f"{STATS.relative_to(ROOT)} and {(DATA / 'leakage.md').relative_to(ROOT)} written")
+          f"written to {out_dir}, counts in {stats}")
+
+
+def sheet(n: int, seed: int, out_dir: Path) -> None:
+    """doc 09 §10: n random examples of a built set, and 5 more repair turns, laid out to be read."""
+    examples = _jsonl(out_dir / "train.jsonl") + _jsonl(out_dir / "val.jsonl")
+    sample = random.Random(seed).sample(examples, n)
+    more = [e for e in examples if e["slice"] == "repair" and e not in sample]
+    lines = [f"# {n} examples to read (seed {seed}), then 5 more repair turns", ""]
+    for i, e in enumerate(sample + random.Random(seed).sample(more, min(5, len(more))), 1):
+        lines += [f"## {i}. {e['id']} ({e['slice']}, {e['source']}, {e['cwe']}, {e['tokens']} tokens)", ""]
+        for m in [*e["messages"][1:], {"role": "target", "content": e["target"]}]:  # the system prompt is the same in all
+            lines += [f"**{m['role']}**", "", "~~~~~", m["content"], "~~~~~", ""]
+    (out_dir / f"spotcheck-{n}.md").write_text("\n".join(lines), encoding="utf-8", newline="\n")
+    print(f"wrote {out_dir / f'spotcheck-{n}.md'}")
 
 
 def table(head: list[str], rows: list[list]) -> list[str]:
@@ -894,16 +976,14 @@ def stats_report(funnel: list, examples: list[dict], student: Counter, student_r
                   (f"- Scenarios whose rebuilt conversation differs from a prompt on disk: {student['parity failures']}. "
                    f"{student['sent']} of the repair turns in the set were sent to the student as its next prompt and "
                    "were compared with it; the others end a conversation, so no prompt on disk holds them."),
-                  (f"- {student['after a third attempt']} repair turns follow a third attempt, a conversation that "
-                   "`repair-local` never sends."), ""]
+                  ("- Repair turns that follow a third attempt, a conversation `repair-local` never sends: "
+                   f"{student['after a third attempt']}."), ""]
     cwes = Counter(e["cwe"] for e in examples).most_common()
     lines += ["## By CWE", ""]
     lines += table(["CWE", "Examples", *SOURCES],
                    [[cwe, k, *(count(cwe=cwe, source=s) for s in SOURCES)] for cwe, k in cwes[:25]]
                    + [[f"{len(cwes) - 25} others", sum(k for _, k in cwes[25:]), *[""] * len(SOURCES)]])
-    lines += ["## Length", "",
-              (f"Tokens of prompt and target together, estimated at {CHARS_PER_TOKEN} characters per token; for a "
-               "repair turn the student was sent, Ollama's own count of the prompt."), "", lengths, ""]
+    lines += ["## Length", "", lengths, ""]
     bins = Counter(e["tokens"] // 256 for e in examples)
     lines += table(["Tokens", "Examples", ""], [
         [f"{b * 256}-{b * 256 + 255}", bins[b], "#" * round(40 * bins[b] / max(bins.values()))] for b in range(max(bins) + 1)])
@@ -922,13 +1002,22 @@ def main() -> None:
     b = sub.add_parser("build", help="all sources -> train.jsonl, val.jsonl, stats.md, leakage.md")
     b.add_argument("--student-run", help="run id of `inject_cwe.py --student`; without it there are no repair turns")
     b.add_argument("--max-tokens", type=int, default=MAX_TOKENS, help="longest example kept (default: %(default)s)")
+    b.add_argument("--tokenizer", help="count tokens with this Hugging Face tokenizer, such as Qwen/Qwen3.5-4B; "
+                                       "without it lengths are estimated from characters")
+    r = sub.add_parser("sheet", help="random examples of a built set, to read")
+    r.add_argument("-n", type=int, default=30)
+    r.add_argument("--seed", type=int, default=SEED)
+    for parser in (b, r):
+        parser.add_argument("--out", type=Path, default=DATA, help="directory of the set (default: training/data)")
     args = p.parse_args()
     if args.cmd == "mine":
         mine()
     elif args.cmd == "general":
         general()
     elif args.cmd == "build":
-        build(args.student_run, args.max_tokens)
+        build(args.student_run, args.max_tokens, args.out.resolve(), args.tokenizer)
+    elif args.cmd == "sheet":
+        sheet(args.n, args.seed, args.out.resolve())
     else:
         spotcheck(args.n, args.seed)
 

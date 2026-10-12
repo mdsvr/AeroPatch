@@ -6,6 +6,9 @@ Expands the D17 list in section 6 of [14-timeline-part3.md](14-timeline-part3.md
 Lines marked **Change** differ from part 3 or doc 10, and give the reason. Times are estimates
 unless they say "measured".
 
+**State on 2026-10-12: steps 1 to 4 are done**, and their results are in `NOTES.md` ("D17, first
+part"). Steps 5 to 9 wait for the Kaggle token. Sections 4 and 5 say what changed on the way.
+
 ## 1. Where D17 starts
 
 - **Exists:** 554 examples, not frozen (`training/stats.md`). One command rebuilds them in about
@@ -53,12 +56,12 @@ the sequence length, and the length depends on a memory number that only the pil
 
 | # | Step | Estimate | Acceptance check |
 |---|---|---|---|
-| 1 | Read 30 random examples (seed 3407) from a sheet | 1 hour | At most 3 wrong or silly; otherwise tighten a filter first (doc 09 §10) |
-| 2 | Apply what the reading decides; build both candidate sets | 30 minutes | `stats.md` for each; tests pass |
-| 3 | `finetune.py`, `requirements.txt`, the notebook | 2 to 3 hours | The self-checks of section 5 pass on the laptop where they can |
-| 4 | Template half of the parity test | 30 minutes | Token counts match Ollama's for every sampled prompt |
+| 1 | Done. Read 30 random examples (seed 3407) from a sheet | 1 hour | At most 3 wrong or silly; otherwise tighten a filter first (doc 09 §10) |
+| 2 | Done. Apply what the reading decides; build both candidate sets | 30 minutes | `stats.md` for each; tests pass |
+| 3 | Done. `finetune.py`, `requirements.txt`, the kernel | 2 to 3 hours | The self-checks of section 5 pass on the laptop where they can |
+| 4 | Done, on the laptop. Template half of the parity test | 30 minutes | Token counts match Ollama's for every sampled prompt |
 | 5 | Upload the data; pilot of 50 steps on 400 examples at 2,048 | 15 minutes of GPU (doc 10 §4), plus queue | Loss falls; peak VRAM under 14 GB; 5 validation outputs parse |
-| 6 | Memory probe at 4,096: 20 steps on the 50 longest examples | 10 minutes of GPU | A peak VRAM number and a time per step |
+| 6 | Memory probe at 4,096: 6 steps on the 50 longest examples | 10 minutes of GPU | A peak VRAM number and a time per step |
 | 7 | Choose the length; freeze dataset v1 | 20 minutes | SHA-256 of `train.jsonl` and `val.jsonl` in `NOTES.md` |
 | 8 | Export rehearsal with the pilot adapter | 1 hour, mostly download | The GGUF answers one dev scenario in the edit format on the laptop |
 | 9 | Untuned control through the same export | 45 minutes | The control resolves a dev scenario; one dev run recorded |
@@ -72,8 +75,24 @@ seed, each with its prompt, target, slice and source. What to look for is listed
 the D16 section of `NOTES.md`: a target that calls an unseen function, a RATIONALE that only
 restates the finding, a docstring that names the fix, a planted flaw in an odd place.
 
-**Step 2.** `build` writes into `training/data/` and overwrites the last set. Give it an
-output directory so that the 2,048 and the 4,096 candidates exist side by side.
+**Step 2.** `build --out` writes a second set beside the first: `training/data/` holds the
+2,048 candidate (470 examples) and `training/data/seq4096/` the 4,096 one (541).
+
+**Steps 5 and 6.** The kernel clones the repository from GitHub, so the D17 commits have to be
+pushed first. Then, once:
+- Put your Kaggle username in place of `KAGGLE_USERNAME` in the two files under
+  `training/kaggle/`. It is public, so it is committed.
+- Copy `train.jsonl`, `val.jsonl` and `dataset-metadata.json` into an empty folder and run
+  `uvx kaggle datasets create -p <folder>`. Only those two data files: `leakage.md` quotes code
+  from other projects. Check on kaggle.com that the dataset shows as private. The 4,096 set
+  goes up the same way as `aeropatch-train-4096`.
+- `uvx kaggle kernels push -p training/kaggle` starts the pilot;
+  `uvx kaggle kernels status <user>/aeropatch-finetune` follows it;
+  `uvx kaggle kernels output <user>/aeropatch-finetune -p training/data/pilot` fetches
+  `pilot.json`, the frozen requirements and the GGUF.
+- For the memory probe, change `RUN` in `kernel.py` to `--max-steps 6 --longest 50
+  --max-seq-length 4096` and the data path to the second dataset, push to GitHub, push the
+  kernel again. Check in the log which GPU Kaggle gave.
 
 **Step 8.** On Kaggle: merge the pilot adapter and export `q4_k_m` (doc 10 §6). On the laptop:
 a Modelfile with `FROM`, `RENDERER qwen3.5`, `PARSER qwen3.5` and the parameters of doc 10 §8;
@@ -110,16 +129,23 @@ library tag is built from.
   so nothing is copied.
 - Write one `pilot.json`: loss per logged step, peak VRAM (`torch.cuda.max_memory_allocated`),
   seconds per step, examples dropped for length, the 5 outputs.
-- `requirements.txt` pins what Kaggle resolved on the day (Unsloth, TRL, PEFT, transformers).
-  The notebook only clones the repository, installs that file and calls the script (doc 10 §2).
+- `requirements.txt` pins what Kaggle resolved on the day. Until the pilot has run it says
+  `unsloth` only; the kernel saves `pip freeze`, and the pins come from that.
+- **Change: a script kernel, not a notebook** (`training/kaggle/kernel.py`). It only clones the
+  repository, installs that file and calls the script, as doc 10 §2 asks, and it is plain
+  text that the Kaggle command line can push.
+- **Change: `transformers.Trainer`, not TRL's `SFTTrainer`.** The examples arrive tokenised and
+  masked, so TRL's text handling (templates, packing) is not wanted.
 - The masking is a pure function with a unit test, so it is checked on the laptop, where the
   training libraries are not installed.
 
-**Template parity (step 4).** The student run recorded Ollama's token count for 310 prompts.
-Put 20 of them in a small file with their messages. On Kaggle, render each with the Hugging
-Face template and count. Equal counts for all 20 is the pass. A constant difference has to be
-explained (a start token, for example) before any training; an uneven one means the two sides
-format prompts differently, and doc 10 §12 says what to compare.
+**Template parity (step 4). Change: done on the laptop, not on Kaggle.** The tokenizer of
+`Qwen/Qwen3.5-4B` is public and needs no GPU. The student run recorded Ollama's token count for
+310 prompts; the Hugging Face template with thinking off gives the same count on all 25 that
+were sampled. `finetune.py` repeats the check on every example that carries Ollama's count
+(135 in the 2,048 set) and stops the run on a mismatch. The same tokenizer now counts the
+length of every example in `build --tokenizer`, so nothing is estimated and nothing will be
+dropped on Kaggle.
 
 ## 6. If something fails
 

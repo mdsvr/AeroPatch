@@ -1,0 +1,13 @@
+{
+  "id": "KAGGLE_USERNAME/aeropatch-finetune",
+  "title": "aeropatch-finetune",
+  "code_file": "kernel.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": true,
+  "dataset_sources": ["KAGGLE_USERNAME/aeropatch-train"],
+  "competition_sources": [],
+  "kernel_sources": []
+}
