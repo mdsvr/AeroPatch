@@ -1195,6 +1195,78 @@ export works.** Your phone was verified by then, and Kaggle gave two T4s and int
   files and the Ollama model `aeropatch-pilot` are gone. The pilot's adapter and both
   `pilot.json` files are kept, and so is the teacher `qwen3.5:9b`.
 
+## Week 3, D18 (2026-10-12): the full run, and both checkpoints score below the control
+
+**The fine-tuned model resolves fewer dev scenarios than the untuned control: 20 of 39 against
+26 of 39, for both checkpoints.** Every tuned run is below every control run. This is a
+negative result, not a flat one: the band set before the runs was 2 points around 26.
+
+| Model (Ollama name) | Run 1 | Run 2 | Run 3 | Total of 39 |
+|---|---|---|---|---|
+| Untuned control (`aeropatch-control`) | 9 | 8 | 9 | **26** |
+| Step 64, end of epoch 1 (`aeropatch-step64`) | 7 | 7 | 6 | **20** |
+| Step 128, end of epoch 2 (`aeropatch-step128`) | 7 | 7 | 6 | **20** |
+
+**The full run (kernel version 11, commit `97ae347`, 2 h 20 min 31 s in all)**
+- 128 steps in 89 min 30 s (42.0 s a step), peak 13.1 GB, 511 examples, none dropped, longest
+  4,087 tokens. All four steps of the session ended with exit code 0.
+- **Validation loss is flat from the first checkpoint on**: 0.2071 at step 32, 0.2052 at 64,
+  0.2072 at 96, 0.2067 at 128. Training loss fell from 0.42 to 0.16 over the same steps. On 30
+  validation examples these four values cannot be told apart.
+- The plan's rule (the end of each epoch, and the lowest validation loss) gives steps 64 and
+  128: the lowest loss is at 64. Step 32 and step 96 were exported too and were not judged.
+- Both judged models were checked against the control before their runs: the same prompt is
+  1,810 tokens for all three, each is 100% on the GPU (2,951 MiB), and each runs at 48 tokens
+  a second. Their SHA-256 values differ.
+
+**Where the points went** (resolved out of 3 runs; the 5 scenarios not listed are 3 of 3 for all)
+
+| Scenario | Control | Step 64 | Step 128 |
+|---|---|---|---|
+| `A-502-01` | 3 | 0 | 0 |
+| `A-079-01` | 3 | 1 | 1 |
+| `A-022-01` | 3 | 1 | 2 |
+| `A-078-01` | 2 | 3 | 2 |
+| `A-089-02`, `A-328-01`, `A-601-01`, `A-918-01` | 0 each | 0 each | 0 each |
+
+- **None of the four scenarios the control always fails was resolved once**, in 24 tuned tries.
+- **The failures changed kind.** Final labels over 39 scenario runs:
+
+  | Label | Control | Step 64 | Step 128 |
+  |---|---|---|---|
+  | `RESOLVED` | 26 | 20 | 20 |
+  | `REGRESSION` (the fix breaks a regression test) | 3 | 7 | 9 |
+  | `STUCK` (the same edit again after feedback) | 1 | 6 | 6 |
+  | `POC_STILL_FAILS` | 5 | 4 | 3 |
+  | `FORMAT_FAIL` | 4 | 1 | 1 |
+  | `GATE_REJECT` | 0 | 1 | 0 |
+
+  The format was learned (4 format failures became 1). What got worse is the fix itself:
+  more edits that break behaviour, and more repeats of a rejected edit.
+
+**What to look at on D19. These are guesses from the tables above; none is tested.**
+- **The RATIONALE.** Every training target begins with the finding's message as its
+  RATIONALE, and the tuned model copies that: at temperature 0 it answers "RATIONALE: Pyrofork
+  has a Path Traversal in download_media Method" where the control writes what it is about to
+  do ("Prevent path traversal by ensuring the `file_name` parameter ..."). The untuned model
+  may be using that line to reason before it edits, and training may have removed it.
+- **Repair turns.** `STUCK` went from 1 to 6. Repair turns are 53 of 541 examples, 10% against
+  the plan's 20%.
+- **Overfitting or learning rate.** Validation loss stopped moving at step 32 while training
+  loss kept falling. Step 32 has a GGUF on Kaggle and was not judged; it is the cheapest next
+  measurement.
+- **Data against dev.** Half of dataset v1 is advisory fixes from large real projects; the dev
+  scenarios are small applications.
+
+**Where the files are**
+- Kaggle keeps the output of kernel version 11: four GGUFs, the four checkpoints and the final
+  adapter.
+- The five adapters and the reports are copied to `training/data/full/` on `F:` (git-ignored).
+- Ollama holds `aeropatch-step64` and `aeropatch-step128` (2.8 GB each, on `F:`). The two
+  downloaded GGUF files in `C:\aeropatch-d18` (5.2 GB) are copies of those and can go.
+- Dev runs: `runs/20261012-201541`, `-201954`, `-202425` (step 64) and `-202913`, `-203246`,
+  `-203620` (step 128), each `-repair-local-dev.jsonl`.
+
 
 ## Next
 
@@ -1224,14 +1296,11 @@ export works.** Your phone was verified by then, and Kaggle gave two T4s and int
    (`training/synthetic/`, `training/data/`) is git-ignored and exists only on the laptop.
 
 **Work**
-5. Week 3, D18: the full run on Kaggle (`ORDER = ["full"]` in `training/kaggle/kernel.py`: 2
-   epochs on dataset v1, about 90 minutes of training on one T4, then four exports; about 2
-   hours 30 minutes in all, see "D18 preparation"). At most 3
-   checkpoints are judged, each with 3 dev runs, beside the control's 3 dev runs (done: 9, 8
-   and 9 of 13). **It is running** (kernel version 11, started 2026-10-12 at 17:38). Disk:
-   `F:` has 15.9 GB free; each judged checkpoint takes 2.8 GB there as Ollama's copy, and the
-   downloads go to `C:`. To rebuild
-   dataset v1: `uv run --with transformers --with jinja2 python training/prepare_dataset.py
+5. **Week 3, D19: find out why the tuned model is worse on dev** (D18: 20 of 39 for both
+   checkpoints against the control's 26). The plan's second run (rank 32 or 3 epochs) was for
+   a flat result and this one is negative, so the diagnosis comes first, in the plan's order:
+   parity, then data quality, then learning rate. The D18 section lists what to look at. To
+   rebuild dataset v1: `uv run --with transformers --with jinja2 python training/prepare_dataset.py
    build --student-run 20261009-student-pass --tokenizer Qwen/Qwen3.5-4B` (about a minute; the
    SHA-256 values are in the D17 section).
 6. **Every local run so far very likely used `presence_penalty 1.5` and `top_k 20`** (found
