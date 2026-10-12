@@ -24,7 +24,10 @@ def sh(command: str, check: bool = True) -> int:
     return subprocess.run(command, shell=True, check=check, cwd="/tmp").returncode
 
 
-sh("nvidia-smi --query-gpu=name,memory.total --format=csv")
+gpu = sh("nvidia-smi --query-gpu=name,memory.total --format=csv", check=False) == 0
+net = sh("git ls-remote https://github.com/mdsvr/AeroPatch.git HEAD", check=False) == 0
+if not (gpu and net):  # Kaggle gives both only to an account with a verified phone number
+    raise SystemExit(f"GPU: {gpu}, internet: {net}. The run needs both.")
 sh(f"git clone --depth 1 --branch {BRANCH} https://github.com/mdsvr/AeroPatch.git")
 sh("git -C AeroPatch log --oneline -1")
 sh("pip install -q -r AeroPatch/training/requirements.txt")
