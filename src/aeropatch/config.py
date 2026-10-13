@@ -74,6 +74,17 @@ CONFIGS: dict[str, dict] = {
     # Harness self-check: replays each scenario's reference fix. Must resolve 100%.
     "oracle": {"mode": "oracle", "attempt_plan": ["oracle"]},
     "repair-local": {"attempt_plan": ["local", "local", "local"]},
+    # D19 diagnosis of the fine-tune: `repair-local` with the start of the answer written for the
+    # model. "plan" leaves the RATIONALE to the model. "finding" puts the finding's message there
+    # and opens the first block, which is how every target of dataset v1 begins.
+    "prefill-plan": {"attempt_plan": ["local", "local", "local"], "local_prefill": "RATIONALE:"},
+    "prefill-finding": {"attempt_plan": ["local", "local", "local"],
+                        "local_prefill": "RATIONALE: {message}\n<<<<<<< SEARCH"},
+    # One attempt, opened with the RATIONALE the untuned control wrote for the same scenario:
+    # does a tuned checkpoint write the blocks as well once it is handed that plan?
+    "prefill-control-plan": {"attempt_plan": ["local"],
+                             "local_prefill": "RATIONALE: {plan}\n<<<<<<< SEARCH",
+                             "local_prefill_plans": "training/d19_control_plans.json"},
     "repair-claude-code": {"mode": "frontier", "attempt_plan": ["claude-code", "claude-code", "claude-code"]},
     # ponytail: escalation is the fixed plan below. With 2 local entries it equals doc 04 §5
     # triggers 1-3; add triggers 4-5 (context over local_ctx_budget, multi-file tag) when a

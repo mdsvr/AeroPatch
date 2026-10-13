@@ -63,10 +63,34 @@ def test_two_far_regions_are_two_blocks_and_a_divider_line_cannot_be_converted()
 def test_a_block_has_to_be_copyable_from_what_the_prompt_shows():
     post = PRE.replace("def size(name):", "def size(name: str):")
     shown = PRE[PRE.index("def size"):].rstrip("\n")  # a long file is shown as the one function
-    # The line above the change is out of view, so the block that works is the one without context.
-    assert "\n<<<<<<< SEARCH app/files.py\ndef size(name):\n=======\ndef size(name: str):\n" in prep.convert(PRE, post, "app/files.py", "x", shown)
-    assert "        return f.read()\n\n\ndef size(name):\n    path" in prep.convert(PRE, post, "app/files.py", "x")
+    assert "\n<<<<<<< SEARCH app/files.py\ndef size(name):\n    path" in prep.convert(PRE, post, "app/files.py", "x", shown)
     assert prep.convert(PRE, post, "app/files.py", "x", "import os") is None
+    # A change at module level keeps a line of context; with that line out of view, it goes without.
+    post = PRE.replace('BASE = "/srv/files"', 'BASE = "/srv/data"')
+    assert 'SEARCH a.py\nBASE = "/srv/files"\n=======\n' in prep.convert(PRE, post, "a.py", "x", 'BASE = "/srv/files"')
+    assert 'SEARCH a.py\nimport os\n\nBASE = "/srv/files"\n' in prep.convert(PRE, post, "a.py", "x")
+
+
+def test_a_short_function_is_one_whole_block_and_a_long_one_keeps_its_small_block():
+    whole = "def size(name):\n    path = os.path.join(BASE, name)\n    return os.path.getsize(path)\n=======\ndef size(name):\n"
+    target = prep.convert(PRE, CASES["duplicate line"], "a.py", "x")
+    assert target.count("<<<<<<< SEARCH") == 1 and f"SEARCH a.py\n{whole}" in target
+    # a line added inside the function is the same block; one added after its last line is not
+    inside = PRE.replace("    return os.path.getsize(path)", "    name = name.strip()\n    return os.path.getsize(path)")
+    assert f"SEARCH a.py\n{whole}" in prep.convert(PRE, inside, "a.py", "x")
+    assert "def size" not in prep.convert(PRE, CASES["appended at the end"], "a.py", "x").split("=======")[0]
+    body = "".join(f"    step_{i} = {i}\n" for i in range(prep.WHOLE_FUNCTION))
+    long = f"def work():\n{body}    return step_0\n"
+    target = prep.convert(long, long.replace("step_7 = 7", "step_7 = 70"), "a.py", "x")
+    assert "SEARCH a.py\n    step_6 = 6\n    step_7 = 7\n    step_8 = 8\n=======\n" in target
+
+
+def test_a_plan_line_is_one_sentence_and_not_the_finding_again():
+    message = "User-supplied values are interpolated into HTML without escaping."
+    assert prep.valid_plan("Escape both values with `html.escape` before they go into the markup.", message)
+    assert not prep.valid_plan(message, message)
+    assert not prep.valid_plan("Fix it.", message)
+    assert not prep.valid_plan("Escape both values first.\n<<<<<<< SEARCH a.py", message)
 
 
 def test_a_git_patch_is_applied_only_where_it_sits():

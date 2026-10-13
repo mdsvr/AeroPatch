@@ -1,0 +1,15 @@
+{
+ "Finding: CWE-22 reported by opengrep rule aeropatch.python.path-traversal-open at app/notes.py:9.": "Validate that the resolved path stays within the base directory to prevent path traversal.",
+ "Finding: CWE-22 reported by opengrep rule aeropatch.python.path-traversal-open at app/attachments.py:56.": "Prevent path traversal by using `os.path.basename` to extract only the filename component before joining it to the directory path.",
+ "Finding: CWE-78 reported by bandit rule B602 at app/files.py:8.": "Eliminate the injection vulnerability by passing the filename as an argument to subprocess.run instead of embedding it in a shell command string with shell=True.",
+ "Finding: CWE-78 reported by opengrep rule aeropatch.python.subprocess-shell at app/logtools.py:50.": "Replace the f-string with a list of arguments to avoid shell injection when running `du`.",
+ "Finding: CWE-79 reported by opengrep rule aeropatch.python.html-fstring-unescaped at app/render.py:6.": "Escape the author and text variables before interpolating them into the HTML string to prevent XSS attacks.",
+ "Finding: CWE-89 reported by bandit rule B608 at app/db.py:18.": "Replace the f-string SQL query with a parameterized query to prevent SQL injection.",
+ "Finding: CWE-89 reported by opengrep rule aeropatch.python.sqli-string-query at app/store.py:66.": "Replace string formatting in SQL queries with parameterized queries to prevent SQL injection.",
+ "Finding: CWE-1333 reported by opengrep rule aeropatch.python.redos-nested-quantifier at app/validate.py:5.": "The regex pattern `^([a-z0-9]+)+$` contains a nested quantifier (`+` inside `+`) which can cause catastrophic backtracking on certain inputs. Changing it to `^[a-z0-9]+$` achieves the same validation (one or more lowercase letters or digits) without the performance issue.",
+ "Finding: CWE-209 reported by opengrep rule aeropatch.python.exception-in-response at app/api.py:10.": "Replace the exception repr with a generic message to avoid exposing internal error details.",
+ "Finding: CWE-328 reported by bandit rule B324 at app/users.py:8.": "Replace MD5 with SHA256 to fix the weak hash vulnerability. MD5 is cryptographically broken and unsuitable for password hashing; SHA256 provides adequate security for this context.",
+ "Finding: CWE-502 reported by bandit rule B301 at app/prefs.py:14.": "Replace `pickle` with `json` to safely deserialize untrusted data without the risk of arbitrary code execution.",
+ "Finding: CWE-601 reported by opengrep rule aeropatch.python.open-redirect at app/auth.py:11.": "Validate that the returned `next_url` is safe before returning it to prevent open redirect attacks. Only allow URLs that start with \"http://\" or \"https://\".",
+ "Finding: CWE-918 reported by opengrep rule aeropatch.python.ssrf-unvalidated-fetch at app/preview.py:15.": "Validate the resolved IP address to ensure it is not a loopback, link-local, or private address before fetching."
+}

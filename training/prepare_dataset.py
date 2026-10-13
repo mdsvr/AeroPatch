@@ -7,6 +7,7 @@
                                                           # -> train.jsonl, val.jsonl, leakage.md, training/stats.md
     uv run --with transformers --with jinja2 python training/prepare_dataset.py build --student-run <run id> \\
         --tokenizer Qwen/Qwen3.5-4B                       # the same, with lengths counted, not estimated
+    ... build ... --plans qwen3.5:4b --out training/data/v2  # dataset v2: each RATIONALE written from its fix
     uv run python training/prepare_dataset.py sheet       # 30 random examples to read -> spotcheck-30.md
 
 `mine` lists the reviewed pip advisories published before CUTOFF, keeps those whose one fix commit
@@ -51,8 +52,9 @@ import httpx
 
 from aeropatch import bench
 from aeropatch.agent import edits, gates, prompts
-from aeropatch.config import ROOT, RUNS_DIR, SCENARIOS_DIR
+from aeropatch.config import ROOT, RUNS_DIR, SCENARIOS_DIR, load_config
 from aeropatch.contracts import Edit, Failure, Finding, Task
+from aeropatch.models import local_client
 from aeropatch.sandbox import junit
 from aeropatch.tools import context
 
@@ -104,12 +106,15 @@ def opcodes(pre: str, post: str) -> list[tuple[str, int, int, int, int]]:
     return [op for op in ops if op[2] > op[1] or op[4] > op[3]]
 
 
-def to_edits(pre: str, post: str, path: str, up: int = 1, down: int = 1) -> list[Edit] | None:
+def to_edits(pre: str, post: str, path: str, up: int = 1, down: int = 1, whole: int = 0) -> list[Edit] | None:
     """One block per changed region, with `up` and `down` or more unchanged lines above and below.
 
     With context a block starts and ends on an unchanged, non-blank line, because
     `edits.apply_one` trims blank lines off both ends of SEARCH and REPLACE. It grows until its
     SEARCH text occurs once in the file. Returns None when a block cannot be made unique.
+
+    With `whole`, a region inside a function of at most that many lines becomes the whole
+    function, from its `def` line or decorator, with no context around it.
     """
     a, b = pre.split("\n"), post.split("\n")
     rows: list[tuple[str | None, str | None]] = []  # the two files side by side: (old line, new line)
@@ -140,11 +145,29 @@ def to_edits(pre: str, post: str, path: str, up: int = 1, down: int = 1) -> list
             spans[-1][1] = r
         else:
             spans.append([r, r])
+    row_of = [r for r, (old, _) in enumerate(rows) if old is not None]  # old line number -> row
+    tree = context._parse(pre.encode()) if whole else None
+
+    def function_rows(s: list[int]) -> list[int] | None:
+        """The rows of the short function that holds the region, or None. An insertion counts
+        when the old lines on both sides of it are in that function."""
+        inside = [i for i, r in enumerate(row_of) if s[0] <= r <= s[1]]
+        above = sum(r < s[0] for r in row_of) - 1
+        found = set()
+        for line in inside[:1] or [above, above + 1]:
+            funcs = [n for n in context.enclosing(tree, line) if n.type in context.FUNC] if 0 <= line < len(a) else []
+            found.add((context._outer(funcs[-1]).start_point[0], funcs[-1].end_point[0]) if funcs else None)
+        (span,) = found if len(found) == 1 else (None,)
+        return [row_of[span[0]], row_of[span[1]]] if span and span[1] - span[0] < whole else None
+
     for s in spans:
-        for _ in range(up):
-            s[0] = step(s[0], -1)
-        for _ in range(down):
-            s[1] = step(s[1], 1)
+        if whole and (f := function_rows(s)):
+            s[:] = [min(s[0], f[0]), max(s[1], f[1])]
+        else:
+            for _ in range(up):
+                s[0] = step(s[0], -1)
+            for _ in range(down):
+                s[1] = step(s[1], 1)
         while occurrences(*s) != 1:
             grown = [step(s[0], -1), step(s[1], 1)]
             if grown == s:
@@ -181,6 +204,13 @@ def reapplies(pre: str, post: str, path: str, target: str) -> bool:
 # earlier block's new text makes a later SEARCH ambiguous, then fewer or one side only, for a
 # change at the edge of what the model is shown.
 CONTEXTS = ((1, 1), (3, 3), (6, 6), (0, 0), (1, 0), (0, 1), (2, 0), (0, 2))
+# A fix inside a function of at most this many lines is tried first as one block that holds the
+# whole function. The untuned model writes such a fix that way: in 76 of 90 first answers of the
+# student pass for a function of 1 to 8 lines, 32 of 57 for 9 to 15, 11 of 27 for 16 to 25
+# (2026-10-13). Dataset v1 had minimal blocks only, and the model tuned on it stopped starting a
+# block at a `def` line (0 to 3 of 39 first answers on dev, against the control's 24).
+WHOLE_FUNCTION = 15
+DEF_START = re.compile(r"SEARCH [^\n]*\n\s*(@|def |async def |class )")  # a block that starts as such a one does
 
 
 def copyable(search: str, shown: str) -> bool:
@@ -197,11 +227,54 @@ def convert(pre: str, post: str, path: str, summary: str, shown: str | None = No
     to edit code it cannot see.
     """
     rationale = " ".join(re.split(r"(?<=[.!?])\s+", " ".join(summary.split()))[:2])
-    for up, down in CONTEXTS:
-        blocks = to_edits(pre, post, path, up, down)
+    for whole, (up, down) in ((WHOLE_FUNCTION, CONTEXTS[0]), *((0, c) for c in CONTEXTS)):
+        blocks = to_edits(pre, post, path, up, down, whole)
         if (blocks and (shown is None or all(copyable(e.search, shown) for e in blocks))
                 and reapplies(pre, post, path, target := render(rationale, blocks))):
             return target
+    return None
+
+
+# --- the RATIONALE as a plan (dataset v2) ---
+#
+# In dataset v1 every target opened with the finding's message. The model tuned on it copied the
+# message (36 of 39 first answers on dev) where the untuned model says what it is about to do,
+# and the untuned model made to open the same way lost 5 of 39 resolves (NOTES.md, 2026-10-13).
+# `build --plans <model>` has a local model write that line from the fix. The lines are kept in
+# PLANS, so a second build asks nothing and gives the same files.
+
+PLANS = DATA / "plans.jsonl"
+PLAN_SYSTEM = """You are given a finding in Python code and the fix that was made for it, as SEARCH/REPLACE blocks. \
+Write the one sentence its author would put before the fix: what the change does, and why if that fits. \
+Start with a verb in the imperative. Name what the blocks add, remove or replace (the call, the argument, the \
+check, the pattern), so that a reader can hold the sentence against the blocks and find it true. \
+One line of plain text, at most 30 words. Do not repeat the finding and do not quote whole lines of code.
+
+Examples:
+Use a parameterized query instead of string formatting.
+Compare the two digests with `hmac.compare_digest` so that the check takes the same time for every input.
+Return early when the list is empty to avoid dividing by zero."""
+
+
+def valid_plan(plan: str, message: str) -> bool:
+    """One line of 4 to 60 words that holds no block marker and is not the finding again."""
+    return (4 <= len(plan.split()) <= 60 and "\n" not in plan
+            and not any(mark in plan for mark in ("<<<<<<<", "=======", ">>>>>>>"))
+            and not plan.lower().startswith(message.lower()[:40]))
+
+
+def write_plan(it: dict, model: str) -> str | None:
+    """Ask the local model for the RATIONALE of one fix; None when two answers are not usable."""
+    cfg = load_config("repair-local", local_model=model, max_tokens_local=120)
+    user = (f"Finding ({it['cwe']}): {it['message'][:200]}\n\nThe fix:\n{it['target'].split(chr(10), 1)[1]}\n\n"
+            "Write the one-line RATIONALE of this fix.")
+    for temperature in (0.0, 0.4):
+        gen = local_client.generate([{"role": "user", "content": user}], PLAN_SYSTEM, cfg, temperature)
+        if gen.error:
+            raise SystemExit(f"{model}: {gen.error}")
+        lines = [ln.strip().removeprefix("RATIONALE:").strip() for ln in gen.text.splitlines() if ln.strip()]
+        if lines and valid_plan(lines[0], it["message"]):
+            return lines[0]
     return None
 
 
@@ -697,7 +770,8 @@ def repair_turns(run: str, items: dict[str, dict]) -> tuple[list[dict], Counter]
     return out, stats
 
 
-def build(student_run: str | None, max_tokens: int, out_dir: Path, tokenizer: str | None) -> None:
+def build(student_run: str | None, max_tokens: int, out_dir: Path, tokenizer: str | None,
+          plan_model: str | None = None) -> None:
     warnings.simplefilter("ignore", SyntaxWarning)  # old code under ast.parse, in the gates
     if tokenizer:
         # Not a dependency of the project: uv run --with transformers --with jinja2. Only the
@@ -831,6 +905,35 @@ def build(student_run: str | None, max_tokens: int, out_dir: Path, tokenizer: st
     keep(f"Mix: general bug fixes are {GENERAL_SHARE:.0%} of the examples",
          lambda it: it["cwe"] != "Bug" or it["id"] in chosen)
 
+    plans = ""
+    if plan_model:
+        known = {p["key"]: p["plan"] for p in _jsonl(PLANS)} if PLANS.exists() else {}
+        asked = len(known)
+
+        def planned(it: dict) -> bool:
+            """Give the target its plan line, then repeat the checks that read the target's text."""
+            blocks = it["target"].split("\n", 1)[1]
+            key = hashlib.sha256(f"{it['message']}\n{blocks}".encode()).hexdigest()[:16]
+            if key not in known:
+                known[key] = write_plan(it, plan_model)
+                with PLANS.open("a", encoding="utf-8", newline="\n") as out:
+                    out.write(json.dumps({"key": key, "id": it["id"], "model": plan_model, "plan": known[key]}) + "\n")
+            if not known[key]:
+                return False
+            it["target"] = f"RATIONALE: {known[key]}\n{blocks}"
+            it["tokens"] = size(it)
+            return (it["tokens"] <= max_tokens and reapplies(it["pre"], it["post"], it["path"], it["target"])
+                    and not prompts._secret_reason(it["target"]))
+
+        lost = keep("Plan: the RATIONALE says what the fix does, and the target still passes length, secrets and leakage",
+                    lambda it: planned(it) and not copied(it, it["prompt"] + "\n" + it["target"]))
+        kept_turns = [r for r in repairs if planned(r)]
+        plans = (f"The RATIONALE of every target was written by `{plan_model}` from the fix (`build --plans`), "
+                 f"{len(known) - asked} of them in this build and the rest read from `{PLANS.name}`. "
+                 f"The step dropped {len(lost)} pairs and {len(repairs) - len(kept_turns)} repair turns: no usable "
+                 "line in two answers, or a target that no longer passes the length, secret or leakage check.")
+        repairs = kept_turns
+
     examples = [{
         "id": it["id"], "source": it["source"], "cwe": it["cwe"],
         "slice": "repair" if "after" in it else "general" if it["cwe"] == "Bug" else "first",
@@ -860,7 +963,7 @@ def build(student_run: str | None, max_tokens: int, out_dir: Path, tokenizer: st
     leaks = (items, leaked, repairs, leaked_turns)
     (out_dir / "leakage.md").write_text(leakage_report(*leaks, runs), encoding="utf-8", newline="\n")
     stats = STATS if out_dir == DATA else out_dir / "stats.md"  # a second candidate set keeps its own counts
-    stats.write_text(stats_report(funnel, examples, student, student_run, leak_counts(*leaks), lengths),
+    stats.write_text(stats_report(funnel, examples, student, student_run, leak_counts(*leaks), lengths, plans),
                      encoding="utf-8", newline="\n")
     print(f"{len(examples)} examples, {sum(e['split'] == 'val' for e in examples)} of them in val.jsonl; "
           f"written to {out_dir}, counts in {stats}")
@@ -937,7 +1040,7 @@ def leakage_report(items: list[dict], leaked: list[dict], turns: list[dict], lea
 
 
 def stats_report(funnel: list, examples: list[dict], student: Counter, student_run: str | None,
-                 leaks: str, lengths: str) -> str:
+                 leaks: str, lengths: str, plans: str = "") -> str:
     n = len(examples)
 
     def count(**want) -> int:
@@ -964,7 +1067,11 @@ def stats_report(funnel: list, examples: list[dict], student: Counter, student_r
               f"{count(source='synthetic')}. The other {n - count(source='synthetic')} re-apply byte-exact and "
               "have no test."),
               (f"- Synthetic examples that met validator check 3 only through a PoC test: "
-              f"{count(source='synthetic', relaxed=True)}."), ""]
+              f"{count(source='synthetic', relaxed=True)}."),
+              (f"- First attempts and bug fixes with a block that starts at a `def`, `class` or decorator line: "
+              f"{sum(e['slice'] != 'repair' and bool(DEF_START.search(e['target'])) for e in examples)}"
+              f" of {n - count(slice='repair')}."),
+              *([f"- {plans}"] if plans else []), ""]
     if student:
         after = Counter(e["after"] for e in examples if e["slice"] == "repair")
         lines += ["## Student pass", "",
@@ -1006,6 +1113,8 @@ def main() -> None:
     b.add_argument("--max-tokens", type=int, default=MAX_TOKENS, help="longest example kept (default: %(default)s)")
     b.add_argument("--tokenizer", help="count tokens with this Hugging Face tokenizer, such as Qwen/Qwen3.5-4B; "
                                        "without it lengths are estimated from characters")
+    b.add_argument("--plans", metavar="MODEL", help="have this Ollama model write each target's RATIONALE from the "
+                                                    "fix, such as qwen3.5:4b; without it the RATIONALE is the finding")
     r = sub.add_parser("sheet", help="random examples of a built set, to read")
     r.add_argument("-n", type=int, default=30)
     r.add_argument("--seed", type=int, default=SEED)
@@ -1017,7 +1126,7 @@ def main() -> None:
     elif args.cmd == "general":
         general()
     elif args.cmd == "build":
-        build(args.student_run, args.max_tokens, args.out.resolve(), args.tokenizer)
+        build(args.student_run, args.max_tokens, args.out.resolve(), args.tokenizer, args.plans)
     elif args.cmd == "sheet":
         sheet(args.n, args.seed, args.out.resolve())
     else:

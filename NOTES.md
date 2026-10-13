@@ -1268,13 +1268,344 @@ negative result, not a flat one: the band set before the runs was 2 points aroun
 - Dev runs: `runs/20261012-201541`, `-201954`, `-202425` (step 64) and `-202913`, `-203246`,
   `-203620` (step 128), each `-repair-local-dev.jsonl`.
 
+## Week 3, D19 (2026-10-13): why the tuned model is worse on dev
+
+**How the two experiments are read. Written at 10:35, before any total existed**: the first
+`prefill-plan` run stood at 8 resolved of 11 done, and no `prefill-finding` run had started.
+- **RATIONALE experiment.** `prefill-finding` against `prefill-plan`, both on the untuned control,
+  3 dev runs each, totals of 39 and first-attempt counts. Finding 4 or more below plan: the copied
+  RATIONALE explains most of the loss, and dataset v2 rewrites that line. Within 2: it does not.
+  3 is undecided. `prefill-plan` against yesterday's 26 only checks that writing the start of the
+  answer costs nothing by itself.
+- **Step 32.** Its score counts only together with whether it already copies the finding. Copies
+  and scores near 26: the copying is harmless, and the damage comes later in training. Copies and
+  scores near 20: the RATIONALE or the data, and the pair above decides.
+
+**The RATIONALE experiment: with the finding's message written as its RATIONALE, the untuned
+control falls from 26 to 21 of 39.** By the rule above (4 or more), the copied RATIONALE explains
+most of the loss. The tuned checkpoints scored 20.
+
+| Model and config | Run 1 | Run 2 | Run 3 | Total of 39 | Resolved at attempt 1 |
+|---|---|---|---|---|---|
+| Control, `repair-local` (D18) | 9 | 8 | 9 | **26** | 23 |
+| Control, `prefill-plan` | 8 | 9 | 9 | **26** | 21 |
+| Control, `prefill-finding` | 7 | 8 | 6 | **21** | 17 |
+| Step 64, `repair-local` (D18) | 7 | 7 | 6 | **20** | 15 |
+| Step 128, `repair-local` (D18) | 7 | 7 | 6 | **20** | 16 |
+
+- **The two configs** are `repair-local` with the start of the answer written for the model
+  (`local_prefill` in `config.py`; Ollama continues a trailing assistant message).
+  `prefill-plan` writes `RATIONALE:` and the model finishes the line, as the control does anyway.
+  `prefill-finding` writes `RATIONALE: <the finding's message>` and opens the first block, which
+  is how the tuned model answers.
+- **Writing the start of the answer costs nothing in the total**: `prefill-plan` scores the
+  control's 26. The answers are not the same, though. At the first attempt it resolves 21 against
+  23, and its first answers are longer (median 172 output tokens against 138, 5 SEARCH lines
+  against 3). Ollama trims trailing whitespace from the written start; whether it also builds
+  the turn without the empty think block was not checked. Both prefill configs share whatever it
+  does, which is why finding is read against plan and not against yesterday's control.
+- **The forced finding loses the two scenarios the tuned model loses most**, and little else:
+
+  | Scenario (resolved of 3 runs) | Control | Step 64 | Step 128 | `prefill-plan` | `prefill-finding` |
+  |---|---|---|---|---|---|
+  | `A-502-01` | 3 | 0 | 0 | 3 | 0 |
+  | `A-022-01` | 3 | 1 | 2 | 3 | 1 |
+  | `A-079-01` | 3 | 1 | 1 | 3 | 3 |
+  | `A-022-02` | 3 | 3 | 3 | 3 | 2 |
+  | `A-078-01` | 2 | 3 | 2 | 2 | 3 |
+
+  The other 8 scenarios score the same in all five columns.
+- **Two things the RATIONALE does not explain.** `A-079-01` stays at 3 of 3 with the finding
+  forced, and the tuned checkpoints resolve it once in 3. And `STUCK` ends 1 of 39 runs in both
+  prefill configs, against 6 for each tuned checkpoint. Both come from the training itself.
+- **Why the plan line matters, from the answers.** On `A-502-01` the control's RATIONALE says
+  "Replace `pickle` with `json`" and its edit changes `dump_prefs` and `load_prefs` together. The
+  tuned model restates the finding and changes `load_prefs` alone, so stored preferences no
+  longer load.
+- **This is what dataset v1 teaches**: 497 of the 511 training targets open with the finding's
+  message (some are advisory titles: "Duplicate Advisory: python-jose denial of service via
+  compressed JWE content"). The tuned checkpoints copy it in 36 of 39 first answers each, the
+  control in none.
+- Runs: `20261013-102945`, `-103745`, `-104622` (`prefill-plan`) and `-103404`, `-104224`,
+  `-105029` (`prefill-finding`), each `-dev.jsonl`, alternated. No provider error in any; 46 to
+  47.5 tokens a second. **Their headers say `dirty: true`**: they ran the two configs as an
+  uncommitted change on top of `f43f77a`.
+- **Limits.** Three runs a config and 13 scenarios: every `prefill-finding` run is at or below
+  every `prefill-plan` run, and 5 of the 6 lost resolves are in two scenarios. Forcing the
+  control is not the tuned model; it shows that losing the plan line is enough to lose those two.
+
+**One D18 guess is ruled out by yesterday's runs: repair turns.** The loss is at the first
+attempt: the control resolves 23 of 39 there, the checkpoints 15 and 16. A failed first attempt
+was then repaired as often after tuning as before: 3 of 16 for the control, 5 of 24 at step 64,
+4 of 23 at step 128. An unrepaired one ends in `STUCK` more often after tuning (6 of 19 at each
+checkpoint, 1 of 13 for the control), but no resolve is lost there. So the share of repair turns
+in the data (10% against the plan's 20%) is not what cost the points.
+
+**Step 32 also scores 20 of 39, so training for fewer steps is not the fix.** It is a quarter of
+the run, and it already copies the finding.
+
+| Model, `repair-local` | Run 1 | Run 2 | Run 3 | Total of 39 | Resolved at attempt 1 | First answers that copy the finding, of 39 |
+|---|---|---|---|---|---|---|
+| Control (D18) | 9 | 8 | 9 | **26** | 23 | 0 |
+| Step 32 (`aeropatch-step32`) | 5 | 7 | 8 | **20** | 11 | 36 |
+| Step 64 (D18) | 7 | 7 | 6 | **20** | 15 | 36 |
+| Step 128 (D18) | 7 | 7 | 6 | **20** | 16 | 36 |
+
+- By the rule written this morning: it copies and scores near 20, so the prefill pair decides,
+  and that pair points at the RATIONALE.
+- **It fits the loss curve.** Validation loss was flat from step 32 on (D18): what the targets
+  teach was learned by then, the first line included.
+- Step 32 is the weakest at the first attempt (11) and repairs the most (9 of 28 first failures).
+  Its runs spread more (5, 7, 8) than any other model's.
+- Per scenario it loses what the later checkpoints lose: `A-502-01` 0 of 3 and `A-022-01` 0 of 3.
+  It resolves `A-079-01` 3 of 3, each time by repair. It resolved `A-089-02` once and `A-918-01`
+  once, which the control did in none of its 9 runs of yesterday and today; one resolve each in
+  3 runs is not a finding.
+- Checked before the runs, as on D18: one prompt is 395 tokens for the control and for step 32,
+  the model is 100% on the GPU (3,083 MiB of GPU memory in use), and it runs at 47 tokens a
+  second.
+- Runs: `20261013-105642`, `-110052`, `-110550`, each `-repair-local-dev.jsonl`, on `f43f77a`
+  with `dirty: false` (the prefill change was stashed for them). No provider error.
+- The GGUF came from kernel version 11's output with a script that streams one file to disk;
+  `kaggle kernels output` reads a whole file into memory first. The download was deleted after
+  its SHA-256 (`37a757f4...`) matched the blob Ollama made from it.
+
+**What the second run should change. This is my reading; nothing is started, and dataset v1 is
+frozen, so the choice is yours.**
+- **Not fewer steps** (step 32), **and not the plan's two options**, rank 32 or 3 epochs: both
+  teach the same targets harder.
+- **The first line of the targets.** Two ways to do it:
+  - **A. Rewrite each RATIONALE as one line that says what the fix does**, written from the
+    diff by a local model, with 30 of them read before the freeze. That is dataset v2. On
+    `qwen3.5:4b` it is under an hour for 541 examples, on the 9B teacher about 4 hours; both
+    are estimates.
+  - **B. Keep the targets and leave the RATIONALE line out of the loss**, a few lines in
+    `finetune.py`. No data work, but every block is still trained after a line that plans
+    nothing.
+  - A is the likelier of the two, not a known fix: the control loses 5 of 39 when its plan line
+    is replaced, which does not show that training on plan lines wins them back.
+- **The shape of the blocks** (the third experiment, below): the first line alone should not be
+  expected to reach 26. What would teach the other shape, none of it tried: take out of each
+  synthetic vulnerable file the imports only its fix uses, so that the target adds them, and
+  check each one in the sandbox again; write the target of a file shown whole from its `def`
+  line; raise the share of prompts that show a whole file (67 of 461 today).
+- **Learning rate** was not tested. The same score at steps 32, 64 and 128 is a reason not to
+  start there.
+- Either way the second run costs one Kaggle session of about 2 hours 20 minutes and three dev
+  runs per checkpoint.
+- **Still unexplained**: `A-079-01` at steps 64 and 128, and the `STUCK` endings. Look again
+  after the second run.
+- **The bar for the second run, set before it exists.** The tuned model replaces the untuned
+  one only at 26 of 39 or more on dev, three runs. At 25 or fewer the untuned model goes into
+  Week 4 and the fine-tune is reported as it is. If no second checkpoint is judged by the end of
+  D21, Week 4 also runs on the untuned model: D22 starts the test runs.
+- **Disk decides how many checkpoints can be judged.** Each one needs about 5.6 GB on `F:` while
+  Ollama copies it and 2.8 GB after the download is deleted, and `F:` has 7.7 GB free. Two
+  checkpoints fit only if `aeropatch-step32`, `-step64` and `-step128` are removed from Ollama
+  first (8.4 GB; all three are in kernel version 11's output on Kaggle), or if `D:` is back. Removing them is yours to
+  approve.
+
+**A third experiment, and how it is read. Written at 11:18, before it ran.** Does a tuned
+checkpoint write the blocks as well as the control once it is handed a plan? Config
+`prefill-control-plan`: one attempt, opened with `RATIONALE: <the line the control wrote for
+that scenario in run 20261012-164903>` and the start of the first block
+(`training/d19_control_plans.json`). Step 64 and the control each run it 3 times, so only the
+weights differ. Resolved of 39: step 64 within 2 of the control means the tuned model still
+writes good blocks when it has a plan, and rewriting the targets' first line addresses the main
+cause. 4 or more below means the damage goes past the first line, and the rewrite alone should
+not be expected to reach 26. 3 is undecided.
+
+**Its result: handed the control's plan, step 64 resolves 16 of 39 and the control 20.** That is
+4 below, so by the rule the damage goes past the first line.
+
+| Model, `prefill-control-plan` (one attempt) | Run 1 | Run 2 | Run 3 | Total of 39 |
+|---|---|---|---|---|
+| Control | 7 | 6 | 7 | **20** |
+| Step 64 | 5 | 6 | 5 | **16** |
+
+- Three scenarios differ: `A-079-01` (control 3 of 3, step 64 none), `A-022-01` (2, none) and
+  `A-502-01` (none, 1). The other 10 score the same.
+- **What step 64 does with the plan.** On `A-079-01` it writes `html.escape(author)` inside the
+  function and never imports `html`: `NameError`, 3 times of 3. On `A-022-01` it compares a
+  string with `base_dir`, which is a `Path`: `TypeError`.
+- **The blocks changed shape, at every checkpoint.** Of 39 first answers:
+
+  | Model and config | A block starts at module level (a `def` line, an import) | Adds an import |
+  |---|---|---|
+  | Control, `repair-local` | 24 | 4 |
+  | Control, `prefill-plan` | 28 | 7 |
+  | Control, `prefill-finding` | 25 | 6 |
+  | Control, `prefill-control-plan` | 26 | 6 |
+  | Step 32, `repair-local` | 0 | 0 |
+  | Step 64, `repair-local` | 0 | 1 |
+  | Step 128, `repair-local` | 3 | 2 |
+  | Step 64, `prefill-control-plan` | 3 | 3 |
+
+  The control rewrites from the `def` line or the top of the file, so it can add an import or
+  change a second function. The tuned model edits lines inside the function body.
+- **Dataset v1 teaches that shape too.** Of its 461 first-attempt targets, 72 have a block that
+  starts at module level (4 of the 99 synthetic ones) and 49 add an import (1 of the 99). Two
+  reasons, both read from the build and not tested: 394 of the 461 prompts show one function of
+  a larger file, where the imports are out of view; and the generator plants the flaw into the
+  fixed module, so the import a fix needs is already in the vulnerable file. On dev, 6 of the 13
+  reference fixes add an import.
+- **This config is harder for the control as well**: 20, against 23 at the first attempt of
+  `repair-local` and 21 of `prefill-plan`. It loses `A-502-01` in all 3 runs. So its numbers
+  compare inside the config only.
+- Runs: `20261013-111826`, `-112212`, `-112600` (control) and `-112025`, `-112406`, `-112755`
+  (step 64), each `-prefill-control-plan-dev.jsonl`, alternated, `dirty: true` like the other
+  prefill runs. No provider error; 48 tokens a second.
+- The command that counted imports in dev's reference fixes counted them for test, Tier B and
+  Tier C as well. Those numbers are not used here and should not steer the data.
+
+**Dataset v2 and the second run: what changes, and how the run is read. Written at 12:20,
+before v2 was built.** You said to run the training and to fix what still goes wrong.
+- **Two changes to the targets, nothing else.** The RATIONALE of every target becomes one line
+  that says what the fix does, written from the fix by the untuned `qwen3.5:4b` at temperature 0
+  (my default: its own plan lines are the ones the experiments used, and it is the fastest). And
+  a fix inside a function of at most 15 lines is one block that holds the whole function, from
+  its `def` line. That is the untuned model's own habit, measured on its 184 first answers of
+  the student pass: it writes the whole function in 76 of 90 answers for a function of 1 to 8
+  lines, 32 of 57 for 9 to 15 lines, 11 of 27 for 16 to 25, 2 of 10 above that.
+- **The same run otherwise**: `finetune.py` as on GitHub at `f43f77a`, the D18 values, 128 steps
+  if the set keeps its size. The synthetic files are not edited, so the student pass and its
+  repair turns stay valid. Not done: taking the fix's imports out of the vulnerable files.
+- **Is the problem still there? Three checks on the step-64 and step-128 dev runs, in this
+  order.** The RATIONALE copies the finding in at most 5 of 39 first answers (36 today). A block
+  starts at module level in at least 15 of 39 (0 to 3 today; the control 24). If either fails,
+  the data change did not take, and it is fixed and run again. If both pass, the total is read
+  against the bar: 26 of 39 or more and the tuned model replaces the untuned one; less and the
+  untuned model goes into Week 4.
+- **Before the Kaggle session**: v2 is measured the same way (blocks at module level were 72 of
+  461 first-attempt targets in v1), and 30 examples are read.
+
+**Dataset v2, first build (12:10): 541 examples again, and the first reading failed.**
+- The shape took: a block starts at a `def`, `class` or decorator line in 206 of the 488 first
+  attempts and bug fixes, and at module level in 156 of 461 training targets against 72 in v1
+  (synthetic: 69 of 99, against 4). No target opens with the finding (497 of 511 did).
+- The plan step dropped nothing: 488 lines for 541 examples (a repair turn shares its
+  scenario's line), none unusable, 11 words at the median and 17 at most. A line takes under a
+  second on `qwen3.5:4b`.
+- **Reading 30 (seed 3407): 4 plan lines were vague or wrong in a detail, over the limit of 3
+  (doc 09 §10).** All four sit on fixes from real projects; the 9 synthetic ones read were
+  right. "Call `self` to ensure proper authentication context is maintained" for a fix that
+  returns `self.handle_response(...)`; "prevent backspace characters" for backtracking; "Escape
+  forward slashes" for a regular expression that was restructured; a line about `self.mode` for
+  a fix that stops assigning it. No fix was wrong: the blocks are v1's.
+- **Tightened: the prompt now asks the line to name what the blocks add, remove or replace**, so
+  that it can be checked against them. Tried on those four and six others: the four became
+  accurate ("Replace the direct return with a call to `self.handle_response` passing through
+  kwargs") and the six stayed as they were or changed a word. The first lines are kept as
+  `training/data/plans.first-wording.jsonl`; the set is rebuilt and 30 are read from a new seed.
+
+**Dataset v2, frozen (12:20): 541 examples, 511 train and 30 validation.**
+- **The second reading passed: 2 of 30 plan lines are imprecise (seed 20261013), within the
+  limit of 3.** One says "non-greedy match" where the fix puts in a negated character class;
+  one names the change rightly (the salt is passed by keyword) and gives a wrong reason. A
+  third is borderline. All three are about regular expressions or library calls in real
+  projects. The 11 synthetic first attempts and repair turns in the sample are right.
+- **v2 against v1.** The same 541 examples but one: a SWE-smith pair that now converts took a
+  place among the bug fixes. For the other 540 the prompt and the split are identical. The
+  blocks changed shape in 224 targets and are v1's, byte for byte, in 316. Training tokens:
+  700,290 against 683,663, which is 2.4% more; the longest example is still 4,087.
+- **SHA-256**, the same files as the private Kaggle dataset `aeropatch-train-v2`:
+  - `train.jsonl` `4bf82d1a1067f629c27b29c4b492b31143ccf980c90dd7885b82fbbfb5ce91c3`
+  - `val.jsonl` `25689fd91465d53c19beab6eba1efa27145c4f04345050e16134d84a279134ef`
+- Built by `uv run --with transformers --with jinja2 python training/prepare_dataset.py build
+  --student-run 20261009-student-pass --tokenizer Qwen/Qwen3.5-4B --plans qwen3.5:4b --out
+  training/data/v2`, about 10 minutes. The 488 lines are in `training/data/plans.jsonl`; with
+  that file a build asks the model nothing and writes the same files. `training/data/v2/stats.md`
+  has the counts.
+- **Dataset v1 is rebuilt from commit `f43f77a` from now on**: the builder writes whole-function
+  blocks always, and `--plans` is what adds the new first line.
+- **The run: kernel version 12, pushed at 12:22**, run `full-v2` on `aeropatch-train-v2`. The
+  kernel clones the branch from GitHub, where `finetune.py` is still `f43f77a`'s; only
+  `kernel.py` and its settings went up with the push. Expected: about 2 hours 25 minutes.
+
+**The second run finished (kernel version 12, complete at the 14:58 check, about 2 h 35 min).**
+All four steps of the session ended with exit code 0, and its log shows the clone at `f43f77a`.
+- 128 steps in 97 minutes (45.5 s a step, against 42.0 for v1: the targets are longer), peak
+  13.1 GB, 511 examples, none dropped, longest 4,087 tokens, 139 prompts equal to Ollama's count.
+- **Validation loss is flat again**: 0.2595 at step 32, 0.2560 at 64, 0.2577 at 96, 0.2588 at
+  128. Training loss fell from 0.39 to 0.18. The values are higher than v1's 0.207 because the
+  targets changed, so the two runs cannot be compared on loss.
+- The 5 validation outputs of the final adapter parse, and the two I read open with a plan
+  ("Replace the filename with a safe path to prevent directory traversal").
+- By the plan's rule the judged checkpoints are steps 64 and 128 again: the ends of the two
+  epochs, and 64 has the lowest validation loss.
+- The output of the session is fetched with `training/kaggle/fetch_output.py`, which streams the
+  files that match a pattern. Everything is on `D:\aeropatch-d19`: the reports, the five
+  adapters and the two GGUFs.
+
+**The second run on dev: step 64 scores the control's 26 of 39, and both problems are gone.**
+
+| Model, `repair-local` | Run 1 | Run 2 | Run 3 | Total of 39 | Resolved at attempt 1 | First answers that copy the finding | A block starts at module level |
+|---|---|---|---|---|---|---|---|
+| Untuned control (D18) | 9 | 8 | 9 | **26** | 23 | 0 | 24 |
+| v1, step 64 (D18) | 7 | 7 | 6 | **20** | 15 | 36 | 0 |
+| v1, step 128 (D18) | 7 | 7 | 6 | **20** | 16 | 36 | 3 |
+| **v2, step 64** (`aeropatch-v2-step64`) | 8 | 9 | 9 | **26** | 18 | 0 | 28 |
+| v2, step 128 (`aeropatch-v2-step128`) | 8 | 7 | 8 | **23** | 23 | 0 | 32 |
+
+- **The three checks written before the run.** The RATIONALE copies the finding in none of 39
+  first answers at either checkpoint (the limit was 5). A block starts at module level in 28
+  and 32 (at least 15 was asked). And step 64 reaches the bar of 26. So by the rule **v2 at
+  step 64 replaces the untuned model in Week 4; that is yours to overrule.**
+- **It is a tie, not a gain.** 26 against 26 on 13 scenarios shows that this fine-tune no
+  longer costs anything on dev. It does not show that it helps.
+- **What came back**: `A-502-01` is 3 of 3 at both checkpoints (none with v1) and `A-079-01`
+  3 of 3 (1 with v1). `A-022-01` is 2 of 3 at step 64 and none at step 128. Of the four
+  scenarios the control never resolves, `A-089-02` was resolved once, at step 64.
+- **The two checkpoints resolve at different attempts.** Step 64 resolves 18 at the first
+  attempt and repairs 8 of its 21 failures. Step 128 resolves 23 at the first attempt, the
+  control's number, and repairs none of its 16 failures: 9 of them end in `STUCK`, the same
+  edit again after feedback (3 at step 64, 1 for the control). In these runs the second epoch
+  made first answers better and repair turns worse.
+- First answers that add an import: 3 at step 64 and 6 at step 128 (the control 4, v1 1 and
+  2). No run ended in `FORMAT_FAIL` (the control: 4 of 39).
+- **Decoding was slow, and not because of the model**: 28.8 tokens a second in all six runs,
+  against 47 this morning. Right after them the control ran at 35.8 and v2 step 64 at 35.2 on
+  one prompt, `nvidia-smi` listed a second program on the GPU (ArtCraft Launcher), and the card
+  drew 35 W. No attempt ran into a time limit, so the resolves stand. Speed and VRAM of the
+  tuned model have to be measured again on a quiet machine (the plan's D20).
+- Checked before the runs: one prompt is 395 tokens for both checkpoints and the control, and
+  each is 100% on the GPU.
+- Runs: `20261013-151854`, `-153130`, `-154255` (step 64) and `-152453`, `-153655`, `-154843`
+  (step 128), each `-repair-local-dev.jsonl`, alternated, on `f43f77a` with `dirty: false` (the
+  uncommitted `src` and `tests` changes were stashed). No provider error.
+- **Limits.** Three runs a checkpoint and 13 scenarios: 26, 26 and 23 are closer together than
+  dev can separate. And **dev chose these two changes**: the diagnosis read dev's failures, so
+  dev is no longer a neutral measure of v2. No dev code is in the training data (the leakage
+  checks ran on v2 as on v1, and the three examples in the plan prompt are not from dev). The
+  test split and Tier B, which no model has been tuned against, are the measure (D22).
+
+**What is left of the two problems, and what was not tried.**
+- Fixed at both checkpoints: the copied RATIONALE and the shape of the blocks.
+- Not fixed: at step 128 the model repeats a rejected edit. Step 64 is the checkpoint to use.
+- Not tried: judging steps 32 and 96 (their GGUFs are in the session's output on Kaggle),
+  taking the fix's imports out of the synthetic vulnerable files, the learning rate, the 9B
+  teacher for the plan lines.
+
+**State of the laptop (16:10).** Ollama holds `aeropatch-control`, the v1 checkpoints `-step32`,
+`-step64` and `-step128`, and `aeropatch-v2-step64` and `-v2-step128`. `F:` has 8.1 GB free.
+`D:` is an external drive: it was not mounted in the morning and was back at midday with 425 GB
+free. `D:\aeropatch-d19` holds the second run's files (5.9 GB) and `D:\aeropatch-d18`
+yesterday's two GGUF copies. Free commit fell to 1.6 GB during the prefill runs, when the model
+server alone held 7.3 GB; nothing failed. The tables of this section come from one-off scripts
+that are not in the repository; `aeropatch report` gives the totals.
 
 ## Next
 
 **Decisions that are yours**
-1. **Whether to grow the dataset before or after the first training run.** Dataset v1 is frozen
-   at 541 examples (D17), against R4's 1,500, with repair turns at 10% against the plan's 20%.
-   The default is to train on it on D18 and let dev decide. What would add examples, as a v2:
+1. **Which local model goes into Week 4.** By the bar set on D19 it is `aeropatch-v2-step64`:
+   26 of 39 on dev, the untuned control's score. It ties and does not win, so taking the untuned
+   model and reporting the fine-tune as "no gain" is the other honest choice. D22 runs both on
+   test in any case. Defaults taken on D19 for dataset v2: the plan lines come from
+   `qwen3.5:4b`, a function of at most 15 lines is rewritten whole, and the hyperparameters are
+   D18's.
+   **Whether the dataset grows as well** is the older question. Dataset v2 has v1's 541
+   examples, against R4's 1,500, with repair turns at 10% against the plan's 20%. D19 found
+   that the share of repair turns is not what cost v1 its points. What would add examples:
    - **A second generation run: about 200 more per 500 candidates** at 4,096 tokens, my estimate
      from the first run's rates after the reading (105 usable examples, 53 repair turns, a
      fifth more as bug fixes). It takes about 26 hours of laptop time, and every new fix has to
@@ -1292,18 +1623,20 @@ negative result, not a flat one: the band set before the runs was 2 points aroun
    test and Tier B, about 40 minutes.
 3. **Data mix from dev only** (D14), against doc 14 §5's wording. Also a default.
 4. **Pull requests.** Week 3 lives on `feat/week3-d15-data`, and you merge it into `main` as it
-   goes: #11 (D15, 2026-10-07), #12 (D16 and the D17 plan, 2026-10-09), #13 (D17, first part,
-   2026-10-12). The Kaggle kernel clones that branch. The training data itself
-   (`training/synthetic/`, `training/data/`) is git-ignored and exists only on the laptop.
+   goes: #11 to #18 are merged, the last on 2026-10-13. D19 (the diagnosis, dataset v2, the
+   second run) is one commit on the branch and the next pull request. The Kaggle kernel clones
+   that branch.
+   The training data itself (`training/synthetic/`, `training/data/`) is git-ignored and exists
+   only on the laptop.
 
 **Work**
-5. **Week 3, D19: find out why the tuned model is worse on dev** (D18: 20 of 39 for both
-   checkpoints against the control's 26). The plan's second run (rank 32 or 3 epochs) was for
-   a flat result and this one is negative, so the diagnosis comes first, in the plan's order:
-   parity, then data quality, then learning rate. The D18 section lists what to look at. To
-   rebuild dataset v1: `uv run --with transformers --with jinja2 python training/prepare_dataset.py
-   build --student-run 20261009-student-pass --tokenizer Qwen/Qwen3.5-4B` (about a minute; the
-   SHA-256 values are in the D17 section).
+5. **Week 3, what is left** (the plan's D19 to D21). The second run is done and judged (D19
+   section). Still to do: the final export of step 64 at Q4, Q5 and Q8 with their SHA-256 (one
+   Kaggle session from the saved adapter; Q4 exists), speed and VRAM of the tuned model on a
+   quiet machine, the README training section (its status line still says Week 2),
+   `runs/INDEX.md`, and the laptop QLoRA demo or the note that it was cut. The command that
+   rebuilds dataset v2 and its SHA-256 values are in the D19 section; dataset v1 is rebuilt from
+   commit `f43f77a` with the command of the D17 section.
 6. **Every local run so far very likely used `presence_penalty 1.5` and `top_k 20`** (found
    2026-10-12, read from the files, not tested). They are in the Modelfile of the library
    `qwen3.5:4b`, a Modelfile parameter applies unless the request overrides it, and

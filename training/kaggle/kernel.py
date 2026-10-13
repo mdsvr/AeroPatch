@@ -18,12 +18,13 @@ RUNS = {  # {data}: where Kaggle mounted the dataset named first
     "probe": ("aeropatch-train-4096", "--data {data} --max-steps 6 --longest 50 --max-seq-length 4096"),
     "control": ("aeropatch-train", "--data {data} --max-seq-length 2048 --max-steps 0 --gguf q4_k_m"),
     "full": ("aeropatch-train-4096", "--data {data} --gguf q4_k_m"),  # dataset v1, 2 epochs
+    "full-v2": ("aeropatch-train-v2", "--data {data} --gguf q4_k_m"),  # dataset v2, the same run
     "rehearsal": ("aeropatch-train", "--data {data} --max-seq-length 2048 --max-steps 4"),  # checkpoints 2 and 4
 }
 # Runs whose earlier checkpoints each get a GGUF in the same session: D18 judges checkpoints
 # through Ollama, and a later session cannot read this one's files.
-EARLIER = {"full", "rehearsal"}
-ORDER = ["full"]  # the first has to pass; a later one may fail and the rest still run
+EARLIER = {"full", "full-v2", "rehearsal"}
+ORDER = ["full-v2"]  # the first has to pass; a later one may fail and the rest still run
 
 
 def sh(command: str, check: bool = True) -> int:

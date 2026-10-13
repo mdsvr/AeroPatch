@@ -5,9 +5,9 @@ do. It fixes Python vulnerabilities locally, proves each fix in a network-less s
 with test feedback, and escalates to a frontier model only when needed. Every claim is measured
 on a contamination-controlled benchmark.
 
-Status: **Week 2 complete, except the held-out synthetic tier, which waits for Week 3's teacher model**
-(see [NOTES.md](NOTES.md) and the plan in [docs/](docs/00-overall-plan.md)). Baselines with up to
-three attempts, two runs for the local model:
+Status: **Week 3 in progress. The fine-tuned model ties the untuned one on dev (26 of 39 each); the
+test runs are Week 4's** (see [NOTES.md](NOTES.md) and the plan in [docs/](docs/00-overall-plan.md)).
+Week 2's baselines on test, with up to three attempts, two runs for the local model:
 
 | | 27 hand-built test scenarios | 10 real-CVE scenarios |
 |---|---|---|
