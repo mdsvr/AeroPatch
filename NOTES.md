@@ -1263,7 +1263,8 @@ negative result, not a flat one: the band set before the runs was 2 points aroun
   adapter.
 - The five adapters and the reports are copied to `training/data/full/` on `F:` (git-ignored).
 - Ollama holds `aeropatch-step64` and `aeropatch-step128` (2.8 GB each, on `F:`). The two
-  downloaded GGUF files in `C:\aeropatch-d18` (5.2 GB) are copies of those and can go.
+  downloaded GGUF files are copies of those and can go. They were moved off `C:` to
+  `D:\aeropatch-d18` (5.2 GB) on 2026-10-13.
 - Dev runs: `runs/20261012-201541`, `-201954`, `-202425` (step 64) and `-202913`, `-203246`,
   `-203620` (step 128), each `-repair-local-dev.jsonl`.
 
