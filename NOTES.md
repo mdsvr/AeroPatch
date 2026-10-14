@@ -1594,16 +1594,166 @@ yesterday's two GGUF copies. Free commit fell to 1.6 GB during the prefill runs,
 server alone held 7.3 GB; nothing failed. The tables of this section come from one-off scripts
 that are not in the repository; `aeropatch report` gives the totals.
 
+## Week 3, D19, evening (2026-10-13): the five limits of the tuned model, and the test runs
+
+You asked for research on what is still not right and for a try at fixing it. Three of the
+five limits are measurements that were missing, one cannot be fixed with a free local model,
+and for one the cheap fixes were looked at and set aside.
+
+**Dev cannot show a gain from fine-tuning any more.** Outside the four scenarios no local model
+resolves, the untuned control resolves 26 of the 27 possible runs on the other nine. So a model
+can beat it on dev by 1, or by cracking one of the four. The room is on test, where the local
+model scored 17 and 18 of 27 in Week 2, and on Tier B (5 of 10). The dev tie therefore says
+little about whether tuning helps; the test runs below are what can.
+
+**The four scenarios, over 30 local runs of yesterday and today** (every model and config, 120
+scenario runs): weak password hashing `A-328-01` and the open redirect `A-601-01` were never
+resolved, the SSRF `A-918-01` once and the two-file SQL injection `A-089-02` twice. Each needs
+knowledge the 4B model does not bring: a salted key derivation with its verifier changed
+together, `ipaddress` on the resolved address, a redirect check that also refuses `//host` and
+`/\host`, and the same change in two files. More samples do not find them, so pass@k will not
+either. The cascade is the design's answer: Opus resolved all 13 dev scenarios in Week 2.
+
+**Research (two papers read, four searches), and why no hint section went into the prompt.**
+- "Guiding AI to Fix Its Own Flaws" (arXiv 2506.23034): vulnerability hints lower the
+  vulnerability rate of GPT-4o by 8 to 12 points on its three benchmarks. For open models of 3B
+  to 34B the change runs from 8 points lower to 3 points higher, so some get worse. Precise,
+  directive hints do better than CWE definitions.
+- "Identifying Helpful Context for LLM-based Vulnerability Repair" (EASE 2025, GPT-4o, Java):
+  a CWE description leaves the repair count where the baseline is (11, 12, 14 against 11, 12,
+  14 of 42). What raises it is CVE-specific text and several prompts tried against a checker:
+  26 of 42 fixed at least once by the best three prompts together, at most 20 by any one.
+- So for a 4B model a hint section is as likely to cost as to gain. It would also change the
+  prompt that v2 was trained on. Not built.
+
+**The missing import, replayed without a model: not worth a harness step.** In the nine dev
+runs of the control and the two v2 checkpoints, 12 failed attempts stopped on a
+standard-library module used and not imported (`os`, `re`, `secrets`, `html`, `base64`). Each diff was applied again with the import
+added and run through the gates and the sandbox. For the control 4 of 4 then resolve, and one
+unresolved run would have been resolved (`A-078-01`, 26 to 27 of 39). For v2 none of 8 does:
+with the import in place `A-328-01` still breaks `verify_password` and `A-601-01` still fails
+its PoC. An automatic import would be a new config for every route, for 1 run in 117.
+
+**The test runs, planned before any of them (17:20).** This brings the plan's D22 forward, and
+it is the only use of the test splits for this comparison: **nothing is tuned afterwards on
+what they show.**
+- Models: the untuned control and `aeropatch-v2-step64`, both `repair-local` on the committed
+  harness (`c03f33f`, clean tree). The control is run again: Week 2's 17 and 18 came from the
+  library model on an older commit.
+- Runs: 2 each on `test` (27 scenarios), `test_b` (10 real CVEs) and `test_c` (5 held-out
+  synthetic), alternating the models.
+- Read: totals of 54, 20 and 10, the paired exact McNemar of `aeropatch report`, and the
+  first-attempt counts.
+- **Rule.** A gain: v2 at least 4 above the control on `test` (of 54) and not below it on
+  `test_b`. A loss: at least 4 below on `test`. Anything else is "no difference shown". Week
+  2's two local runs differed by 1 in total with 5 scenarios flipping, which is where the 4
+  comes from. On a loss the untuned model goes into the rest of Week 4.
+
+## Week 3, D20 (2026-10-14): the test runs, and the model for Week 4
+
+**On test the tuned model resolves 32 of 54 and the untuned control 38. By the rule written
+yesterday before any test run, that is a loss: the untuned model goes into Week 4.** That is
+yours to overrule. The gap is not significant on its own: the paired exact McNemar gives
+p = 0.146, with 9 scenario runs that only the control resolved and 3 that only v2 resolved.
+That value pools the two run pairs (run *i* of one model against run *i* of the other, by
+scenario), as `notebooks/runs.ipynb` computes it; `aeropatch report` gives each pair's own value.
+The rule reads the totals, so the verdict does not depend on it.
+The rule's 4 came from Week 2, whose two local runs differed by 1 with 5 scenarios flipping.
+
+| Model, `repair-local` on `c03f33f` | Run 1 | Run 2 | Total of 54 | Resolved at attempt 1 |
+|---|---|---|---|---|
+| Untuned control (`aeropatch-control`) | 19 | 19 | **38** | 28 |
+| v2, step 64 (`aeropatch-v2-step64`) | 18 | 14 | **32** | 24 |
+
+- **Where**: the control is ahead on 7 scenarios, `A-020-01` and `A-078-04` (1 of 2 against
+  none), and `A-089-04`, `A-1333-02`, `A-502-03`, `A-601-02`, `A-798-02` (2 against 1). v2 is
+  ahead on 1, `A-022-03` (1 against none).
+- **The same failures as on dev**: v2's attempts end in `REGRESSION` 16 and 24 times against the
+  control's 16 and 11, and 9 of its scenario runs end `STUCK` (the same edit again after
+  feedback), against none for the control. The fix breaks behaviour more often after tuning.
+- **The runs are sound.** No provider error, sandbox error or timeout in any of the four. Today's
+  decoding ran at 46.2 to 46.6 tokens a second. The control's first run decoded at 28.4 because
+  its first 23 scenarios ran yesterday with ArtCraft Launcher on the GPU; no attempt reached a
+  time limit, so its results stand.
+- **The export costs nothing on test**: the control scores 19 and 19 here, against 17 and 18 for
+  the library `qwen3.5:4b` in Week 2 (an older commit).
+- Runs: `20261013-170329` and `20261014-124302` (control), `20261014-123112` and
+  `20261014-125354` (v2), each `-repair-local-test.jsonl`, alternated, `dirty: false`.
+
+**Yesterday's test run did not crash: the laptop was restarted from the Start menu at 17:15:47**
+(System event 1074, "Other (Unplanned)"), the second of the last write in `A-798-01`. The run
+was resumed today under its run ID; its 4 missing scenarios ran from 12:28 to 12:31.
+
+**Speed and GPU memory on a quiet GPU** (one dev run each, `nvidia-smi` every 0.5 s, no other
+program on the GPU): both models are 100% on the GPU and peak at **3,043 MiB**, under the plan's
+3,891, and decode at **46.5** (control) and **46.7** (v2) tokens a second. Dev: 9 and 8 of 13.
+D19's 28.8 tokens a second was the other program on the GPU, as suspected.
+
+**Memory during the runs.** Free commit fell to 0.5 GB during v2's first test run: the model
+server grew from 7.8 to 10.3 GB private while one model stayed loaded for 30 scenarios, and
+Windows grew the page files on `C:` and `F:`. It came back at each change of model. Nothing failed.
+
+**Tier B and Tier C point the same way, or tie.**
+
+| Split, 2 runs each | Untuned control | v2, step 64 | Paired exact McNemar |
+|---|---|---|---|
+| `test_b`, 10 real CVEs (of 20) | **7** (4 + 3) | 3 (2 + 1) | p = 0.289 (6 against 2) |
+| `test_c`, 5 held-out synthetic (of 10) | 9 (5 + 4) | 9 (4 + 5) | p = 1.000 (1 against 1) |
+
+- Tier B: the control is ahead on `B-022-01` and `B-287-01` (2 against none) and on `B-113-01`
+  and `B-400-01` (1 against none). v2 is ahead on `B-094-01` (2 against none).
+- The control's 4 and 3 on Tier B are below the library model's 5 and 5 of Week 2, where on
+  test it was above (19 and 19 against 17 and 18). Ten scenarios cannot separate these.
+- Tier C is the kind of data v2 was trained on (held out of it), and both models resolve 9 of
+  10: there, the untuned model already does what the training taught.
+- Runs: `20261014-130652`, `-131647` (control) and `-131242`, `-132226` (v2), each
+  `-repair-local-test_b.jsonl`; `20261014-132647`, `-132909` (control) and `-132803`, `-133016`
+  (v2), each `-repair-local-test_c.jsonl`. Alternated, `dirty: false`, no provider error,
+  sandbox error or timeout.
+
+**The Week 4 model at three quantisations.** Kernel version 13 (13:08 to 13:36) exported the
+untuned control at Q8_0 and Q5_K_M by the path of D17's Q4_K_M (`--max-steps 0`, no adapter;
+runs `control-q8` and `control-q5` in `kernel.py`; only `kernel.py` went up, so the clone is the
+branch as on GitHub). Both ended with exit code 0. Unsloth wrote Q8_0 in one pass and Q5_K_M
+from an f16 file with llama.cpp's quantiser, in the same run. Each run's 5 validation outputs
+parse in 2 of 5, as D17's untuned export did.
+
+| File | Bytes | SHA-256 | Where |
+|---|---|---|---|
+| `Qwen3.5-4B.Q4_K_M.gguf` (D17) | 2,708,804,192 | `51b5c0d6e5a9a2b6a5514231b821378382d72a057de3d7ad3ac09a5bddbbfdc7` | Ollama blob of `aeropatch-control`, hash checked today |
+| `Qwen3.5-4B.Q5_K_M.gguf` | 3,074,986,592 | `eca20e2e5833929b09bed8ef4275bc2752dc9214c94fb1602ebffda46eb3853a` | `D:\aeropatch-d20\control-q5` |
+| `Qwen3.5-4B.Q8_0.gguf` | 4,482,402,912 | `5a721cb3a164834aaa771acce87e7d666d04f437c0668b3e93306692b727d154` | `D:\aeropatch-d20\control-q8` |
+
+- Not loaded into Ollama: `ollama create` copies the file onto `F:`. Q8_0 is larger than the
+  GPU's 4 GB, so part of it will run on the CPU; the quantisation ablation (doc 10 §7) is Week 4's.
+- Before the verdict, v2's step-64 adapter was uploaded as the private Kaggle dataset
+  `aeropatch-v2-step64-adapter` for an export of v2; it is not used.
+
+**The other Week 3 leftovers**
+- `aeropatch-step32`, `-step64` and `-step128` are removed from Ollama: `F:` went from 8.1 to
+  15.9 GB free. `D:\aeropatch-d18` is kept: it now holds the only local copies of v1's step 64
+  and step 128 GGUFs, and `D:` has 420 GB free.
+- The README has a training section; its status line names the Week 4 model.
+- `runs/INDEX.md` lists every run with its config, model, split, commit and score, grouped by
+  phase with a one-line takeaway. `.gitignore` now ignores `runs/*` except that file.
+- `notebooks/runs.ipynb` shows the runs: what is running now, the D20 comparison, per-scenario
+  results, today's timeline, GPU memory and the dev history. It reads `runs/` only. Its kernel
+  is `.venv-notebook` (git-ignored), kept apart from `.venv` so that the benchmark's
+  environment did not change during the runs.
+- **The laptop QLoRA demo is cut** (cut-list item 6, doc 10 §13 accepts a documented reason):
+  the laptop has no training stack (no torch, Unsloth or bitsandbytes), and its GPU and memory
+  went to the benchmark runs all day.
+
 ## Next
 
 **Decisions that are yours**
-1. **Which local model goes into Week 4.** By the bar set on D19 it is `aeropatch-v2-step64`:
-   26 of 39 on dev, the untuned control's score. It ties and does not win, so taking the untuned
-   model and reporting the fine-tune as "no gain" is the other honest choice. D22 runs both on
-   test in any case. Defaults taken on D19 for dataset v2: the plan lines come from
-   `qwen3.5:4b`, a function of at most 15 lines is rewritten whole, and the hyperparameters are
-   D18's.
-   **Whether the dataset grows as well** is the older question. Dataset v2 has v1's 541
+1. **Week 4 runs the untuned control (`aeropatch-control`)**, by the rule written before the
+   test runs: v2 step 64 scored 32 against 38 of 54 on test, 3 against 7 of 20 on Tier B, and
+   9 against 9 of 10 on Tier C (D20 section). Yours to overrule. The fine-tune is reported as
+   it is: it ties on dev, which chose its changes, and loses on the splits it was not tuned on.
+   Defaults taken on D19 for dataset v2: the plan lines come from `qwen3.5:4b`, a function of
+   at most 15 lines is rewritten whole, and the hyperparameters are D18's.
+   **Whether to train again, with a larger dataset,** is the older question. Dataset v2 has v1's 541
    examples, against R4's 1,500, with repair turns at 10% against the plan's 20%. D19 found
    that the share of repair turns is not what cost v1 its points. What would add examples:
    - **A second generation run: about 200 more per 500 candidates** at 4,096 tokens, my estimate
@@ -1623,20 +1773,17 @@ that are not in the repository; `aeropatch report` gives the totals.
    test and Tier B, about 40 minutes.
 3. **Data mix from dev only** (D14), against doc 14 §5's wording. Also a default.
 4. **Pull requests.** Week 3 lives on `feat/week3-d15-data`, and you merge it into `main` as it
-   goes: #11 to #18 are merged, the last on 2026-10-13. D19 (the diagnosis, dataset v2, the
-   second run) is one commit on the branch and the next pull request. The Kaggle kernel clones
-   that branch.
+   goes: #11 to #19 are merged, the last (D19) on 2026-10-13, and D20 (the test runs and the
+   exports) went in with the next one on 2026-10-14. The Kaggle kernel clones that branch.
    The training data itself (`training/synthetic/`, `training/data/`) is git-ignored and exists
    only on the laptop.
 
 **Work**
-5. **Week 3, what is left** (the plan's D19 to D21). The second run is done and judged (D19
-   section). Still to do: the final export of step 64 at Q4, Q5 and Q8 with their SHA-256 (one
-   Kaggle session from the saved adapter; Q4 exists), speed and VRAM of the tuned model on a
-   quiet machine, the README training section (its status line still says Week 2),
-   `runs/INDEX.md`, and the laptop QLoRA demo or the note that it was cut. The command that
-   rebuilds dataset v2 and its SHA-256 values are in the D19 section; dataset v1 is rebuilt from
-   commit `f43f77a` with the command of the D17 section.
+5. **Week 3 is done** (D20 section): test, Tier B and Tier C judged, speed and VRAM measured,
+   the README training section, `runs/INDEX.md`, the runs notebook, and the QLoRA demo cut with
+   its reason, and the Week 4 model exported at Q4_K_M, Q5_K_M and Q8_0 with their SHA-256. The
+   command that rebuilds dataset v2 and its SHA-256 values are in the D19 section; dataset v1 is
+   rebuilt from commit `f43f77a` with the command of the D17 section.
 6. **Every local run so far very likely used `presence_penalty 1.5` and `top_k 20`** (found
    2026-10-12, read from the files, not tested). They are in the Modelfile of the library
    `qwen3.5:4b`, a Modelfile parameter applies unless the request overrides it, and
