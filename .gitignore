@@ -1,9 +1,11 @@
 .venv/
+.venv-notebook/
 __pycache__/
 .pytest_cache/
 .ruff_cache/
 .env
-runs/
+runs/*
+!runs/INDEX.md
 .tools/
 *.gguf
 training/synthetic/

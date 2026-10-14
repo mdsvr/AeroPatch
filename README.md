@@ -5,8 +5,10 @@ do. It fixes Python vulnerabilities locally, proves each fix in a network-less s
 with test feedback, and escalates to a frontier model only when needed. Every claim is measured
 on a contamination-controlled benchmark.
 
-Status: **Week 3 in progress. The fine-tuned model ties the untuned one on dev (26 of 39 each); the
-test runs are Week 4's** (see [NOTES.md](NOTES.md) and the plan in [docs/](docs/00-overall-plan.md)).
+Status: **end of Week 3 (2026-10-14). Fine-tuning did not help: the tuned model ties the untuned
+one on dev (26 of 39 each) and scores below it on test (32 against 38 of 54), so Week 4 runs the
+untuned model** (see [Training](#training-week-3), [NOTES.md](NOTES.md) and the plan in
+[docs/](docs/00-overall-plan.md)).
 Week 2's baselines on test, with up to three attempts, two runs for the local model:
 
 | | 27 hand-built test scenarios | 10 real-CVE scenarios |
@@ -71,6 +73,39 @@ MCP: `uv run aeropatch mcp` serves `scan`, `get_context`, `validate` and `remedi
 (for example `claude mcp add aeropatch -- uv run aeropatch mcp`, run from this directory). It only
 reads repositories under `evaluations/scenarios/`.
 
+## Training (Week 3)
+
+LoRA on Qwen3.5-4B (r 16, alpha 16, 16-bit base, not QLoRA) with Unsloth on one Kaggle T4:
+2 epochs, 128 steps, sequences up to 4,096 tokens, learning rate 2e-4, batch 1 with accumulation
+8, seed 3407. About 97 minutes, 13.1 GB peak. The data is git-ignored and stays on the laptop;
+[training/stats-v2.md](training/stats-v2.md) has the counts.
+
+- **Dataset v2, 541 examples** (511 train, 30 validation): 275 fixes from GitHub advisories,
+  105 synthetic fixes made by a local teacher (`qwen3.5:9b`) and checked in the sandbox, 53
+  repair turns from the untuned model's own failed attempts, and 108 general bug fixes
+  (SWE-Gym, SWE-smith). Filters for size, context, the safety gates, duplicates, secrets and
+  leakage: no benchmark project, no advisory after the cutoff, no copied benchmark code.
+- **The comparison is against an untuned control**: the same base exported through the same
+  merge and GGUF path with no adapter, so the difference is the adapter alone.
+- **Dev, 3 runs each, resolved of 39**: control 26; dataset v1 20 at step 64 and 20 at step 128;
+  dataset v2 **26** at step 64 and 23 at step 128. v1 taught the model to copy the finding's
+  message as its plan and to edit inside function bodies; v2 rewrote each target's first line as
+  a plan and made a small function one whole block. Dev chose those two changes, so it ties
+  and proves nothing more; test and Tier B decide.
+- **Test, 2 runs each, resolved of 54**: control **38**, v2 step 64 **32**. By the rule set
+  before the runs (4 or more below is a loss) the fine-tune loses, though the gap alone is not
+  significant (paired exact McNemar p = 0.15). Its fixes break regression tests more often.
+  Week 4 runs the untuned model. Real CVEs (Tier B, of 20): control 7, v2 3. Held-out
+  synthetic scenarios (Tier C, of 10): 9 each.
+- **Serving**: the Q4_K_M GGUF with [training/Modelfile](training/Modelfile)
+  (`ollama create <name> -f Modelfile` beside the file). On the RTX 3050 the tuned model and the
+  control are both 100% on the GPU, 3,043 MiB at peak, and decode at about 46.5 tokens a second.
+- **Reproduce**: `prepare_dataset.py build` (command and SHA-256 in [NOTES.md](NOTES.md), D19),
+  then the `full-v2` run of [training/kaggle/kernel.py](training/kaggle/kernel.py), which clones
+  this branch and runs [training/finetune.py](training/finetune.py).
+- **Not done**: the laptop QLoRA demo on Qwen2.5-Coder-1.5B (cut-list item 6). The GPU went to
+  benchmark runs, and the laptop has no local training stack.
+
 ## Layout
 
 | Path | What |
@@ -86,8 +121,8 @@ reads repositories under `evaluations/scenarios/`.
 | `docker/` | sandbox base + per-scenario Dockerfiles, `run.sh`, hash-pinned harness tools |
 | `rules/` | AeroPatch's own Opengrep ruleset (22 rules) |
 | `evaluations/scenarios/` | 55 scenarios: 40 hand-built (Tier A, 16 CWEs), 10 from real CVEs (Tier B, each with the upstream licence) and 5 held out from the synthetic training data (Tier C); `split.json` is frozen at 13 dev, 27 test, 10 real-CVE test and 5 synthetic test |
-| `training/` | Week 3 data. `inject_cwe.py`: synthetic, sandbox-verified training examples from a local teacher model. `prepare_dataset.py`: real fix pairs from GitHub advisories as SEARCH/REPLACE targets |
-| `runs/` | run logs (gitignored) |
+| `training/` | Week 3 data. `inject_cwe.py`: synthetic, sandbox-verified training examples from a local teacher model. `prepare_dataset.py`: real fix pairs from GitHub advisories as SEARCH/REPLACE targets, and the dataset build. `finetune.py`: LoRA and GGUF export; `kaggle/`: the kernel that runs it; `Modelfile`: serving in Ollama |
+| `runs/` | run logs (gitignored), and [runs/INDEX.md](runs/INDEX.md), which lists every run |
 
 ## Sandbox isolation (honest statement)
 
