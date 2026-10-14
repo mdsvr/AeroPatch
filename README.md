@@ -102,7 +102,8 @@ LoRA on Qwen3.5-4B (r 16, alpha 16, 16-bit base, not QLoRA) with Unsloth on one 
   control are both 100% on the GPU, 3,043 MiB at peak, and decode at about 46.5 tokens a second.
   The untuned model also exists at Q5_K_M and Q8_0; sizes and SHA-256 are in [NOTES.md](NOTES.md) (D20).
 - **Reproduce**: `prepare_dataset.py build` (command and SHA-256 in [NOTES.md](NOTES.md), D19),
-  then the `full-v2` run of [training/kaggle/kernel.py](training/kaggle/kernel.py), which clones
+  then the `full-v2` run of [training/kaggle/kernel.py](training/kaggle/kernel.py) (set
+  `ORDER = ["full-v2"]`; it now holds D20's exports), which clones
   this branch and runs [training/finetune.py](training/finetune.py).
 - **Not done**: the laptop QLoRA demo on Qwen2.5-Coder-1.5B (cut-list item 6). The GPU went to
   benchmark runs, and the laptop has no local training stack.

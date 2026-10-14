@@ -1655,6 +1655,9 @@ what they show.**
 yesterday before any test run, that is a loss: the untuned model goes into Week 4.** That is
 yours to overrule. The gap is not significant on its own: the paired exact McNemar gives
 p = 0.146, with 9 scenario runs that only the control resolved and 3 that only v2 resolved.
+That value pools the two run pairs (run *i* of one model against run *i* of the other, by
+scenario), as `notebooks/runs.ipynb` computes it; `aeropatch report` gives each pair's own value.
+The rule reads the totals, so the verdict does not depend on it.
 The rule's 4 came from Week 2, whose two local runs differed by 1 with 5 scenarios flipping.
 
 | Model, `repair-local` on `c03f33f` | Run 1 | Run 2 | Total of 54 | Resolved at attempt 1 |
@@ -1771,8 +1774,8 @@ parse in 2 of 5, as D17's untuned export did.
 3. **Data mix from dev only** (D14), against doc 14 §5's wording. Also a default.
 4. **Pull requests.** Week 3 lives on `feat/week3-d15-data`, and you merge it into `main` as it
    goes: #11 to #18 are merged, the last on 2026-10-13. D19 (the diagnosis, dataset v2, the
-   second run) is one commit on the branch and the next pull request. The Kaggle kernel clones
-   that branch.
+   second run) and D20 (the test runs and the exports) are the commits since then, and the next
+   pull request. The Kaggle kernel clones that branch.
    The training data itself (`training/synthetic/`, `training/data/`) is git-ignored and exists
    only on the laptop.
 
