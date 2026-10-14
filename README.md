@@ -100,6 +100,7 @@ LoRA on Qwen3.5-4B (r 16, alpha 16, 16-bit base, not QLoRA) with Unsloth on one 
 - **Serving**: the Q4_K_M GGUF with [training/Modelfile](training/Modelfile)
   (`ollama create <name> -f Modelfile` beside the file). On the RTX 3050 the tuned model and the
   control are both 100% on the GPU, 3,043 MiB at peak, and decode at about 46.5 tokens a second.
+  The untuned model also exists at Q5_K_M and Q8_0; sizes and SHA-256 are in [NOTES.md](NOTES.md) (D20).
 - **Reproduce**: `prepare_dataset.py build` (command and SHA-256 in [NOTES.md](NOTES.md), D19),
   then the `full-v2` run of [training/kaggle/kernel.py](training/kaggle/kernel.py), which clones
   this branch and runs [training/finetune.py](training/finetune.py).

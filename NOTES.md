@@ -1708,13 +1708,23 @@ Windows grew the page files on `C:` and `F:`. It came back at each change of mod
   (v2), each `-repair-local-test_c.jsonl`. Alternated, `dirty: false`, no provider error,
   sandbox error or timeout.
 
-**The export of the Week 4 model.** Kernel version 13 (pushed 13:08) exports the untuned control
-at Q8_0 and Q5_K_M by the path of D17's Q4_K_M (`--max-steps 0`, no adapter; runs `control-q8`
-and `control-q5` in `kernel.py`; only `kernel.py` went up, so the clone is the branch as on
-GitHub). The Q4_K_M's SHA-256 is
-`51b5c0d6e5a9a2b6a5514231b821378382d72a057de3d7ad3ac09a5bddbbfdc7` (the Ollama blob of
-`aeropatch-control`). Before the verdict, v2's step-64 adapter was uploaded as the private
-dataset `aeropatch-v2-step64-adapter` for an export of v2; it is not used.
+**The Week 4 model at three quantisations.** Kernel version 13 (13:08 to 13:36) exported the
+untuned control at Q8_0 and Q5_K_M by the path of D17's Q4_K_M (`--max-steps 0`, no adapter;
+runs `control-q8` and `control-q5` in `kernel.py`; only `kernel.py` went up, so the clone is the
+branch as on GitHub). Both ended with exit code 0. Unsloth wrote Q8_0 in one pass and Q5_K_M
+from an f16 file with llama.cpp's quantiser, in the same run. Each run's 5 validation outputs
+parse in 2 of 5, as D17's untuned export did.
+
+| File | Bytes | SHA-256 | Where |
+|---|---|---|---|
+| `Qwen3.5-4B.Q4_K_M.gguf` (D17) | 2,708,804,192 | `51b5c0d6e5a9a2b6a5514231b821378382d72a057de3d7ad3ac09a5bddbbfdc7` | Ollama blob of `aeropatch-control`, hash checked today |
+| `Qwen3.5-4B.Q5_K_M.gguf` | 3,074,986,592 | `eca20e2e5833929b09bed8ef4275bc2752dc9214c94fb1602ebffda46eb3853a` | `D:\aeropatch-d20\control-q5` |
+| `Qwen3.5-4B.Q8_0.gguf` | 4,482,402,912 | `5a721cb3a164834aaa771acce87e7d666d04f437c0668b3e93306692b727d154` | `D:\aeropatch-d20\control-q8` |
+
+- Not loaded into Ollama: `ollama create` copies the file onto `F:`. Q8_0 is larger than the
+  GPU's 4 GB, so part of it will run on the CPU; the quantisation ablation (doc 10 §7) is Week 4's.
+- Before the verdict, v2's step-64 adapter was uploaded as the private Kaggle dataset
+  `aeropatch-v2-step64-adapter` for an export of v2; it is not used.
 
 **The other Week 3 leftovers**
 - `aeropatch-step32`, `-step64` and `-step128` are removed from Ollama: `F:` went from 8.1 to
@@ -1769,7 +1779,7 @@ dataset `aeropatch-v2-step64-adapter` for an export of v2; it is not used.
 **Work**
 5. **Week 3 is done** (D20 section): test, Tier B and Tier C judged, speed and VRAM measured,
    the README training section, `runs/INDEX.md`, the runs notebook, and the QLoRA demo cut with
-   its reason. The export of the Week 4 model at Q8_0 and Q5_K_M is in the D20 section. The
+   its reason, and the Week 4 model exported at Q4_K_M, Q5_K_M and Q8_0 with their SHA-256. The
    command that rebuilds dataset v2 and its SHA-256 values are in the D19 section; dataset v1 is
    rebuilt from commit `f43f77a` with the command of the D17 section.
 6. **Every local run so far very likely used `presence_penalty 1.5` and `top_k 20`** (found
