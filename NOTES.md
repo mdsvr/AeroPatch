@@ -1773,9 +1773,8 @@ parse in 2 of 5, as D17's untuned export did.
    test and Tier B, about 40 minutes.
 3. **Data mix from dev only** (D14), against doc 14 §5's wording. Also a default.
 4. **Pull requests.** Week 3 lives on `feat/week3-d15-data`, and you merge it into `main` as it
-   goes: #11 to #18 are merged, the last on 2026-10-13. D19 (the diagnosis, dataset v2, the
-   second run) and D20 (the test runs and the exports) are the commits since then, and the next
-   pull request. The Kaggle kernel clones that branch.
+   goes: #11 to #19 are merged, the last (D19) on 2026-10-13, and D20 (the test runs and the
+   exports) went in with the next one on 2026-10-14. The Kaggle kernel clones that branch.
    The training data itself (`training/synthetic/`, `training/data/`) is git-ignored and exists
    only on the laptop.
 
