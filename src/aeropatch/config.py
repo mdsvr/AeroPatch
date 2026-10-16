@@ -87,6 +87,10 @@ CONFIGS: dict[str, dict] = {
                              "local_prefill_plans": "training/d19_control_plans.json"},
     # pass@k (doc 12 §2): one attempt, sampled hotter, run n times under separate run ids.
     "sample-local": {"attempt_plan": ["local"], "temperature_first": 0.7},
+    # Thinking ablation (doc 11 §7): the thinking shares the token budget with the answer, so the
+    # budget and the wall clock are raised; the client reads message.content, not the thinking.
+    "repair-local-think": {"attempt_plan": ["local", "local", "local"], "local_think": True,
+                           "max_tokens_local": 4096, "scenario_wallclock_s": 1800},
     "repair-claude-code": {"mode": "frontier", "attempt_plan": ["claude-code", "claude-code", "claude-code"]},
     # ponytail: escalation is the fixed plan below. With 2 local entries it equals doc 04 §5
     # triggers 1-3; add triggers 4-5 (context over local_ctx_budget, multi-file tag) when a
