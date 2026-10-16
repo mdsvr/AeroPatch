@@ -41,11 +41,13 @@ Day-by-day task lists, written after the fine-tune lost on test: [14-timeline-pa
 | D27 | Security checklist (doc 13), secret/history scan, model card, optional HF upload | Checklist all ticked |
 | D28 | Buffer; resume bullets filled from measured numbers (doc 15); short blog-style write-up | Final commit tagged `v1.0` |
 
-**Week 4 exit criteria**
-- [ ] Every number in the README traces to a `runs/*.jsonl` file named next to it.
-- [ ] Fresh clone to one resolved scenario takes ≤ 3 commands (documented, tested once).
-- [ ] The security checklist is complete; the repo is safe to make public.
-- [ ] Resume bullets contain only measured numbers.
+**Week 4 exit criteria** (ticked 2026-10-16; details in part 5 and `NOTES.md`)
+- [x] Every number in the README traces to a `runs/*.jsonl` file named next to it (the 45 cited
+      files are committed).
+- [x] Fresh clone to one resolved scenario takes ≤ 3 commands (documented, tested once).
+- [x] The security checklist is complete; the repo is safe to make public (it already was
+      public; it still has no licence file, which is the owner's choice).
+- [x] Resume bullets contain only measured numbers (doc 15 §2a).
 
 ## 3. Weekly review questions (30 minutes every Sunday)
 
@@ -119,13 +121,14 @@ cut list rather than pushing the demo back.
 
 ## 8. Definition of done (whole project)
 
-- [ ] A fresh clone reproduces one resolved scenario in ≤ 3 commands on the documented setup.
-- [ ] The benchmark (40–50 scenarios + 4–6 adversarial) runs end-to-end and resumes.
-- [ ] Headline, delta, repair-curve, cost–accuracy, failure-attribution and per-CWE results
+- [x] A fresh clone reproduces one resolved scenario in ≤ 3 commands on the documented setup.
+- [x] The benchmark (55 scenarios + 5 adversarial) runs end-to-end and resumes.
+- [x] Headline, delta, repair-curve, cost–accuracy, failure-attribution and per-CWE results
       are all generated from committed run files (or published run archives).
-- [ ] The fine-tuned model is served locally at Q4 on the 4 GB GPU, with measured VRAM and tok/s.
-- [ ] Security checklist (doc 13) complete; isolation statement and limitations in the README.
-- [ ] Resume bullets written from measured numbers only (doc 15).
+- [x] **Changed:** the Week 4 model (the untuned base; the fine-tune lost) is served locally at
+      Q4 on the 4 GB GPU, with measured VRAM and tok/s (3,043 MiB, 46.5 tok/s).
+- [x] Security checklist (doc 13) complete; isolation statement and limitations in the README.
+- [x] Resume bullets written from measured numbers only (doc 15).
 
 ## 9. "Later" list (put it in the README as future work)
 

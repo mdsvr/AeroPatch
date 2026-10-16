@@ -1933,6 +1933,22 @@ ticked too (all are tests in `tests/test_sandbox_security.py`, passing in the ru
   yours, so nothing was added. Until then the public code is visible but, legally, not licensed
   for reuse.
 
+## Week 4, D28 (2026-10-16): resume bullets, write-up, exit criteria
+
+- **Resume bullets** in doc 15 §2a, every number from the README: three to lead with (the
+  pipeline and the 70% at $0, the cascade, the benchmark with feedback against resampling), three
+  alternatives (prompt injection 0 of 12, the fine-tune's negative result, the repair gain of 38%),
+  and the filled project-page summary. Each was checked against the run numbers; three wordings
+  were corrected on the way (the scenario counts, what "0 of 12" counts, and the tie on Tier C).
+- **Write-up**: `docs/writeup.md`, about 950 words for a blog: the setup, the small model alone,
+  why fine-tuning lost, feedback against resampling, what the cascade really costs, the injection
+  results with the one gate gap, the ablations, next steps and limits. Linked from the README.
+- **Exit criteria**: part 2's Week 4 criteria and the whole-project definition of done are ticked
+  (the served model is the untuned base, a recorded change), and part 5 §10.
+- **Left, all yours**: a licence file; a demo repository for the draft PRs (the PR feature itself
+  was never built, so these would be PRs opened by hand from a `remediate` diff); pushing the
+  `v1.0` tag; deleting `D:\aeropatch-fresh` and the Kaggle dataset `aeropatch-v2-step64-adapter`.
+
 ## Next
 
 **Decisions that are yours**

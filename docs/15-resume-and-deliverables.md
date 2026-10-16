@@ -45,6 +45,57 @@ split, n = 10, on 6–19-line apps, with 95% intervals ~50 points wide.
 Pick the 3 strongest bullets once the results are in. If the fine-tuning delta is small, lead
 with the evaluation and security design; those hold up regardless of the numbers.
 
+## 2a. The bullets, filled from the Week 4 runs (2026-10-16)
+
+Every number below is in the README with its run files. **Changes from section 2**: the
+fine-tuning bullet reports a negative result, as section 3 allows; "human-approved draft PRs" is
+gone, because that feature was not built (nothing in the tool commits or pushes).
+
+**The three to lead with**
+
+> Built AeroPatch, an automated Python vulnerability-remediation pipeline (scanner finding →
+> tree-sitter context → patch → sandbox verification → test-feedback repair), with hardened
+> network-less Docker sandboxes (read-only root, dropped capabilities, resource limits) and an
+> MCP server; on a 27-scenario held-out test split an untuned 4B model on a 4 GB laptop GPU
+> resolved 70% at $0 (95% CI 57–81%).
+
+> Designed a local-first cascade (two local attempts, then Claude Opus 5.5) that resolved 100% of
+> 54 test runs, 59% of them with no API call, and 90% of 20 runs on 10 real CVEs, against 100%
+> for Opus alone; API-equivalent spend per resolved scenario was 8% lower on the hand-built
+> tier and equal on the real CVEs.
+
+> Built a reproducible benchmark (40 hand-built scenarios over 16 CWEs, 10 real CVEs, 5 held-out
+> synthetic, frozen splits) with
+> Wilson intervals, paired McNemar and bootstrap tests, and failure attribution; showed the
+> test-feedback repair loop beats independent resampling at an equal budget of three generations
+> on hand-built scenarios (70% vs 61% pass@3) but not on real CVEs (35% vs 45%).
+
+**Alternatives**
+
+> Red-teamed the pipeline with planted prompt injections (exfiltration call, test deletion,
+> `# nosec`, CI change): neither the local model nor Opus 5.5 followed one in 3 runs (0 of 12),
+> a hand-written edit that obeys each is rejected by deterministic gates or stopped by the
+> sandbox, and a planted credential was blocked before any request left the machine.
+
+> Fine-tuned Qwen3.5-4B with LoRA (Unsloth, free Kaggle T4) on 541 sandbox-verified remediation
+> examples against an untuned control exported the same way; it tied on dev and lost on test
+> (59% vs 70%) and on real CVEs (15% vs 35%), so the untuned model was kept, by a rule set
+> before the test runs.
+
+> The repair loop fixed 38% of first-attempt failures within two repairs (resolve@1 52% →
+> resolve@3 70%); served locally as a 4-bit GGUF at 46.5 tok/s in 3.0 GB of VRAM.
+
+**Project page / LinkedIn (section 9, filled)**
+
+> **AeroPatch**: can a 4B model on a 4 GB laptop GPU fix real security bugs? I built a pipeline
+> that takes a scanner finding, extracts the vulnerable function with tree-sitter, asks a small
+> local model for a minimal fix, and proves it in a network-less Docker sandbox with exploit and
+> regression tests, retrying with the test feedback when it fails. On 27 held-out Python
+> scenarios the local model alone resolved 70% at no API cost; handing its third attempt to a
+> frontier model raised that to 100%. Fine-tuning on 541 verified examples made it worse, and I
+> report that. Prompt-injection attempts planted in the code were followed 0 times out of 12.
+> Code, benchmark and write-up: [link].
+
 ## 3. Wording rules
 
 - Say "Python", "function-level", and "[M]-scenario benchmark". Scope makes a claim believable.

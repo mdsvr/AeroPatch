@@ -5,9 +5,9 @@ do. It fixes Python vulnerabilities locally, proves each fix in a network-less s
 with test feedback, and escalates to a frontier model only when needed. Every claim is measured
 on a contamination-controlled benchmark.
 
-Status: **Week 4 (2026-10-16). The final runs are done**; packaging and the security checklist
-remain ([plan](docs/14-timeline-part5.md), [NOTES.md](NOTES.md)). Outputs are **candidate fixes
-that need human review**.
+Status: **complete (2026-10-16)**: four weeks, final runs, security checklist and
+[write-up](docs/writeup.md) done ([plan](docs/14-timeline-part5.md), [NOTES.md](NOTES.md)).
+Outputs are **candidate fixes that need human review**.
 
 ## Results
 

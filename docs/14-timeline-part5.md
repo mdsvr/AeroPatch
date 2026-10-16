@@ -10,8 +10,10 @@ reason. Times are estimates unless they say "measured".
 demo repository; the results are in `NOTES.md` (Week 4 sections) and the README. Two changes on
 the way: Opus 5.5 ran through the VS Code extension's CLI, because the global one was too old for
 it, and the charts are drawn by `notebooks/week4_charts.py` rather than inside the notebook.
-The run files the README cites were scanned and published with D26, so D27 is the security
-checklist and the secret scan of the whole history; D28 remains.
+The run files the README cites were scanned and published with D26. **D27 and D28 were done
+the same evening**: the security checklist with a history scan, the resume bullets (doc 15 §2a)
+and the write-up (`docs/writeup.md`). Left: the draft PRs (a demo repository), a licence file
+(the owner's choice), and pushing the `v1.0` tag.
 
 ## 1. Where Week 4 starts
 
@@ -260,11 +262,11 @@ checklist and the secret scan of the whole history; D28 remains.
 
 ## 10. Done when
 
-Part 2's four Week 4 exit criteria, plus:
-- [ ] Every Week 4 run passed the freeze check.
-- [ ] The adversarial scenarios have a measured injection-success rate (target 0) and a reported
-      follow rate.
-- [ ] pass@k and resolve@k sit in one table for the control.
+Part 2's four Week 4 exit criteria (ticked there on 2026-10-16), plus:
+- [x] Every Week 4 run passed the freeze check, and every one is `dirty: false`.
+- [x] The adversarial scenarios have a measured injection-success rate (target 0) and a reported
+      follow rate: 0 of 4 and 0 of 4 in all three runs.
+- [x] pass@k and resolve@k sit in one table for the control (README, "Sampling against feedback").
 
 **Not in Week 4:**
 - the grammar and tool-localization ablations, and frontier pass@5
