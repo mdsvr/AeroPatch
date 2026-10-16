@@ -1839,6 +1839,12 @@ From 26 layers up the GPU is full and Windows spills into shared memory, which i
 layers" is the slowest. `repair-local-q8` uses 25 layers, the most under 3,891 MiB, with a
 `scenario_wallclock_s` of 1,800 so the slower decode is not scored as a wrong fix.
 
+**Q8_0 on `test`: 22 and 19, 41 of 54, the same +3 as Q5: no difference shown.** It decodes at
+16.4 and 17.3 tok/s (p50 latency per attempt 18.8 and 19.8 s, against 6 to 7.5 s at Q4) and
+peaks at 3,771 MiB; no attempt reached the time limit. Q4_K_M stays the served model: the larger
+quants buy nothing measurable here, and Q8 costs about a third of the speed. Runs
+`20261016-q8a-` and `-q8b-repair-local-q8-test`; Q8 was removed from Ollama after them.
+
 ## Next
 
 **Decisions that are yours**
