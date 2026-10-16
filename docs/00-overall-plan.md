@@ -82,6 +82,7 @@ sandbox tests, the gates, the scenario validator, the baselines, or traceable nu
 | 14b | [14-timeline-part2.md](14-timeline-part2.md) | Timeline | Weeks 3–4, weekly reviews, budget, risk register, cut list, definition of done | 135 |
 | 14c | [14-timeline-part3.md](14-timeline-part3.md) | Timeline | Week 3 in detail: open decisions, day-by-day task lists, the dev comparison | 179 |
 | 14d | [14-timeline-part4.md](14-timeline-part4.md) | Timeline | D17 in detail: what only you can do, decisions, order of work, `finetune.py`, failure cases | 180 |
+| 14e | [14-timeline-part5.md](14-timeline-part5.md) | Timeline | Week 4 in detail: what D20 already covers, cuts and why, runs, adversarial scenarios, packaging | 268 |
 | 15 | [15-resume-and-deliverables.md](15-resume-and-deliverables.md) | Outcomes | Resume claim fixes, bullet templates, deliverables, README outline, demo | 141 |
 | 16 | [16-sources.md](16-sources.md) | References | All sources, claim→source confidence map, open verification items | 152 |
 

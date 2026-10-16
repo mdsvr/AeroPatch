@@ -1744,12 +1744,23 @@ parse in 2 of 5, as D17's untuned export did.
   the laptop has no training stack (no torch, Unsloth or bitsandbytes), and its GPU and memory
   went to the benchmark runs all day.
 
+## Week 4, D22 (2026-10-16): the plan, and the defaults taken
+
+The plan is `docs/14-timeline-part5.md`. You answered "ok proceed with it", so these are taken,
+each yours to overrule:
+- **Frontier model `claude-opus-5-5`** for every Week 4 frontier and cascade run, the one I
+  recommended over the plan's written default (`claude-opus-5`). Every frontier row runs again
+  on D22 anyway, so the choice costs no extra runs. Week 1 and 2 frontier rows stay as they were.
+- Local commits on this branch before each new config or scenario, so every run is
+  `dirty: false`. Nothing is pushed.
+- The Kaggle dataset `aeropatch-v2-step64-adapter` stays until you say to delete it.
+
 ## Next
 
 **Decisions that are yours**
 1. **Week 4 runs the untuned control (`aeropatch-control`)**, by the rule written before the
    test runs: v2 step 64 scored 32 against 38 of 54 on test, 3 against 7 of 20 on Tier B, and
-   9 against 9 of 10 on Tier C (D20 section). Yours to overrule. The fine-tune is reported as
+   9 against 9 of 10 on Tier C (D20 section). You said to go ahead with it on 2026-10-16. The fine-tune is reported as
    it is: it ties on dev, which chose its changes, and loses on the splits it was not tuned on.
    Defaults taken on D19 for dataset v2: the plan lines come from `qwen3.5:4b`, a function of
    at most 15 lines is rewritten whole, and the hyperparameters are D18's.
@@ -1768,9 +1779,8 @@ parse in 2 of 5, as D17's untuned export did.
    only by a PoC test are kept; a training example may share no 13-token run with Tier C and
    none with a line that a benchmark reference fix changes; the 20 scenarios in
    `training/rejected.txt` are out.
-2. **Frontier reference: still `claude-opus-5`** (a default, not your decision yet). Moving to
-   `claude-opus-5-5` means re-running `repair-claude-code` and `cascade-claude-code` on dev,
-   test and Tier B, about 40 minutes.
+2. **Frontier reference: `claude-opus-5-5` from Week 4 on** (D22 section; yours to overrule).
+   Weeks 1 and 2 used `claude-opus-5`.
 3. **Data mix from dev only** (D14), against doc 14 §5's wording. Also a default.
 4. **Pull requests.** Week 3 lives on `feat/week3-d15-data`, and you merge it into `main` as it
    goes: #11 to #19 are merged, the last (D19) on 2026-10-13, and D20 (the test runs and the
@@ -1783,7 +1793,9 @@ parse in 2 of 5, as D17's untuned export did.
    the README training section, `runs/INDEX.md`, the runs notebook, and the QLoRA demo cut with
    its reason, and the Week 4 model exported at Q4_K_M, Q5_K_M and Q8_0 with their SHA-256. The
    command that rebuilds dataset v2 and its SHA-256 values are in the D19 section; dataset v1 is
-   rebuilt from commit `f43f77a` with the command of the D17 section.
+   rebuilt from commit `f43f77a` with the command of the D17 section. **The Week 4 plan is
+   `docs/14-timeline-part5.md`** (2026-10-16): what D20 already covers, the cuts and their
+   reasons, the frontier-model decision, and the adversarial scenarios.
 6. **Every local run so far very likely used `presence_penalty 1.5` and `top_k 20`** (found
    2026-10-12, read from the files, not tested). They are in the Modelfile of the library
    `qwen3.5:4b`, a Modelfile parameter applies unless the request overrides it, and
