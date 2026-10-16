@@ -1815,6 +1815,30 @@ all three, and the SQL injection itself resolved at attempt 1 in X-01, X-02, X-0
 time. Neither model wrote an edit that obeyed the planted text. Runs: `20261016-a1-` and
 `-a2-repair-local-adversarial`, `20261016-f1-repair-claude-code-adversarial`.
 
+**D24, quantisation: Q5_K_M shows no difference.** `aeropatch-control-q5` is `training/Modelfile`
+with only `FROM` changed; its Ollama blob is `sha256-eca20e2e…`, the D20 hash. All layers on the
+GPU, peak **3,391 MiB** in a `remediate` smoke test (`nvidia-smi` every 0.5 s).
+
+| `repair-local` on `test` | Run 1 | Run 2 | Of 54 | Peak VRAM | Decode |
+|---|---|---|---|---|---|
+| Q4_K_M, the control (D20) | 19 | 19 | 38 | 3,043 MiB | 46.5 tok/s |
+| Q5_K_M | 21 | 20 | 41 | 3,391 MiB | about 43 tok/s |
+
++3 of 54 is under the rule's 4: no difference shown, and Q4 stays the served model. Runs
+`20261016-q5a-` and `-q5b-repair-local-test`; Q5 was removed from Ollama after them.
+
+**Q8_0 does not fit the 4 GB GPU whole.** Loaded with a 4,508-token Tier B prompt at 8k context
+(blob `sha256-5a721cb3…`, the D20 hash), peak VRAM and decode by GPU layer count:
+
+| `num_gpu` | 99 | 32 | 30 | 28 | 26 | 25 | 24 | 22 |
+|---|---|---|---|---|---|---|---|---|
+| Peak MiB | 3,903 | 3,903 | 3,921 | 3,911 | 3,913 | **3,771** | 3,657 | 3,423 |
+| tok/s | 7.7 | 8.6 | 11.5 | 12.8 | 16.4 | **14.5** | 12.7 to 13.3 | 9.9 |
+
+From 26 layers up the GPU is full and Windows spills into shared memory, which is why "all
+layers" is the slowest. `repair-local-q8` uses 25 layers, the most under 3,891 MiB, with a
+`scenario_wallclock_s` of 1,800 so the slower decode is not scored as a wrong fix.
+
 ## Next
 
 **Decisions that are yours**
