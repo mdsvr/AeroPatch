@@ -1933,7 +1933,8 @@ and `REGRESSION` (7), the D19 finding again.
    results reported per tier.
 10. Not done from the plan: `propose_fix` and `apply_edits` as MCP tools (`remediate` covers
    them), and a Tier B "before release" group.
-11. `docs/architecture.html` and `docs/architecture-interactive.html` are the same file twice.
+11. Done on 2026-10-16: `docs/architecture-interactive.html` was byte-identical to
+   `docs/architecture.html` and nothing linked to it; it is removed.
 
 **Cuts found by the over-engineering audit and left for after Week 4**, because they sit on the
 code path the baselines measured: the finding `fingerprint` that nothing reads
