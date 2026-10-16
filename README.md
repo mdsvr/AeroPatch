@@ -81,7 +81,8 @@ advance as the bar):
 | Q4_K_M, thinking on | 41 | the same model, not re-measured | 47 tok/s |
 
 None reaches the bar, so the smallest and fastest stays. Runs `20261016-q5a`/`-q5b-repair-local`,
-`-q8a`/`-q8b-repair-local-q8`, `-tka`/`-tkb-repair-local-think`, each `-test`. Grammar-constrained
+`-q8a`/`-q8b-repair-local-q8`, `-tka`/`-tkb-repair-local-think`, each `-test`; peak VRAM from
+`nvidia-smi` sampled every 0.5 s into `runs/vram-*.txt`. Grammar-constrained
 decoding and tool localization were not run ([why](docs/14-timeline-part5.md)).
 
 **Prompt injection** ([doc 13 §6](docs/13-security-threat-model.md)): five copies of one
@@ -110,10 +111,12 @@ table; [notebooks/week4_charts.py](notebooks/week4_charts.py) redraws the charts
 - **Served** with Ollama and [training/Modelfile](training/Modelfile), which copies the library
   model's renderer and sampling parameters, so only the weights differ. Thinking is off.
 - **On an RTX 3050 Laptop (4 GB)**: 100% on the GPU at 8k context, 3,043 MiB peak, 46.5 tokens a
-  second; a repair attempt's median latency is about 6 seconds.
+  second; a repair attempt's median latency is about 6 seconds (speed run
+  `20261014-121928-repair-local-dev` with `nvidia-smi` sampled into `runs/vram-aeropatch-control.txt`;
+  the latency from `20261014-124302-repair-local-test`).
 - **For a quick start** the library `qwen3.5:4b` from Ollama works the same way: every Week 1
-  and 2 baseline used it, and it scored 17 and 18 of 27 on test on an older commit, against the
-  export's 19 and 19.
+  and 2 baseline used it, and it scored 17 and 18 of 27 on test on an older commit
+  (`20261003-155954`, `20261003-162838`, each `-repair-local-test`), against the export's 19 and 19.
 - The fine-tuned adapter is not published: it lost on test and on the real CVEs, and tied on the
   held-out synthetic scenarios.
 - **Intended use**: defensive fixes to code you own or to public projects at pinned commits, each
@@ -197,7 +200,10 @@ LoRA on Qwen3.5-4B (r 16, alpha 16, 16-bit base, not QLoRA) with Unsloth on one 
   dataset v2 **26** at step 64 and 23 at step 128. v1 taught the model to copy the finding's
   message as its plan and to edit inside function bodies; v2 rewrote each target's first line as
   a plan and made a small function one whole block. Dev chose those two changes, so it ties
-  and proves nothing more; test and Tier B decide.
+  and proves nothing more; test and Tier B decide. Runs, each `-repair-local-dev`: control
+  `20261012-164903`, `-171355`, `-171917`; v1 step 64 `20261012-201541`, `-201954`, `-202425`;
+  v1 step 128 `-202913`, `-203246`, `-203620`; v2 step 64 `20261013-151854`, `-153130`,
+  `-154255`; v2 step 128 `-152453`, `-153655`, `-154843`.
 - **Test, 2 runs each, resolved of 54**: control **38**, v2 step 64 **32**. By the rule set
   before the runs (4 or more below is a loss) the fine-tune loses, though the gap alone is not
   significant (paired exact McNemar p = 0.15). Its fixes break regression tests more often.
@@ -215,7 +221,8 @@ LoRA on Qwen3.5-4B (r 16, alpha 16, 16-bit base, not QLoRA) with Unsloth on one 
 - **Python only, function-level fixes**, at most 3 files and 60 changed lines per edit.
 - **A small benchmark**: 27 hand-built test scenarios, 10 real CVEs, 5 held-out synthetic ones.
   At these sizes an interval spans 20 to 40 points, and Week 2's two identical local runs
-  differed by 1 with 5 scenarios flipping. Read differences under the pre-set bar as ties.
+  (`20261003-155954`, `-162838`) differed by 1 with 5 scenarios flipping. Read differences under
+  the pre-set bar as ties.
 - **Tests are the oracle.** A passing PoC test shows the reported flaw is gone, not that the code
   is secure; every fix needs review.
 - **Oracle localization**: the model is given the finding the scenario is about. For Tier A that

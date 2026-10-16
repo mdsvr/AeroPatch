@@ -19,8 +19,9 @@ The model is Qwen3.5-4B at 4-bit, served by Ollama on an RTX 3050 Laptop GPU wit
 
 The benchmark has three tiers, frozen before any tuning: 40 hand-built scenarios over 16 CWEs
 (13 dev, 27 test), 10 real CVEs from other projects with their upstream fixes, and 5 synthetic
-scenarios held out of the training data. Every comparison was decided by a rule written before
-the runs, and every number traces to a committed run file.
+scenarios held out of the training data. The keep-or-drop decisions (the fine-tune, the
+quantisation, thinking mode) followed rules written before the runs, and every number traces to
+a committed run file.
 
 ## What the small model does alone
 
@@ -44,7 +45,7 @@ On dev the tuned model tied (26 of 39 each). On test it lost: **32 of 54 against
 against 7 on the real CVEs. The gap alone is not significant (McNemar p = 0.15), but the rule I
 had written down called four or more below a loss, so the untuned model went into the final week.
 The failure analysis shows why: the tuned model's fixes break existing behaviour more often, and
-after feedback it repeats the same edit nine times where the untuned model never did. My reading
+after feedback it repeats the same edit nine times on test, where the untuned model never did. My reading
 is that 541 examples taught it a format more than security knowledge. I report it as the null
 result it is.
 

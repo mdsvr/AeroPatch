@@ -2,8 +2,9 @@
 
 Every run in `runs/` (doc 14 part 1): run ID, config, model, split, the commit in its header,
 whether the tree was dirty, and resolved of finished scenarios. The takeaway of each group is
-the short form of its `NOTES.md` section. The run files are git-ignored except the 45 the README
-cites (Week 3 D20 and Week 4), which are committed; compare two
+the short form of its `NOTES.md` section. The run files are git-ignored except the 64 the README
+cites (Week 2 test, Week 3 D17 to D20, Week 4) and four GPU memory traces (`vram-*.txt`), which
+are committed; compare two
 with `uv run aeropatch report runs/<a>.jsonl runs/<b>.jsonl`.
 
 ## Week 1, D6-D7: single-attempt baselines on 10 dev scenarios
