@@ -81,7 +81,7 @@ def cmd_bench(args) -> int:
 
 
 def cmd_report(args) -> int:
-    print(metrics.report([Path(p) for p in args.jsonl]))
+    print(metrics.report([Path(p) for p in args.jsonl], Path(args.csv) if args.csv else None))
     return 0
 
 
@@ -142,6 +142,7 @@ def main(argv: list[str] | None = None) -> int:
 
     s = sub.add_parser("report", help="CIs, resolve@k, McNemar, per-CWE and failure attribution (doc 12)")
     s.add_argument("jsonl", nargs="+")
+    s.add_argument("--csv", default=None, help="also write each table as a CSV into this folder")
     s.set_defaults(fn=cmd_report)
 
     sub.add_parser("mcp", help="serve the tools over MCP on stdio (doc 06)").set_defaults(fn=cmd_mcp)

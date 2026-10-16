@@ -29,6 +29,8 @@ over a tuned-on-test positive one.
 
 ## 2. Week 4: final runs, ablations, packaging, write-up
 
+Day-by-day task lists, written after the fine-tune lost on test: [14-timeline-part5.md](14-timeline-part5.md).
+
 | Day | Work | Output / acceptance check |
 |---|---|---|
 | D22 (O) | Final **test** runs: untuned SLM, fine-tuned SLM (local + cascade), frontier, all with repair on/off | Headline + delta tables (doc 12) |

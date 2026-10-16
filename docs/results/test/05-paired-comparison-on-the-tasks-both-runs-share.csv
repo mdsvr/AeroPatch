@@ -1,0 +1,22 @@
+A,B,Shared tasks,A only,B only,B - A,95% CI (paired bootstrap),McNemar p (exact)
+20261013-170329-repair-local-test,20261014-124302-repair-local-test,27,2,2,+0%,-15% to +15%,1.000
+20261013-170329-repair-local-test,20261014-123112-repair-local-test,27,3,2,-4%,-19% to +11%,1.000
+20261013-170329-repair-local-test,20261014-125354-repair-local-test,27,5,0,-19%,-33% to -4%,0.062
+20261013-170329-repair-local-test,20261016-c1-cascade-claude-code-test,27,0,8,+30%,+15% to +48%,0.008
+20261013-170329-repair-local-test,20261016-c2-cascade-claude-code-test,27,0,8,+30%,+15% to +48%,0.008
+20261013-170329-repair-local-test,repair-claude-code,27,0,8,+30%,+15% to +48%,0.008
+20261014-124302-repair-local-test,20261014-123112-repair-local-test,27,2,1,-4%,-19% to +7%,1.000
+20261014-124302-repair-local-test,20261014-125354-repair-local-test,27,6,1,-19%,-37% to +0%,0.125
+20261014-124302-repair-local-test,20261016-c1-cascade-claude-code-test,27,0,8,+30%,+15% to +48%,0.008
+20261014-124302-repair-local-test,20261016-c2-cascade-claude-code-test,27,0,8,+30%,+15% to +48%,0.008
+20261014-124302-repair-local-test,repair-claude-code,27,0,8,+30%,+15% to +48%,0.008
+20261014-123112-repair-local-test,20261014-125354-repair-local-test,27,6,2,-15%,-33% to +4%,0.289
+20261014-123112-repair-local-test,20261016-c1-cascade-claude-code-test,27,0,9,+33%,+15% to +52%,0.004
+20261014-123112-repair-local-test,20261016-c2-cascade-claude-code-test,27,0,9,+33%,+15% to +52%,0.004
+20261014-123112-repair-local-test,repair-claude-code,27,0,9,+33%,+15% to +52%,0.004
+20261014-125354-repair-local-test,20261016-c1-cascade-claude-code-test,27,0,13,+48%,+30% to +67%,0.000
+20261014-125354-repair-local-test,20261016-c2-cascade-claude-code-test,27,0,13,+48%,+30% to +67%,0.000
+20261014-125354-repair-local-test,repair-claude-code,27,0,13,+48%,+30% to +67%,0.000
+20261016-c1-cascade-claude-code-test,20261016-c2-cascade-claude-code-test,27,0,0,+0%,+0% to +0%,1.000
+20261016-c1-cascade-claude-code-test,repair-claude-code,27,0,0,+0%,+0% to +0%,1.000
+20261016-c2-cascade-claude-code-test,repair-claude-code,27,0,0,+0%,+0% to +0%,1.000

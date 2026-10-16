@@ -192,3 +192,43 @@ Test of 54: untuned control 38 (19 + 19), v2 step 64 32 (18 + 14), a loss by the
 | `20261014-132803-repair-local-test_c` | repair-local | aeropatch-v2-step64 | test_c | `c03f33f` | no | 4/5 |
 | `20261014-132909-repair-local-test_c` | repair-local | aeropatch-control | test_c | `c03f33f` | no | 4/5 |
 | `20261014-133016-repair-local-test_c` | repair-local | aeropatch-v2-step64 | test_c | `c03f33f` | no | 5/5 |
+
+## Week 4, D22-D24: pass@k, the cascade and the frontier on Opus 5.5, adversarial, ablations
+
+Control pass@1/3/5 on test 45/61/67% (repair loop 70%); cascade 27, 9, 5 in both passes and Opus 5.5 alone 27, 10, 5 on test, Tier B, Tier C; injection followed 0 of 4 in every adversarial run; Q5, Q8 and thinking each 41 of 54 against the control's 38, no difference shown.
+
+| Run | Config | Model | Split | Commit | Dirty | Resolved |
+|---|---|---|---|---|---|---|
+| `20261016-s1-sample-local-test` | sample-local | aeropatch-control | test | `1337883` | no | 12/27 |
+| `20261016-s1-sample-local-test_b` | sample-local | aeropatch-control | test_b | `c31af0e` | no | 4/10 |
+| `20261016-s1-sample-local-test_c` | sample-local | aeropatch-control | test_c | `4cef739` | no | 2/5 |
+| `20261016-s2-sample-local-test` | sample-local | aeropatch-control | test | `4cef739` | no | 12/27 |
+| `20261016-s2-sample-local-test_b` | sample-local | aeropatch-control | test_b | `8a8ea58` | no | 1/10 |
+| `20261016-s2-sample-local-test_c` | sample-local | aeropatch-control | test_c | `8a8ea58` | no | 3/5 |
+| `20261016-s3-sample-local-test` | sample-local | aeropatch-control | test | `8a8ea58` | no | 12/27 |
+| `20261016-s3-sample-local-test_b` | sample-local | aeropatch-control | test_b | `8a8ea58` | no | 4/10 |
+| `20261016-s3-sample-local-test_c` | sample-local | aeropatch-control | test_c | `8a8ea58` | no | 3/5 |
+| `20261016-s4-sample-local-test` | sample-local | aeropatch-control | test | `8a8ea58` | no | 13/27 |
+| `20261016-s4-sample-local-test_b` | sample-local | aeropatch-control | test_b | `8a8ea58` | no | 1/10 |
+| `20261016-s4-sample-local-test_c` | sample-local | aeropatch-control | test_c | `8a8ea58` | no | 3/5 |
+| `20261016-s5-sample-local-test` | sample-local | aeropatch-control | test | `8a8ea58` | no | 12/27 |
+| `20261016-s5-sample-local-test_b` | sample-local | aeropatch-control | test_b | `8a8ea58` | no | 3/10 |
+| `20261016-s5-sample-local-test_c` | sample-local | aeropatch-control | test_c | `8a8ea58` | no | 5/5 |
+| `20261016-c1-cascade-claude-code-test` | cascade-claude-code | aeropatch-control + claude-opus-5-5 | test | `8a8ea58` | no | 27/27 |
+| `20261016-c1-cascade-claude-code-test_b` | cascade-claude-code | aeropatch-control + claude-opus-5-5 | test_b | `c9d69b1` | no | 9/10 |
+| `20261016-c1-cascade-claude-code-test_c` | cascade-claude-code | aeropatch-control + claude-opus-5-5 | test_c | `c9d69b1` | no | 5/5 |
+| `20261016-f1-repair-claude-code-test` | repair-claude-code | claude-opus-5-5 | test | `c9d69b1` | no | 27/27 |
+| `20261016-f1-repair-claude-code-test_b` | repair-claude-code | claude-opus-5-5 | test_b | `c9d69b1` | no | 10/10 |
+| `20261016-f1-repair-claude-code-test_c` | repair-claude-code | claude-opus-5-5 | test_c | `c9d69b1` | no | 5/5 |
+| `20261016-c2-cascade-claude-code-test` | cascade-claude-code | aeropatch-control + claude-opus-5-5 | test | `c9d69b1` | no | 27/27 |
+| `20261016-c2-cascade-claude-code-test_b` | cascade-claude-code | aeropatch-control + claude-opus-5-5 | test_b | `c9d69b1` | no | 9/10 |
+| `20261016-c2-cascade-claude-code-test_c` | cascade-claude-code | aeropatch-control + claude-opus-5-5 | test_c | `c9d69b1` | no | 5/5 |
+| `20261016-a1-repair-local-adversarial` | repair-local | aeropatch-control | adversarial | `c9d69b1` | no | 4/5 |
+| `20261016-f1-repair-claude-code-adversarial` | repair-claude-code | claude-opus-5-5 | adversarial | `c9d69b1` | no | 4/5 |
+| `20261016-a2-repair-local-adversarial` | repair-local | aeropatch-control | adversarial | `c9d69b1` | no | 4/5 |
+| `20261016-q5a-repair-local-test` | repair-local | aeropatch-control-q5 | test | `ebeb7e9` | no | 21/27 |
+| `20261016-q5b-repair-local-test` | repair-local | aeropatch-control-q5 | test | `ebeb7e9` | no | 20/27 |
+| `20261016-q8a-repair-local-q8-test` | repair-local-q8 | aeropatch-control-q8 | test | `b59acee` | no | 22/27 |
+| `20261016-q8b-repair-local-q8-test` | repair-local-q8 | aeropatch-control-q8 | test | `1810d77` | no | 19/27 |
+| `20261016-tka-repair-local-think-test` | repair-local-think | aeropatch-control | test | `1810d77` | no | 21/27 |
+| `20261016-tkb-repair-local-think-test` | repair-local-think | aeropatch-control | test | `d954d1b` | no | 20/27 |

@@ -85,6 +85,17 @@ CONFIGS: dict[str, dict] = {
     "prefill-control-plan": {"attempt_plan": ["local"],
                              "local_prefill": "RATIONALE: {plan}\n<<<<<<< SEARCH",
                              "local_prefill_plans": "training/d19_control_plans.json"},
+    # pass@k (doc 12 §2): one attempt, sampled hotter, run n times under separate run ids.
+    "sample-local": {"attempt_plan": ["local"], "temperature_first": 0.7},
+    # Thinking ablation (doc 11 §7): the thinking shares the token budget with the answer, so the
+    # budget and the wall clock are raised; the client reads message.content, not the thinking.
+    "repair-local-think": {"attempt_plan": ["local", "local", "local"], "local_think": True,
+                           "max_tokens_local": 4096, "scenario_wallclock_s": 1800},
+    # Quant ablation, Q8_0 (4.48 GB): 25 layers on the GPU peak at 3,771 MiB with a 4,508-token
+    # prompt at 8k context, 26 reach 3,913 (2026-10-16). The rest runs on the CPU at about
+    # 14.5 tok/s, so the wall clock is raised and speed is reported apart from accuracy.
+    "repair-local-q8": {"attempt_plan": ["local", "local", "local"], "local_num_gpu": 25,
+                        "scenario_wallclock_s": 1800},
     "repair-claude-code": {"mode": "frontier", "attempt_plan": ["claude-code", "claude-code", "claude-code"]},
     # ponytail: escalation is the fixed plan below. With 2 local entries it equals doc 04 §5
     # triggers 1-3; add triggers 4-5 (context over local_ctx_budget, multi-file tag) when a

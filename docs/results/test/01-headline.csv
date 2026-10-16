@@ -1,0 +1,8 @@
+Run,Config,Resolved,95% CI,@1,@2,@3,Repair gain,Resolved locally,Escalated,Rule gone
+20261013-170329-repair-local-test,repair-local,19/27 (70%),52%-84%,14,17,19,38%,19,0,12/19
+20261014-124302-repair-local-test,repair-local,19/27 (70%),52%-84%,14,18,19,38%,19,0,14/19
+20261014-123112-repair-local-test,repair-local,18/27 (67%),48%-81%,13,16,18,36%,18,0,12/18
+20261014-125354-repair-local-test,repair-local,14/27 (52%),34%-69%,11,14,14,19%,14,0,11/14
+20261016-c1-cascade-claude-code-test,cascade-claude-code,27/27 (100%),88%-100%,13,16,27,100%,16,11,20/27
+20261016-c2-cascade-claude-code-test,cascade-claude-code,27/27 (100%),88%-100%,14,16,27,100%,16,11,19/27
+20261016-f1-repair-claude-code-test,repair-claude-code,27/27 (100%),88%-100%,26,27,27,100%,0,27,20/27
