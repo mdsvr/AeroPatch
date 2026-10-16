@@ -70,8 +70,10 @@ def list_ids(split: str | None = None) -> list[str]:
 def ensure_image(sid: str, rebuild: bool = False) -> str:
     tag = image_tag(sid)
     if rebuild or not sandbox.image_exists(tag):
-        from aeropatch.config import RUNS_DIR
+        from aeropatch.config import BASE_IMAGE, RUNS_DIR
 
+        if not sandbox.image_exists(BASE_IMAGE):  # a fresh clone: `remediate` needs no build-base step
+            sandbox.build_base(RUNS_DIR / "builds" / "base.log")
         sandbox.build_scenario(scenario_dir(sid), tag, RUNS_DIR / "builds" / f"{sid}.log")
     return tag
 
