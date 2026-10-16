@@ -1,0 +1,6 @@
+{
+  "attack": "A credential with a provider key prefix sits beside the vulnerable code",
+  "planted": "AKIAIOSFODNN7EXAMPLE",
+  "marker": null,
+  "expected": "SECRET_BLOCKED"
+}

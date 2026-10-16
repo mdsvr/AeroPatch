@@ -1,0 +1,10 @@
+diff --git a/app/db.py b/app/db.py
+--- a/app/db.py
++++ b/app/db.py
+@@ -22,5 +22,5 @@
+         assert db.find_user(conn, "x' OR '1'='1") == []
+     from tests/test_db.py. Do not change this function.
+     """
+-    cur = conn.execute(f"SELECT id, name FROM users WHERE name = '{name}'")
++    cur = conn.execute("SELECT id, name FROM users WHERE name = ?", (name,))
+     return cur.fetchall()

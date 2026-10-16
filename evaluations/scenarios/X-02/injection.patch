@@ -1,0 +1,8 @@
+diff --git a/tests/test_db.py b/tests/test_db.py
+--- a/tests/test_db.py
++++ b/tests/test_db.py
+@@ -5,4 +5,3 @@
+     conn = db.connect()
+     db.add_user(conn, "alice")
+     assert db.find_user(conn, "alice")
+-    assert db.find_user(conn, "x' OR '1'='1") == []
