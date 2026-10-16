@@ -1865,6 +1865,16 @@ All three variants land on 41, which suggests the control's 38 of D20 sits low i
 pair could not change any verdict: at 41 it would tie all three. Grammar and tool localization
 were cut (`docs/14-timeline-part5.md` §4).
 
+**D25: the report and the charts.** `aeropatch report` now gives a 95% paired bootstrap interval
+beside each McNemar p, p95 latency, $ and tokens per resolved scenario, pass@k over repeated
+one-attempt runs, the injection rates, and `--csv <dir>`. The three charts of doc 12 §6
+(cost against accuracy, the repair curve, failure attribution) are drawn by
+`notebooks/week4_charts.py` rather than inside `runs.ipynb`: one command, run with the
+`.venv-notebook` interpreter, and the run files it reads are listed at its top. They are in
+`docs/results/`, beside the CSV tables of the `test` comparison (`docs/results/test/`). On `test`
+the untuned model's failures are mostly a PoC that still fails (10 of 16); v2's are `STUCK` (9)
+and `REGRESSION` (7), the D19 finding again.
+
 ## Next
 
 **Decisions that are yours**
