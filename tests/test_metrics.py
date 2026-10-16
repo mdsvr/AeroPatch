@@ -21,6 +21,25 @@ def test_mcnemar_exact():
     assert metrics.mcnemar_exact(6, 1) == metrics.mcnemar_exact(1, 6)
 
 
+def test_pass_at_k_checks_of_doc_12():
+    assert metrics.pass_at_k(5, 0, 1) == 0
+    assert metrics.pass_at_k(5, 5, 3) == 1
+    assert metrics.pass_at_k(5, 2, 1) == pytest.approx(0.4)
+
+
+def test_pass_at_k_table_over_five_sampled_runs(tmp_path):
+    # A-089-01 resolved in runs 0 and 1 of 5, A-328-01 never: pass@1 (0.4 + 0) / 2,
+    # pass@3 (1 - C(3,3)/C(5,3) = 0.9, + 0) / 2, pass@5 (1 + 0) / 2.
+    paths = [_run(tmp_path / f"s{i}.jsonl", "sample-local", ["local"], {
+        "A-089-01": [("local", "RESOLVED" if i < 2 else "POC_FAIL")],
+        "A-328-01": [("local", "POC_FAIL")],
+    }) for i in range(5)]
+    repair = _run(tmp_path / "r.jsonl", "repair-local", ["local"] * 3, {"A-089-01": [("local", "RESOLVED")]})
+    text = metrics.report([*paths, repair])
+    assert "| sample-local | qwen3.5:4b | dev | 5 | 2 | 20% | 45% | 50% |" in text
+    assert "| repair-local |" not in text.split("### pass@k")[1].split("###")[0]
+
+
 def _run(path, config, plan, tasks):
     """tasks: {task_id: [(route, label), ...]} in attempt order."""
     cfg = {**load_config("repair-local"), "name": config, "attempt_plan": plan}  # headers carry the full config

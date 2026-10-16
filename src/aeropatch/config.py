@@ -85,6 +85,8 @@ CONFIGS: dict[str, dict] = {
     "prefill-control-plan": {"attempt_plan": ["local"],
                              "local_prefill": "RATIONALE: {plan}\n<<<<<<< SEARCH",
                              "local_prefill_plans": "training/d19_control_plans.json"},
+    # pass@k (doc 12 §2): one attempt, sampled hotter, run n times under separate run ids.
+    "sample-local": {"attempt_plan": ["local"], "temperature_first": 0.7},
     "repair-claude-code": {"mode": "frontier", "attempt_plan": ["claude-code", "claude-code", "claude-code"]},
     # ponytail: escalation is the fixed plan below. With 2 local entries it equals doc 04 §5
     # triggers 1-3; add triggers 4-5 (context over local_ctx_budget, multi-file tag) when a

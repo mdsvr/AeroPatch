@@ -37,6 +37,13 @@ def mcnemar_exact(b: int, c: int) -> float:
     return min(1.0, 2 * sum(comb(n, i) for i in range(min(b, c) + 1)) / 2 ** n)
 
 
+def pass_at_k(n: int, c: int, k: int) -> float:
+    """Unbiased pass@k for c resolved of n independent samples (Chen et al., 2021; doc 12 §2)."""
+    if n - c < k:
+        return 1.0
+    return 1.0 - comb(n - c, k) / comb(n, k)
+
+
 def cwe_of(task_id: str) -> str:
     try:
         return json.loads((SCENARIOS_DIR / task_id / "scenario.json").read_text(encoding="utf-8"))["cwe"]
@@ -59,6 +66,7 @@ def run_metrics(jsonl: Path) -> dict:
     at = [sum(1 for a in wins.values() if a["n"] <= k) for k in (1, 2, 3)]  # the repair plans have 3 entries
     return {
         "run": jsonl.stem, "config": cfg.get("name", ""), "dirty": header.get("dirty"), "n": n,
+        "split": header.get("split"), "plan_len": len(cfg.get("attempt_plan", [])),
         "model": " + ".join(dict.fromkeys(model_name(r, cfg) for r in cfg.get("attempt_plan", []))),
         "resolved": {r["task_id"] for r in results if r["resolved"]},
         "tasks": {r["task_id"]: r["label"] for r in results},
@@ -122,6 +130,27 @@ def delta(runs: list[dict]) -> str:
     return _table(["A", "B", "Shared tasks", "A only", "B only", "B - A", "McNemar p (exact)"], rows)
 
 
+def sampled(runs: list[dict]) -> str | None:
+    """pass@k over repeated one-attempt runs of one config, model and split. A repair run's later
+    attempts see feedback, so repair runs are not samples (doc 12 §1)."""
+    groups: dict[tuple, list[dict]] = {}
+    for m in runs:
+        if m["plan_len"] == 1:
+            groups.setdefault((m["config"], m["model"], m["split"]), []).append(m)
+    rows = []
+    for (config, model, split), ms in groups.items():
+        if len(ms) < 2:
+            continue
+        n = len(ms)
+        tasks = sorted(set.intersection(*(set(m["tasks"]) for m in ms)))
+        counts = [sum(t in m["resolved"] for m in ms) for t in tasks]
+        rows.append([config, model, split, n, len(tasks),
+                     *(f"{statistics.fmean(pass_at_k(n, c, k) for c in counts):.0%}" if k <= n and counts else "-"
+                       for k in (1, 3, 5))])
+    return _table(["Config", "Model", "Split", "Runs (n)", "Tasks", "pass@1", "pass@3", "pass@5"],
+                  rows) if rows else None
+
+
 def per_cwe(runs: list[dict]) -> str:
     cwes: dict[str, set[str]] = {}
     for task in {t for m in runs for t in m["tasks"]}:
@@ -155,6 +184,8 @@ def report(paths: list[Path]) -> str:
              "### First attempt, speed and cost", speed(runs)]
     if len(runs) > 1:
         parts += ["### Paired comparison on the tasks both runs share", delta(runs)]
+    if table := sampled(runs):
+        parts += ["### pass@k over repeated one-attempt runs (unbiased estimator, doc 12 §2)", table]
     parts += ["### Resolved per CWE", per_cwe(runs), "### Failure attribution"]
     parts += [attribution(m) for m in runs]
     dirty = [m["run"] for m in runs if m["dirty"]]
