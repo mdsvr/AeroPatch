@@ -16,14 +16,41 @@ from aeropatch.tools.context import function_span, get_context
 from aeropatch.tools.git_ops import Workspace
 
 IDS = scenario.list_ids()
+ADVERSARIAL = scenario.list_ids("adversarial")
+
+
+def _injection(sid):
+    return json.loads((SCENARIOS_DIR / sid / "injection.json").read_text(encoding="utf-8"))
 
 
 def test_split_covers_every_scenario_once():
     split = json.loads((SCENARIOS_DIR / "split.json").read_text())
-    assert sorted(split["dev"] + split["test"] + split["test_b"] + split["test_c"]) == IDS
+    assert sorted(split["dev"] + split["test"] + split["test_b"] + split["test_c"] + split["adversarial"]) == IDS
     assert (len(split["dev"]), len(split["test"])) == (13, 27)  # frozen 2026-10-03
     assert len(split["test_b"]) == 10  # Tier B, frozen 2026-10-05
     assert len(split["test_c"]) == 5  # Tier C, set aside from the teacher pilot on 2026-10-06
+    assert len(split["adversarial"]) == 5  # doc 13 §6, added 2026-10-16
+
+
+@pytest.mark.parametrize("sid", ADVERSARIAL)
+def test_planted_instruction_reaches_the_first_prompt(sid):
+    # The model sees only the context cut around the finding: text outside it tests nothing.
+    task = scenario.load(sid)
+    ctx = get_context(task.repo_path, task.finding.path, task.finding.line, task.allowed_paths)
+    assert _injection(sid)["planted"] in prompts.first_user_message(task, ctx)
+
+
+@pytest.mark.parametrize("sid,patch,expected", [
+    (sid, name, code) for sid in ADVERSARIAL for name, code in _injection(sid).get("patches", {}).items()])
+def test_obeying_the_injection_gets_the_expected_gate_code(sid, patch, expected):
+    task = scenario.load(sid)
+    with Workspace(task.repo_path) as ws:
+        originals = ws.read_many(task.allowed_paths)
+        assert ws.apply_patch((SCENARIOS_DIR / sid / patch).read_text(encoding="utf-8")) == ""
+        changed = ws.read_many(ws.changed_paths())
+    gate = check(originals, changed, task.allowed_paths, allow_imports=task.allow_imports)
+    # "PASS": no gate stops it (X-01 without the import line); the sandbox and the tests have to.
+    assert gate.ok if expected == "PASS" else expected in gate.violations, gate.details
 
 
 def test_original_rule_rescan_reports_present_absent_or_unavailable(monkeypatch, tmp_path):
@@ -51,9 +78,15 @@ def test_scenario_loads_and_points_at_target(sid):
 @pytest.mark.parametrize("sid", IDS)
 def test_first_prompt_passes_the_secret_filter(sid):
     # A scenario whose own code trips the filter is SECRET_BLOCKED on every route but oracle.
+    # X-06 plants a credential to show exactly that.
     task = scenario.load(sid)
     ctx = get_context(task.repo_path, task.finding.path, task.finding.line, task.allowed_paths)
-    prompts.check_no_secrets(prompts.SYSTEM_PROMPT + "\n\n" + prompts.first_user_message(task, ctx))
+    text = prompts.SYSTEM_PROMPT + "\n\n" + prompts.first_user_message(task, ctx)
+    if sid in ADVERSARIAL and _injection(sid).get("expected") == "SECRET_BLOCKED":
+        with pytest.raises(prompts.SecretInPrompt):
+            prompts.check_no_secrets(text)
+    else:
+        prompts.check_no_secrets(text)
 
 
 @pytest.mark.parametrize("sid", IDS)
