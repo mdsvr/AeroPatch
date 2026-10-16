@@ -88,7 +88,8 @@ def cost_accuracy(s: dict) -> None:
         m = s[name]
         x, y = m["cost_per"], m["resolved"] / m["n"]
         ax.scatter([x], [y], s=90, color=COLOUR[name], edgecolor=SURFACE, linewidth=2, zorder=3, label=name)
-        note = f"$0, {m['s_per']:.0f} s per resolved" if x == 0 else f"${x:.3f} per resolved"
+        # No seconds for the local model: its first run shared the GPU with another program (D20).
+        note = "$0, on the laptop" if x == 0 else f"${x:.3f} per resolved"
         (dx, dy), ha = place[name]
         ax.annotate(f"{name}\n{m['resolved']}/{m['n']}, {note}", (x, y), xytext=(dx, dy),
                     textcoords="offset points", fontsize=8.5, color=INK, ha=ha)

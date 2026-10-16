@@ -1887,16 +1887,26 @@ and `REGRESSION` (7), the D19 finding again.
   RESOLVED at attempt 1 in 26.6 s; 380 s in all, mostly `uv sync`. `A-089-01` was resolved in all
   7 complete clean dev runs of a local model. Docker's images are shared, so the base image
   already existed: the new path that builds it when missing (`scenario.ensure_image`) is covered
-  by a unit test, not by this run. The harness would not let me delete `D:\aeropatch-fresh`; it
-  is yours to remove.
+  by a unit test, not by this run. `uv run aeropatch build A-089-01` inside the clone then rebuilt
+  the scenario image in 10 s and created `runs/builds/` itself, so a first build's log path works
+  on a fresh clone. The harness would not let me delete `D:\aeropatch-fresh`; it is yours to
+  remove.
 - **MCP transcript**: `docs/mcp-transcript.md`, one stdio session through the `mcp` client
   (2.2.0): `get_context`, `validate` with the reference fix (resolved) and with `# nosec` added
   (`SUPPRESSES_CHECKS`), `remediate` (resolved at attempt 1 with the library model), and a `scan`
   outside the allowlisted root (refused).
 - **Checks**: `ruff check .` was failing on 14 old findings (`notebooks/runs.ipynb`, `re.M` in
-  `local_client.py`); now clean, with DTZ off for notebooks only. The full suite: 364 passed after
-  `aeropatch prune` removed one sandbox container left from the restart of 2026-10-13 17:15:47,
-  which `test_cleanup_after_crash` counts.
+  `local_client.py`); now clean, with DTZ off for notebooks only. The full suite first gave 363
+  passed and 1 failed: `test_cleanup_after_crash` counted one sandbox container left from the
+  restart of 2026-10-13 17:15:47. After `aeropatch prune` and the lint fixes, a full rerun: **364
+  passed** (255 s).
+- **The cited run files are published**: the 45 JSONL files the README names (D20 and Week 4) are
+  committed with `git add -f`; the rest of `runs/` stays ignored. Scanned first: no user name,
+  email, user folder or `AppData` path; the secret filter finds only the scenarios' own test
+  passwords (`'password123'`, `'correct horse'`) in sandbox traces and a PEM public key from a
+  Tier B test, all already public under `evaluations/`. This was part 5's D27 default.
+- The cost chart no longer gives seconds per resolved for the local model: its first run shared
+  the GPU with another program (D20), which would have inflated the figure.
 - Not done: the draft PRs on a demo repository (part 5, D26) wait for you to name one.
 
 ## Next
