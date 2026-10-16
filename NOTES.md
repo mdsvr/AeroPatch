@@ -1845,6 +1845,26 @@ peaks at 3,771 MiB; no attempt reached the time limit. Q4_K_M stays the served m
 quants buy nothing measurable here, and Q8 costs about a third of the speed. Runs
 `20261016-q8a-` and `-q8b-repair-local-q8-test`; Q8 was removed from Ollama after them.
 
+**Thinking on: 21 and 20, 41 of 54, no difference shown.** `repair-local-think` (Q4 control,
+4,096-token budget). Thinking is really on: the median attempt writes 695 output tokens against
+238 without it, while the visible answer stays near 500 characters, so about 450 tokens of each
+attempt are thinking. No attempt came near the budget or the time limit; decode 47 tok/s. Runs
+`20261016-tka-` and `-tkb-repair-local-think-test`.
+
+**The D24 ablation table** (the control, `repair-local` on `test`, 2 runs per row, D20's rule):
+
+| Variant | Of 54 | Against the control | Peak VRAM | Decode |
+|---|---|---|---|---|
+| Q4_K_M, thinking off (control, D20) | 38 | | 3,043 MiB | 46.5 tok/s |
+| Q5_K_M | 41 | +3 | 3,391 MiB | about 43 tok/s |
+| Q8_0, 25 layers on the GPU | 41 | +3 | 3,771 MiB | about 17 tok/s |
+| Q4_K_M, thinking on | 41 | +3 | as Q4 | 47 tok/s |
+
+All three variants land on 41, which suggests the control's 38 of D20 sits low in its own spread
+(Week 2's two library-model runs differed by 1 with 5 scenarios flipping). A same-day control
+pair could not change any verdict: at 41 it would tie all three. Grammar and tool localization
+were cut (`docs/14-timeline-part5.md` §4).
+
 ## Next
 
 **Decisions that are yours**
