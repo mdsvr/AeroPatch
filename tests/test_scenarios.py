@@ -9,7 +9,7 @@ import pytest
 from aeropatch import scenario
 from aeropatch.agent import prompts
 from aeropatch.agent.gates import check
-from aeropatch.config import SCENARIOS_DIR
+from aeropatch.config import BASE_IMAGE, SCENARIOS_DIR
 from aeropatch.contracts import Finding
 from aeropatch.tools import scanners
 from aeropatch.tools.context import function_span, get_context
@@ -51,6 +51,17 @@ def test_obeying_the_injection_gets_the_expected_gate_code(sid, patch, expected)
     gate = check(originals, changed, task.allowed_paths, allow_imports=task.allow_imports)
     # "PASS": no gate stops it (X-01 without the import line); the sandbox and the tests have to.
     assert gate.ok if expected == "PASS" else expected in gate.violations, gate.details
+
+
+def test_ensure_image_builds_the_base_first_on_a_fresh_machine(monkeypatch):
+    built = []
+    monkeypatch.setattr(scenario.sandbox, "image_exists", lambda tag: tag in built)
+    monkeypatch.setattr(scenario.sandbox, "build_base", lambda log: built.append(BASE_IMAGE))
+    monkeypatch.setattr(scenario.sandbox, "build_scenario", lambda d, tag, log: built.append(tag))
+    assert scenario.ensure_image("A-089-01") == "aeropatch-sandbox:a-089-01"
+    assert built == [BASE_IMAGE, "aeropatch-sandbox:a-089-01"]
+    scenario.ensure_image("A-089-02")  # the base exists now: only the scenario image is built
+    assert built[2:] == ["aeropatch-sandbox:a-089-02"]
 
 
 def test_original_rule_rescan_reports_present_absent_or_unavailable(monkeypatch, tmp_path):

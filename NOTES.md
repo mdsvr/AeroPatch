@@ -1875,6 +1875,40 @@ one-attempt runs, the injection rates, and `--csv <dir>`. The three charts of do
 the untuned model's failures are mostly a PoC that still fails (10 of 16); v2's are `STUCK` (9)
 and `REGRESSION` (7), the D19 finding again.
 
+## Week 4, D26 (2026-10-16): README, fresh clone, MCP transcript
+
+- **README rewritten** for the Week 4 results: the headline table on all three tiers with 95%
+  Wilson intervals, the paired differences (bootstrap interval and McNemar), the three charts,
+  pass@k, the ablations, the adversarial table, a Model section, Limitations and a Later list.
+  Every number was recomputed from the run files with `aeropatch.metrics` before it went in, and
+  every relative link checked. The run IDs are named beside each table.
+- **Fresh clone, measured.** `git clone` into an empty `D:\aeropatch-fresh`, then `uv sync`,
+  `ollama pull qwen3.5:4b`, `uv run aeropatch remediate A-089-01 --config repair-local`:
+  RESOLVED at attempt 1 in 26.6 s; 380 s in all, mostly `uv sync`. `A-089-01` was resolved in all
+  7 complete clean dev runs of a local model. Docker's images are shared, so the base image
+  already existed: the new path that builds it when missing (`scenario.ensure_image`) is covered
+  by a unit test, not by this run. `uv run aeropatch build A-089-01` inside the clone then rebuilt
+  the scenario image in 10 s and created `runs/builds/` itself, so a first build's log path works
+  on a fresh clone. The harness would not let me delete `D:\aeropatch-fresh`; it is yours to
+  remove.
+- **MCP transcript**: `docs/mcp-transcript.md`, one stdio session through the `mcp` client
+  (2.2.0): `get_context`, `validate` with the reference fix (resolved) and with `# nosec` added
+  (`SUPPRESSES_CHECKS`), `remediate` (resolved at attempt 1 with the library model), and a `scan`
+  outside the allowlisted root (refused).
+- **Checks**: `ruff check .` was failing on 14 old findings (`notebooks/runs.ipynb`, `re.M` in
+  `local_client.py`); now clean, with DTZ off for notebooks only. The full suite first gave 363
+  passed and 1 failed: `test_cleanup_after_crash` counted one sandbox container left from the
+  restart of 2026-10-13 17:15:47. After `aeropatch prune` and the lint fixes, a full rerun: **364
+  passed** (255 s).
+- **The cited run files are published**: the 45 JSONL files the README names (D20 and Week 4) are
+  committed with `git add -f`; the rest of `runs/` stays ignored. Scanned first: no user name,
+  email, user folder or `AppData` path; the secret filter finds only the scenarios' own test
+  passwords (`'password123'`, `'correct horse'`) in sandbox traces and a PEM public key from a
+  Tier B test, all already public under `evaluations/`. This was part 5's D27 default.
+- The cost chart no longer gives seconds per resolved for the local model: its first run shared
+  the GPU with another program (D20), which would have inflated the figure.
+- Not done: the draft PRs on a demo repository (part 5, D26) wait for you to name one.
+
 ## Next
 
 **Decisions that are yours**
@@ -1904,7 +1938,8 @@ and `REGRESSION` (7), the D19 finding again.
 3. **Data mix from dev only** (D14), against doc 14 §5's wording. Also a default.
 4. **Pull requests.** Week 3 lives on `feat/week3-d15-data`, and you merge it into `main` as it
    goes: #11 to #19 are merged, the last (D19) on 2026-10-13, and D20 (the test runs and the
-   exports) went in with the next one on 2026-10-14. The Kaggle kernel clones that branch.
+   exports) went in with the next one on 2026-10-14. Week 4's D22 to D25 went in as #21 on
+   2026-10-16, still from this branch. The Kaggle kernel clones that branch.
    The training data itself (`training/synthetic/`, `training/data/`) is git-ignored and exists
    only on the laptop.
 
@@ -1932,7 +1967,8 @@ and `REGRESSION` (7), the D19 finding again.
    results reported per tier.
 10. Not done from the plan: `propose_fix` and `apply_edits` as MCP tools (`remediate` covers
    them), and a Tier B "before release" group.
-11. `docs/architecture.html` and `docs/architecture-interactive.html` are the same file twice.
+11. Done on 2026-10-16: `docs/architecture-interactive.html` was byte-identical to
+   `docs/architecture.html` and nothing linked to it; it is removed.
 
 **Cuts found by the over-engineering audit and left for after Week 4**, because they sit on the
 code path the baselines measured: the finding `fingerprint` that nothing reads
