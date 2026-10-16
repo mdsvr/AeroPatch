@@ -6,6 +6,8 @@ __pycache__/
 .env
 runs/*
 !runs/INDEX.md
+# The run files the README cites are committed with `git add -f` (scanned first for host paths
+# and secrets); every other run file stays local.
 .tools/
 *.gguf
 training/synthetic/
