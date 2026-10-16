@@ -31,11 +31,11 @@ def generate(messages: list[dict], system: str, cfg: dict, temperature: float) -
     prefill = cfg.get("local_prefill", "")
     if prefill:
         first = messages[0]["content"]
-        found = re.search(r"^Message: (.*)$", first, re.M)
+        found = re.search(r"^Message: (.*)$", first, re.MULTILINE)
         prefill = prefill.replace("{message}", found.group(1) if found else "")
         if "{plan}" in prefill:  # one line per scenario, keyed by the prompt's "Finding:" line
             plans = json.loads((ROOT / cfg["local_prefill_plans"]).read_text(encoding="utf-8"))
-            prefill = prefill.replace("{plan}", plans[re.search(r"^Finding: .*$", first, re.M).group(0)])
+            prefill = prefill.replace("{plan}", plans[re.search(r"^Finding: .*$", first, re.MULTILINE).group(0)])
         body["messages"].append({"role": "assistant", "content": prefill})
     start = time.monotonic()
     try:
