@@ -1943,6 +1943,11 @@ ticked too (all are tests in `tests/test_sandbox_security.py`, passing in the ru
 - **Write-up**: `docs/writeup.md`, about 950 words for a blog: the setup, the small model alone,
   why fine-tuning lost, feedback against resampling, what the cascade really costs, the injection
   results with the one gate gap, the ablations, next steps and limits. Linked from the README.
+- **Every README number now traces to a committed file.** A review found numbers outside the
+  Results section (the dev ties, the speed and VRAM figures, the library model's 17 and 18, the
+  Week 2 spread) resting on unpublished runs. 19 more run files and four `nvidia-smi` traces were
+  scanned the same way (only pytest temp paths matched) and committed: 64 run files in all, each
+  named in the README where its number appears.
 - **Exit criteria**: part 2's Week 4 criteria and the whole-project definition of done are ticked
   (the served model is the untuned base, a recorded change), and part 5 §10.
 - **Left, all yours**: a licence file; a demo repository for the draft PRs (the PR feature itself
