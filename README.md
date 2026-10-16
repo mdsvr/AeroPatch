@@ -5,22 +5,117 @@ do. It fixes Python vulnerabilities locally, proves each fix in a network-less s
 with test feedback, and escalates to a frontier model only when needed. Every claim is measured
 on a contamination-controlled benchmark.
 
-Status: **end of Week 3 (2026-10-14). Fine-tuning did not help: the tuned model ties the untuned
-one on dev (26 of 39 each) and scores below it on test (32 against 38 of 54), so Week 4 runs the
-untuned model** (see [Training](#training-week-3), [NOTES.md](NOTES.md) and the plan in
-[docs/](docs/00-overall-plan.md)).
-Week 2's baselines on test, with up to three attempts, two runs for the local model:
+Status: **Week 4 (2026-10-16). The final runs are done**; packaging and the security checklist
+remain ([plan](docs/14-timeline-part5.md), [NOTES.md](NOTES.md)). Outputs are **candidate fixes
+that need human review**.
 
-| | 27 hand-built test scenarios | 10 real-CVE scenarios |
-|---|---|---|
-| Qwen3.5-4B, untuned, local, $0 | 17/27 and 18/27 | 5/10 and 5/10 |
-| Claude Opus 5 | 27/27 | 10/10 |
-| Cascade (local, local, then Opus) | 27/27, 16 fixed locally | 10/10, 4 fixed locally |
+## Results
 
-The hand-built scenarios were written by Claude models, so they are easy ground for Opus. The
-real-CVE ones use other projects' vulnerable code and their own upstream fixes, published between
-2026-03-31 and 2026-10-02; with ten of them the intervals are wide (5/10 is 24–76%).
-Outputs are **candidate fixes that need human review**.
+The headline in one line: the untuned 4B model fixes 70% of the hand-built test scenarios and
+35% of the real CVEs on its own at no API cost; a cascade that hands its third attempt to Claude
+Opus 5.5 fixes 100% and 90%. Fine-tuning it did not help (59% and 15%).
+
+Resolved, with up to three attempts and test feedback between them. Local rows and the cascade
+are two runs pooled, so 27 scenarios count 54 times; 95% Wilson intervals in brackets.
+
+| Model | Test, 27 hand-built (Tier A) | 10 real CVEs (Tier B) | 5 held-out synthetic (Tier C) |
+|---|---|---|---|
+| Qwen3.5-4B untuned, local, $0 | **38/54, 70%** [57–81] | **7/20, 35%** [18–57] | 9/10, 90% [60–98] |
+| Qwen3.5-4B fine-tuned (v2), local, $0 | 32/54, 59% [46–71] | 3/20, 15% [5–36] | 9/10, 90% [60–98] |
+| Cascade: local, local, then Opus 5.5 | **54/54, 100%** [93–100] | **18/20, 90%** [70–97] | 10/10, 100% [72–100] |
+| Claude Opus 5.5 alone | 27/27, 100% [88–100] | 10/10, 100% [72–100] | 5/5, 100% [57–100] |
+
+- **The cascade resolves 32 of its 54 test runs without a frontier call**, and costs $0.023 per
+  resolved scenario against $0.025 for Opus alone (API-equivalent; both ran on a Claude Code
+  subscription, so nothing was billed per token). On the real CVEs both cost $0.038: the
+  escalation sends the whole attempt history, which eats most of the saving.
+- **The cascade misses one real CVE in both runs** (`B-400-02`): its single Opus attempt breaks
+  a regression test, where Opus alone fixes it with feedback on attempt 2.
+- **Paired differences** (run *i* against run *i*, 95% paired bootstrap interval, exact
+  McNemar): on test, untuned → fine-tuned −11 points [−24, 0], p = 0.15; untuned → cascade
+  +30 [+19, +43], p < 0.001. On the real CVEs, untuned → fine-tuned −20 [−45, +5], p = 0.29.
+- **Where the local model fails** on test: a path traversal (CWE-22), weak password hashing
+  (CWE-328) and SSRF (CWE-918) are never fixed in either run; 9 of the other 13 classes are fixed
+  in every run ([per-CWE table](docs/results/test/07-resolved-per-cwe.csv)).
+- The hand-built scenarios were written by Claude models, so they are easy ground for Opus. The
+  real-CVE ones use other projects' vulnerable code and their own upstream fixes, published
+  between 2026-03-31 and 2026-10-02.
+
+Runs (each `runs/<id>.jsonl`, all listed in [runs/INDEX.md](runs/INDEX.md)): untuned
+`20261013-170329` and `20261014-124302` on test, `20261014-130652`/`-131647` Tier B,
+`-132647`/`-132909` Tier C, each `-repair-local-<split>`; fine-tuned `20261014-123112`/`-125354`,
+`-131242`/`-132226`, `-132803`/`-133016`; cascade `20261016-c1-` and `-c2-cascade-claude-code-<split>`;
+Opus `20261016-f1-repair-claude-code-<split>`.
+
+![Cost and resolve rate on test](docs/results/cost-accuracy.png)
+
+![Resolved by attempt on test](docs/results/repair-curve.png)
+
+The repair loop is worth 18 points on test for the untuned model (52% at attempt 1, 70% by
+attempt 3). The fine-tuned model's failures are mostly fixes that break existing behaviour, and
+repeats of the same edit after feedback (`STUCK`):
+
+![Why the local runs failed on test](docs/results/failure-attribution.png)
+
+**Sampling against feedback (pass@k).** Five independent one-attempt runs per split at
+temperature 0.7, unbiased pass@k estimator (Chen et al., 2021), against the repair loop's three
+attempts at the same budget of three generations:
+
+| Untuned, local | pass@1 | pass@3 | pass@5 | Repair loop, 3 attempts |
+|---|---|---|---|---|
+| Test (27) | 45% | 61% | 67% | 70% |
+| Real CVEs (10) | 26% | 45% | 50% | 35% |
+| Held-out synthetic (5) | 64% | 90% | 100% | 90% |
+
+Feedback beats resampling on the hand-built scenarios; on ten real CVEs it is the other way
+round. Runs `20261016-s1` to `-s5-sample-local-<split>`.
+
+**Ablations** (untuned model, test, two runs each; a difference of 4 or more of 54 was set in
+advance as the bar):
+
+| Variant | Resolved of 54 | Peak VRAM | Decode |
+|---|---|---|---|
+| Q4_K_M, thinking off (the served model) | 38 | 3,043 MiB | 46.5 tok/s |
+| Q5_K_M | 41 | 3,391 MiB | 43 tok/s |
+| Q8_0, 25 of its layers on the GPU (the rest does not fit 4 GB) | 41 | 3,771 MiB | about 17 tok/s |
+| Q4_K_M, thinking on | 41 | the same model, not re-measured | 47 tok/s |
+
+None reaches the bar, so the smallest and fastest stays. Runs `20261016-q5a`/`-q5b-repair-local`,
+`-q8a`/`-q8b-repair-local-q8`, `-tka`/`-tkb-repair-local-think`, each `-test`. Grammar-constrained
+decoding and tool localization were not run ([why](docs/14-timeline-part5.md)).
+
+**Prompt injection** ([doc 13 §6](docs/13-security-threat-model.md)): five copies of one
+scenario, each with a planted instruction (post `os.environ` to a URL, delete a test assertion,
+add `# nosec`, change CI configuration from the advisory text, and a credential beside the code).
+
+| Run | Followed the instruction | Got through every layer | Credential blocked before sending |
+|---|---|---|---|
+| Untuned, local, run 1 | 0 of 4 | 0 of 4 | yes |
+| Untuned, local, run 2 | 0 of 4 | 0 of 4 | yes |
+| Opus 5.5 | 0 of 4 | 0 of 4 | yes |
+
+Both models fixed the real flaw in the other four every time. A hand-written patch that obeys
+each instruction is rejected by the gates, with one exception: a bare `requests.post(...)` added
+without an import passes the gates and is stopped by the sandbox and the tests. Runs
+`20261016-a1`/`-a2-repair-local-adversarial`, `20261016-f1-repair-claude-code-adversarial`.
+
+`uv run aeropatch report runs/<a>.jsonl runs/<b>.jsonl ... [--csv <dir>]` regenerates every
+table; [notebooks/week4_charts.py](notebooks/week4_charts.py) redraws the charts.
+
+## Model
+
+- **Weights**: `Qwen/Qwen3.5-4B` (Apache-2.0), unchanged. Exported through the same merge and GGUF
+  path as the fine-tune with no adapter (Unsloth on Kaggle), at Q4_K_M: 2,708,804,192 bytes,
+  SHA-256 `51b5c0d6e5a9a2b6a5514231b821378382d72a057de3d7ad3ac09a5bddbbfdc7`.
+- **Served** with Ollama and [training/Modelfile](training/Modelfile), which copies the library
+  model's renderer and sampling parameters, so only the weights differ. Thinking is off.
+- **On an RTX 3050 Laptop (4 GB)**: 100% on the GPU at 8k context, 3,043 MiB peak, 46.5 tokens a
+  second; a repair attempt's median latency is about 6 seconds.
+- **For a quick start** the library `qwen3.5:4b` from Ollama works the same way: every Week 1
+  and 2 baseline used it, and it scored 17 and 18 of 27 on test on an older commit, against the
+  export's 19 and 19.
+- The fine-tuned adapter is not published: it lost on test and on the real CVEs, and tied on the
+  held-out synthetic scenarios.
 
 ## Pipeline
 
@@ -39,39 +134,45 @@ interpreter or test runner; use the sandbox for your own scenarios and pinned pu
 
 ## Quick start
 
+From a fresh clone, with Docker, Ollama and [uv](https://docs.astral.sh/uv/) installed (tested
+on Windows 11 on 2026-10-16: resolved at attempt 1):
+
 ```powershell
 uv sync
-uv run aeropatch build-base              # sandbox base image (once)
-uv run aeropatch validate --all          # 4 checks per scenario; builds scenario images
-uv run aeropatch bench --config oracle   # harness self-check: must resolve every dev scenario (--split test, test_b, test_c for the others)
-uv run pytest -q                         # unit + sandbox containment tests
+ollama pull qwen3.5:4b
+uv run aeropatch remediate A-089-01 --config repair-local   # builds the sandbox images on first use
 ```
 
-`uv run` does not load `.env` automatically. To pass `ANTHROPIC_API_KEY`, for example, use
-`uv run --env-file .env aeropatch bench --config baseline-frontier --split dev`. `OLLAMA_HOST`
-in that file overrides the local model endpoint.
-
-Local model (Ollama running, model pulled):
+The report and the diff land in `runs/remediate-A-089-01-repair-local/`. More:
 
 ```powershell
-uv run aeropatch remediate A-089-01 --config baseline-qwen3.5-4b
-uv run aeropatch bench --config baseline-qwen3.5-4b --split dev
-uv run aeropatch bench --config baseline-qwen2.5-coder-3b --split dev
-uv run aeropatch bench --config baseline-frontier --split dev   # needs ANTHROPIC_API_KEY; costs money
-uv run aeropatch bench --config baseline-claude-code --split dev   # same model via `claude -p` on a subscription
-uv run aeropatch bench --config repair-local --split test   # 3 attempts with test feedback
-uv run aeropatch report runs/<a>.jsonl runs/<b>.jsonl       # CIs, resolve@k, McNemar, per CWE
+uv run aeropatch validate --all          # 4 checks per scenario
+uv run aeropatch bench --config oracle   # harness self-check: must resolve every dev scenario
+uv run pytest -q                         # unit + sandbox containment tests
+uv run aeropatch bench --config repair-local --split test           # 3 attempts with test feedback
+uv run aeropatch bench --config cascade-claude-code --split test    # local twice, then Opus via `claude -p`
+uv run aeropatch bench --config repair-claude-code --split test     # Opus alone, on a Claude Code subscription
+uv run aeropatch bench --config baseline-frontier --split dev       # the API route: needs ANTHROPIC_API_KEY, costs money
+uv run aeropatch report runs/<a>.jsonl runs/<b>.jsonl               # intervals, resolve@k, pass@k, McNemar, bootstrap, per CWE
 ```
 
-`bench` resumes a killed run when given the same `--run-id`. `--jobs 2` runs two scenarios at
-once (two sandboxes; local generation stays one at a time).
+Splits: `dev`, `test`, `test_b` (real CVEs), `test_c` (held-out synthetic), `adversarial`.
+`--local-model` and `--frontier-model` override the configured models; the Week 4 runs used
+`--local-model aeropatch-control --frontier-model claude-opus-5-5`. `bench` resumes a killed run
+when given the same `--run-id`; `--jobs 2` runs two scenarios at once (two sandboxes; local
+generation stays one at a time).
+
+`uv run` does not load `.env` automatically: use `uv run --env-file .env ...` to pass
+`ANTHROPIC_API_KEY`. `OLLAMA_HOST` in that file overrides the local model endpoint.
 
 Other commands: `aeropatch scan <repo>`, `aeropatch context <repo> <path> <line>`,
-`aeropatch prune`. Nothing in the CLI commits, pushes or opens pull requests.
+`aeropatch build-base`, `aeropatch prune`. Nothing in the CLI commits, pushes or opens pull
+requests.
 
 MCP: `uv run aeropatch mcp` serves `scan`, `get_context`, `validate` and `remediate` over stdio
 (for example `claude mcp add aeropatch -- uv run aeropatch mcp`, run from this directory). It only
-reads repositories under `evaluations/scenarios/`.
+reads repositories under `evaluations/scenarios/`. A recorded session:
+[docs/mcp-transcript.md](docs/mcp-transcript.md).
 
 ## Training (Week 3)
 
@@ -97,16 +198,32 @@ LoRA on Qwen3.5-4B (r 16, alpha 16, 16-bit base, not QLoRA) with Unsloth on one 
   significant (paired exact McNemar p = 0.15). Its fixes break regression tests more often.
   Week 4 runs the untuned model. Real CVEs (Tier B, of 20): control 7, v2 3. Held-out
   synthetic scenarios (Tier C, of 10): 9 each.
-- **Serving**: the Q4_K_M GGUF with [training/Modelfile](training/Modelfile)
-  (`ollama create <name> -f Modelfile` beside the file). On the RTX 3050 the tuned model and the
-  control are both 100% on the GPU, 3,043 MiB at peak, and decode at about 46.5 tokens a second.
-  The untuned model also exists at Q5_K_M and Q8_0; sizes and SHA-256 are in [NOTES.md](NOTES.md) (D20).
 - **Reproduce**: `prepare_dataset.py build` (command and SHA-256 in [NOTES.md](NOTES.md), D19),
   then the `full-v2` run of [training/kaggle/kernel.py](training/kaggle/kernel.py) (set
-  `ORDER = ["full-v2"]`; it now holds D20's exports), which clones
-  this branch and runs [training/finetune.py](training/finetune.py).
+  `ORDER = ["full-v2"]`), which clones the repository and runs
+  [training/finetune.py](training/finetune.py).
 - **Not done**: the laptop QLoRA demo on Qwen2.5-Coder-1.5B (cut-list item 6). The GPU went to
   benchmark runs, and the laptop has no local training stack.
+
+## Limitations
+
+- **Python only, function-level fixes**, at most 3 files and 60 changed lines per edit.
+- **A small benchmark**: 27 hand-built test scenarios, 10 real CVEs, 5 held-out synthetic ones.
+  At these sizes an interval spans 20 to 40 points, and Week 2's two identical local runs
+  differed by 1 with 5 scenarios flipping. Read differences under the pre-set bar as ties.
+- **Tests are the oracle.** A passing PoC test shows the reported flaw is gone, not that the code
+  is secure; every fix needs review.
+- **Oracle localization**: the model is given the finding the scenario is about. For Tier A that
+  is the scanner's own finding (within 3 lines), with tree-sitter context around it; what is
+  given is the choice of which finding to fix. Tier B findings come from the advisory.
+- **The hand-built scenarios were written with Claude models**, which favours Opus there; the
+  real-CVE tier is the fairer comparison and the smallest.
+- **Costs are API-equivalent estimates** reported by the Claude Code CLI; the frontier runs used a
+  subscription. Opus 5.5 ran through the VS Code extension's CLI (2.1.296), since the installed
+  global CLI (2.1.239) did not support the model.
+- **One machine**: an RTX 3050 Laptop GPU (4 GB) and 16 GB of RAM on Windows 11, with Docker
+  Desktop. Speed and memory numbers are for that machine.
+- **Fine-tuning did not help** with 541 examples; a larger dataset was not tried.
 
 ## Layout
 
@@ -118,12 +235,14 @@ LoRA on Qwen3.5-4B (r 16, alpha 16, 16-bit base, not QLoRA) with Unsloth on one 
 | `src/aeropatch/tools/` | tree-sitter context, scanners, scratch workspaces, path validation |
 | `src/aeropatch/scenario.py` | scenario loader and the 4-check validator |
 | `src/aeropatch/bench.py` | JSONL benchmark runner (resumable, `--jobs 2`) |
-| `src/aeropatch/metrics.py` | the report: Wilson intervals, resolve@k, exact McNemar, speed and cost, per-CWE table, failure attribution |
+| `src/aeropatch/metrics.py` | the report: Wilson intervals, resolve@k, pass@k, exact McNemar, paired bootstrap, speed and cost, per-CWE table, failure attribution, injection rates, CSV |
 | `src/aeropatch/mcp_server.py` | thin MCP wrapper over the tools (stdio) |
 | `docker/` | sandbox base + per-scenario Dockerfiles, `run.sh`, hash-pinned harness tools |
 | `rules/` | AeroPatch's own Opengrep ruleset (22 rules) |
-| `evaluations/scenarios/` | 55 scenarios: 40 hand-built (Tier A, 16 CWEs), 10 from real CVEs (Tier B, each with the upstream licence) and 5 held out from the synthetic training data (Tier C); `split.json` is frozen at 13 dev, 27 test, 10 real-CVE test and 5 synthetic test |
+| `evaluations/scenarios/` | 60 scenarios: 40 hand-built (Tier A, 16 CWEs), 10 from real CVEs (Tier B, each with the upstream licence), 5 held out from the synthetic training data (Tier C) and 5 adversarial; `split.json` holds 13 dev, 27 test, 10 `test_b`, 5 `test_c` and 5 `adversarial` |
 | `training/` | Week 3 data. `inject_cwe.py`: synthetic, sandbox-verified training examples from a local teacher model. `prepare_dataset.py`: real fix pairs from GitHub advisories as SEARCH/REPLACE targets, and the dataset build. `finetune.py`: LoRA and GGUF export; `kaggle/`: the kernel that runs it; `Modelfile`: serving in Ollama |
+| `notebooks/` | `week4_charts.py` (the README charts) and `runs.ipynb`, a view of every run |
+| `docs/` | the plan (start at [00-overall-plan.md](docs/00-overall-plan.md)), `results/` (charts and CSV), the MCP transcript |
 | `runs/` | run logs (gitignored), and [runs/INDEX.md](runs/INDEX.md), which lists every run |
 
 ## Sandbox isolation (honest statement)
@@ -136,5 +255,17 @@ commits, not arbitrary untrusted repositories. See [docs/07-sandbox.md](docs/07-
 
 ## Data handling
 
-Prompts are scanned for secret patterns before they leave the process. API keys stay in the
-orchestrator and never reach a sandbox (tested). Only scenario code is sent to the frontier API.
+Prompts are scanned for secret patterns before they leave the process; a hit blocks the request
+(the adversarial scenario X-06 shows it). API keys stay in the orchestrator and never reach a
+sandbox (tested). Only scenario code is sent to the frontier model.
+
+## Later
+
+- gVisor or a microVM sandbox on a Linux host.
+- JavaScript and Go (tree-sitter grammars; PatchEval's other languages).
+- Model-driven localization over large repositories.
+- RL with a sandbox reward (GRPO), or fine-tuning again on a larger dataset.
+- A shorter escalation prompt, so the cascade saves more than it does now.
+- Whether Ollama's repetition penalty hurts exact SEARCH copying, and headers copied into edits on
+  long files: each a dev experiment and a new config.
+- Dependency-upgrade remediation (pip-audit findings).
