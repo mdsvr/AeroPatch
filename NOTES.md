@@ -1875,6 +1875,30 @@ one-attempt runs, the injection rates, and `--csv <dir>`. The three charts of do
 the untuned model's failures are mostly a PoC that still fails (10 of 16); v2's are `STUCK` (9)
 and `REGRESSION` (7), the D19 finding again.
 
+## Week 4, D26 (2026-10-16): README, fresh clone, MCP transcript
+
+- **README rewritten** for the Week 4 results: the headline table on all three tiers with 95%
+  Wilson intervals, the paired differences (bootstrap interval and McNemar), the three charts,
+  pass@k, the ablations, the adversarial table, a Model section, Limitations and a Later list.
+  Every number was recomputed from the run files with `aeropatch.metrics` before it went in, and
+  every relative link checked. The run IDs are named beside each table.
+- **Fresh clone, measured.** `git clone` into an empty `D:\aeropatch-fresh`, then `uv sync`,
+  `ollama pull qwen3.5:4b`, `uv run aeropatch remediate A-089-01 --config repair-local`:
+  RESOLVED at attempt 1 in 26.6 s; 380 s in all, mostly `uv sync`. `A-089-01` was resolved in all
+  7 complete clean dev runs of a local model. Docker's images are shared, so the base image
+  already existed: the new path that builds it when missing (`scenario.ensure_image`) is covered
+  by a unit test, not by this run. The harness would not let me delete `D:\aeropatch-fresh`; it
+  is yours to remove.
+- **MCP transcript**: `docs/mcp-transcript.md`, one stdio session through the `mcp` client
+  (2.2.0): `get_context`, `validate` with the reference fix (resolved) and with `# nosec` added
+  (`SUPPRESSES_CHECKS`), `remediate` (resolved at attempt 1 with the library model), and a `scan`
+  outside the allowlisted root (refused).
+- **Checks**: `ruff check .` was failing on 14 old findings (`notebooks/runs.ipynb`, `re.M` in
+  `local_client.py`); now clean, with DTZ off for notebooks only. The full suite: 364 passed after
+  `aeropatch prune` removed one sandbox container left from the restart of 2026-10-13 17:15:47,
+  which `test_cleanup_after_crash` counts.
+- Not done: the draft PRs on a demo repository (part 5, D26) wait for you to name one.
+
 ## Next
 
 **Decisions that are yours**

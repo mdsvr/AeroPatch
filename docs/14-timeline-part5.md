@@ -6,6 +6,12 @@ D20. Back to the index: [00-overall-plan.md](00-overall-plan.md)
 Lines marked **Change** differ from part 2, doc 11, doc 12, doc 13 or doc 15, and give the
 reason. Times are estimates unless they say "measured".
 
+**State on 2026-10-16, evening: D22 to D26 are done** except the draft PRs, which wait for a
+demo repository; the results are in `NOTES.md` (Week 4 sections) and the README. Two changes on
+the way: Opus 5.5 ran through the VS Code extension's CLI, because the global one was too old for
+it, and the charts are drawn by `notebooks/week4_charts.py` rather than inside the notebook.
+D27 (security checklist, secret scan, publishing the run files) and D28 remain.
+
 ## 1. Where Week 4 starts
 
 - **The Week 4 model is the untuned control, `aeropatch-control`** (Q4_K_M, the D17 export). v2
