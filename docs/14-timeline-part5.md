@@ -10,7 +10,8 @@ reason. Times are estimates unless they say "measured".
 demo repository; the results are in `NOTES.md` (Week 4 sections) and the README. Two changes on
 the way: Opus 5.5 ran through the VS Code extension's CLI, because the global one was too old for
 it, and the charts are drawn by `notebooks/week4_charts.py` rather than inside the notebook.
-D27 (security checklist, secret scan, publishing the run files) and D28 remain.
+The run files the README cites were scanned and published with D26, so D27 is the security
+checklist and the secret scan of the whole history; D28 remains.
 
 ## 1. Where Week 4 starts
 
