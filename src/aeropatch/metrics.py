@@ -7,7 +7,9 @@ Pure functions over parsed records. No model or sandbox access, so re-scoring is
 
 from __future__ import annotations
 
+import csv
 import json
+import random
 import re
 import statistics
 from itertools import combinations
@@ -98,6 +100,7 @@ def run_metrics(jsonl: Path) -> dict:
     first = [a for a in numbered if a["n"] == 1]
     latency = [a["latency_s"] for a in numbered if a.get("latency_s") is not None]
     tok_s = [t for a in numbered if (t := ((a.get("proposal") or {}).get("usage") or {}).get("decode_tok_s"))]
+    usage = [(a.get("proposal") or {}).get("usage") or {} for a in numbered]
     n = len(results)
     at = [sum(1 for a in wins.values() if a["n"] <= k) for k in (1, 2, 3)]  # the repair plans have 3 entries
     return {
@@ -119,6 +122,11 @@ def run_metrics(jsonl: Path) -> dict:
         "applied": sum(1 for a in first if a.get("sandbox") or a["label"] == "GATE_REJECT"),
         "poc_fixed": sum(1 for a in first if (a.get("sandbox") or {}).get("poc_passed")),
         "latency_p50": statistics.median(latency) if latency else None,
+        "latency_p95": (statistics.quantiles(latency, n=20, method="inclusive")[18] if len(latency) > 1
+                        else latency[0]) if latency else None,
+        # Totals over numbered attempts; a STUCK retry's tokens are not kept in the run file.
+        "tokens": {k: sum(u.get(k) or 0 for u in usage)
+                   for k in ("input_tokens", "output_tokens", "cache_read_input_tokens")},
         "tok_s_p50": statistics.median(tok_s) if tok_s else None,
         "refusals": sum(1 for a in attempts if a["label"] == "REFUSAL"),
         "cost_usd": sum(a.get("cost_usd", 0) for a in attempts),
@@ -127,13 +135,29 @@ def run_metrics(jsonl: Path) -> dict:
     }
 
 
-def _table(columns: list[str], rows: list[list]) -> str:
+class Table(str):
+    """A Markdown table that keeps its cells, so `report` can also write it as CSV."""
+    columns: list[str]
+    rows: list[list]
+
+
+def _table(columns: list[str], rows: list[list]) -> Table:
     lines = ["| " + " | ".join(columns) + " |", "|" + "---|" * len(columns)]
-    return "\n".join(lines + ["| " + " | ".join(str(cell) for cell in row) + " |" for row in rows])
+    t = Table("\n".join(lines + ["| " + " | ".join(str(cell) for cell in row) + " |" for row in rows]))
+    t.columns, t.rows = columns, rows
+    return t
 
 
 def _fmt(value: float | None, spec: str) -> str:
     return "-" if value is None else format(value, spec)
+
+
+def bootstrap_diff(a: list[bool], b: list[bool], resamples: int = 10_000, seed: int = 3407) -> tuple[float, float]:
+    """95% paired bootstrap interval for mean(b) - mean(a) over the same tasks (doc 12 §4)."""
+    diffs = [int(y) - int(x) for x, y in zip(a, b, strict=True)]
+    rng = random.Random(seed)
+    means = sorted(sum(rng.choices(diffs, k=len(diffs))) / len(diffs) for _ in range(resamples))
+    return means[int(0.025 * resamples)], means[int(0.975 * resamples) - 1]
 
 
 def headline(runs: list[dict]) -> str:
@@ -149,22 +173,32 @@ def headline(runs: list[dict]) -> str:
 
 
 def speed(runs: list[dict]) -> str:
-    return _table(["Run", "Model", "Applied @1", "PoC fixed @1", "p50 latency s", "tok/s", "Refusals", "Cost $"],
-                  [[m["label"], m["model"], f"{m['applied']}/{m['n']}", f"{m['poc_fixed']}/{m['n']}",
-                    _fmt(m["latency_p50"], ".1f"), _fmt(m["tok_s_p50"], ".1f"), m["refusals"],
-                    f"{m['cost_usd']:.2f}"] for m in runs])
+    rows = []
+    for m in runs:
+        k = len(m["resolved"]) or None  # per resolved scenario: "-" when nothing resolved
+        rows.append([m["label"], m["model"], f"{m['applied']}/{m['n']}", f"{m['poc_fixed']}/{m['n']}",
+                     _fmt(m["latency_p50"], ".1f"), _fmt(m["latency_p95"], ".1f"), _fmt(m["tok_s_p50"], ".1f"),
+                     m["refusals"], f"{m['cost_usd']:.2f}", _fmt(k and m["cost_usd"] / k, ".3f"),
+                     *(_fmt(k and m["tokens"][t] / k, ",.0f")
+                       for t in ("input_tokens", "output_tokens", "cache_read_input_tokens"))])
+    return _table(["Run", "Model", "Applied @1", "PoC fixed @1", "p50 latency s", "p95 latency s", "tok/s",
+                   "Refusals", "Cost $", "$ per resolved", "Input tok per resolved", "Output tok per resolved",
+                   "Cache-read tok per resolved"], rows)
 
 
 def delta(runs: list[dict]) -> str:
     rows = []
     for a, b in combinations(runs, 2):
-        shared = a["tasks"].keys() & b["tasks"].keys()
-        only_a = len((a["resolved"] - b["resolved"]) & shared)
-        only_b = len((b["resolved"] - a["resolved"]) & shared)
+        shared = sorted(a["tasks"].keys() & b["tasks"].keys())
+        only_a = len((a["resolved"] - b["resolved"]).intersection(shared))
+        only_b = len((b["resolved"] - a["resolved"]).intersection(shared))
+        lo, hi = bootstrap_diff([t in a["resolved"] for t in shared],
+                                [t in b["resolved"] for t in shared]) if shared else (None, None)
         rows.append([a["label"], b["label"], len(shared), only_a, only_b,
                      _fmt((only_b - only_a) / len(shared) if shared else None, "+.0%"),
-                     f"{mcnemar_exact(only_a, only_b):.3f}"])
-    return _table(["A", "B", "Shared tasks", "A only", "B only", "B - A", "McNemar p (exact)"], rows)
+                     f"{_fmt(lo, '+.0%')} to {_fmt(hi, '+.0%')}", f"{mcnemar_exact(only_a, only_b):.3f}"])
+    return _table(["A", "B", "Shared tasks", "A only", "B only", "B - A", "95% CI (paired bootstrap)",
+                   "McNemar p (exact)"], rows)
 
 
 def sampled(runs: list[dict]) -> str | None:
@@ -230,7 +264,8 @@ def attribution(m: dict) -> str:
                    for label, tasks in sorted(causes.items(), key=lambda kv: -len(kv[1]))])
 
 
-def report(paths: list[Path]) -> str:
+def report(paths: list[Path], csv_dir: Path | None = None) -> str:
+    """Markdown tables; with `csv_dir`, each table is also written there as a numbered CSV."""
     runs = [run_metrics(p) for p in paths]
     configs = [m["config"] for m in runs]
     for m in runs:  # two runs of one config are told apart by their run id
@@ -248,4 +283,15 @@ def report(paths: list[Path]) -> str:
     dirty = [m["run"] for m in runs if m["dirty"]]
     if dirty:
         parts.append(f"Not reproducible from a commit (dirty tree): {', '.join(dirty)}")
+    if csv_dir:
+        csv_dir.mkdir(parents=True, exist_ok=True)
+        title = "table"
+        for i, part in enumerate(parts):
+            if part.startswith("### "):
+                title = re.sub(r"[^a-z0-9]+", "-", part[4:].split("(")[0].lower()).strip("-")
+            elif isinstance(part, Table):
+                with (csv_dir / f"{i:02d}-{title}.csv").open("w", newline="", encoding="utf-8") as f:
+                    w = csv.writer(f)
+                    w.writerow(part.columns)
+                    w.writerows([str(c).strip("`") for c in row] for row in part.rows)
     return "\n\n".join(parts)

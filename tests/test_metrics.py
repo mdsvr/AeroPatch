@@ -21,6 +21,13 @@ def test_mcnemar_exact():
     assert metrics.mcnemar_exact(6, 1) == metrics.mcnemar_exact(1, 6)
 
 
+def test_bootstrap_diff_bounds():
+    assert metrics.bootstrap_diff([True, False] * 5, [True, False] * 5) == (0.0, 0.0)
+    assert metrics.bootstrap_diff([False] * 6, [True] * 6) == (1.0, 1.0)
+    lo, hi = metrics.bootstrap_diff([False] * 10, [True] * 5 + [False] * 5)
+    assert 0.1 <= lo < 0.5 < hi <= 0.9
+
+
 def test_pass_at_k_checks_of_doc_12():
     assert metrics.pass_at_k(5, 0, 1) == 0
     assert metrics.pass_at_k(5, 5, 3) == 1
@@ -102,8 +109,12 @@ def test_run_metrics_and_report_on_a_hand_computed_run(tmp_path):
     assert c["resolve_at"] == [2, 2, 4] and (c["by_local"], c["escalated"]) == (2, 2)
     assert c["cost_usd"] == pytest.approx(0.02)
 
-    text = metrics.report([local, cascade])
-    assert "| repair-local | cascade | 4 | 0 | 1 | +25% | 1.000 |" in text
+    text = metrics.report([local, cascade], csv_dir=tmp_path / "csv")
+    # Paired diffs 0, 0, 0, 1: no draw of the 1 has p = 0.32, three or more p = 0.05.
+    assert "| repair-local | cascade | 4 | 0 | 1 | +25% | +0% to +75% | 1.000 |" in text
+    head = (tmp_path / "csv" / "01-headline.csv").read_text(encoding="utf-8").splitlines()
+    assert head[0].startswith("Run,Config,Resolved,95% CI,@1") and head[1].startswith("local,repair-local,3/4")
+    assert c["cost_usd"] / 4 == pytest.approx(0.005) and "| 0.005 |" in text  # $ per resolved, cascade
     assert "| CWE-89 | 2 | 2/2 | 2/2 |" in text and "| CWE-328 | 1 | 0/1 | 1/1 |" in text
     assert "A-328-01 [CWE-328]: POC_FAIL > POC_FAIL > POC_FAIL" in text
     assert "cascade: every task resolved." in text
