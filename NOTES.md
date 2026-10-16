@@ -1904,7 +1904,8 @@ and `REGRESSION` (7), the D19 finding again.
 3. **Data mix from dev only** (D14), against doc 14 §5's wording. Also a default.
 4. **Pull requests.** Week 3 lives on `feat/week3-d15-data`, and you merge it into `main` as it
    goes: #11 to #19 are merged, the last (D19) on 2026-10-13, and D20 (the test runs and the
-   exports) went in with the next one on 2026-10-14. The Kaggle kernel clones that branch.
+   exports) went in with the next one on 2026-10-14. Week 4's D22 to D25 went in as #21 on
+   2026-10-16, still from this branch. The Kaggle kernel clones that branch.
    The training data itself (`training/synthetic/`, `training/data/`) is git-ignored and exists
    only on the laptop.
 
