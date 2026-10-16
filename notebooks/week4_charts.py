@@ -13,7 +13,7 @@ from pathlib import Path
 import matplotlib
 
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
+import matplotlib.pyplot as plt
 
 plt.rcParams["text.parse_math"] = False  # "$0.023" is money, not mathtext
 
