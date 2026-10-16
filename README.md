@@ -116,6 +116,11 @@ table; [notebooks/week4_charts.py](notebooks/week4_charts.py) redraws the charts
   export's 19 and 19.
 - The fine-tuned adapter is not published: it lost on test and on the real CVEs, and tied on the
   held-out synthetic scenarios.
+- **Intended use**: defensive fixes to code you own or to public projects at pinned commits, each
+  reviewed by a person before it is merged. **Known failure modes**: on its own the 4B model
+  misses fixes that need knowledge it lacks (salted key derivation with its verifier, SSRF checks
+  on the resolved address, archive path checks), writes fixes that break existing behaviour,
+  and sometimes repeats an edit after feedback; a passing PoC test is evidence, not proof.
 
 ## Pipeline
 
@@ -252,6 +257,15 @@ Hardened runc containers: `--network none`, read-only root, size-capped tmpfs, `
 image pinned by digest, harness tools pinned by hash. Containers share the Docker VM's kernel,
 so a kernel exploit could escape. This suits your own scenarios and public repos at pinned
 commits, not arbitrary untrusted repositories. See [docs/07-sandbox.md](docs/07-sandbox.md).
+
+## Dual-use boundaries
+
+AeroPatch generates fixes, not exploits. It runs PoC tests that live beside the code as unit
+tests, on code you own or public projects at pinned commits; it does not scan or attack live
+systems, and it has no command that commits, pushes or opens pull requests. The real-CVE
+scenarios are public and patched upstream. If it ever finds a new vulnerability in a third-party
+project, report it privately through that project's security policy, not in a public issue or
+pull request. See [docs/13-security-threat-model.md](docs/13-security-threat-model.md).
 
 ## Data handling
 

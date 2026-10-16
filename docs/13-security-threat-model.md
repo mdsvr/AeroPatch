@@ -117,16 +117,27 @@ demonstration of the architecture.
 
 ## 9. Pre-release security checklist
 
-- [ ] All sandbox tests from doc 07, section 10, pass.
-- [ ] All gate rule tests from doc 08 pass.
+Ticked on 2026-10-16 (D27); the evidence is in `NOTES.md`, Week 4, D27.
+
+- [x] All sandbox tests from doc 07, section 10, pass: the six of doc 07 and two more in
+      `tests/test_sandbox_security.py`, in the full run of 364 tests.
+- [x] All gate rule tests from doc 08 pass (`tests/test_gates.py`), plus the adversarial
+      scenarios' gate tests (`tests/test_scenarios.py`).
 - [x] MCP path-validation tests pass (traversal, symlink escape, non-allowlisted root):
       `tests/test_mcp_server.py` at the MCP boundary, `tests/test_paths.py` for the symlink case.
-- [ ] Outgoing-prompt secret scanner blocks a planted fake key (e.g. `sk-ant-FAKE...`).
-- [ ] `grep` of the repo for keys and tokens comes back clean; `.env` is in `.gitignore`; a
-      history scan (e.g. `gitleaks`) has been run once before making the repo public.
-- [ ] `submit` can't run non-interactively; there's no auto-merge path anywhere in the code.
-- [ ] The README contains the isolation statement, dual-use boundaries, and limitations.
-- [ ] Model card states intended use (defensive, human-reviewed) and known failure modes.
+- [x] Outgoing-prompt secret scanner blocks a planted fake key: `tests/test_prompts.py`
+      (`sk-ant-…`), `tests/test_loop.py`, and X-06 in three benchmark runs (`SECRET_BLOCKED`).
+- [x] No keys or tokens in the repository or its history; `.env` is in `.gitignore` and was never
+      committed. **Change:** the history scan used the secret filter's own patterns plus token
+      formats for Kaggle, Slack, Stripe and JWTs, over every line ever added in every branch,
+      instead of `gitleaks`, which would be one more tool to install. The repository was already
+      public when it ran.
+- [x] There is no `submit` command and no code that commits, pushes, opens or merges a pull
+      request (`grep` of `src/`); the draft-PR feature was never built.
+- [x] The README contains the isolation statement, dual-use boundaries, and limitations.
+- [x] **Change:** no model card, since the Week 4 model is the unchanged base model. The README's
+      Model section states the intended use (defensive, human-reviewed) and the known failure
+      modes.
 
 ## 10. What to say in interviews
 

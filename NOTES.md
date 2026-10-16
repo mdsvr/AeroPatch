@@ -1909,6 +1909,30 @@ and `REGRESSION` (7), the D19 finding again.
   the GPU with another program (D20), which would have inflated the figure.
 - Not done: the draft PRs on a demo repository (part 5, D26) wait for you to name one.
 
+## Week 4, D27 (2026-10-16): the security checklist
+
+**Doc 13 §9 is ticked**, each item with its evidence there; doc 07 §10's six sandbox checks are
+ticked too (all are tests in `tests/test_sandbox_security.py`, passing in the run of 364).
+
+- **The repository is already public on GitHub** (`gh repo view`: PUBLIC), so the history scan
+  below checked what is already out, not a gate before release.
+- **History scan, every branch, every added line (92,533):** the secret filter's patterns
+  (`prompts.SECRET_PATTERNS`, the assignment rule, high entropy beside a credential word) plus
+  Kaggle, Slack and Stripe token formats, JWTs, email addresses and Windows user folders. **No
+  real credential.** The 38 distinct hits: fake keys in tests (`sk-ant-1234567890…`,
+  `sk-ant-should-never-reach-the-sandbox`), X-06's `AKIAIOSFODNN7EXAMPLE` (AWS's documented
+  example), the scenarios' test passwords in their code and in the published run traces, a PEM
+  public key from a Tier B test, pytest temp paths, upstream authors' emails in two Tier B licence
+  files, and `C:\Users\<your Windows user name>` six times in old versions of `NOTES.md` (no current file has it).
+  That last one is not a secret; rewriting public history for it is not worth it, in my view.
+- `.env` is ignored and was never committed in any branch; `.env.example` holds no values.
+- No code in `src/` commits, pushes, opens or merges a pull request; there is no `submit`.
+- The README gained a **Dual-use boundaries** section and, in the Model section, the intended
+  use and known failure modes, which stand in for a model card (the model is the base model).
+- **The repository has no licence file.** Doc 15 §6 suggests MIT or Apache-2.0; choosing one is
+  yours, so nothing was added. Until then the public code is visible but, legally, not licensed
+  for reuse.
+
 ## Next
 
 **Decisions that are yours**
