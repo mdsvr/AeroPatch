@@ -1983,14 +1983,18 @@ and docs disagreed. I did not change the model: no published number moves.
   (3,266,450,553 bytes, reported as 4.7B). The fresh-clone pull at 17:35 on 2026-10-16 replaced
   it with `d8b0f5e9760c` (3,324,173,934 bytes, 4.2B; the vision projector is now a separate
   file), which equals the registry today. Only the fresh-clone run and the MCP transcript
-  (17:36-17:38) used the new build; both resolved `A-089-01`. The README's 17 and 18 of 27
+  (17:36-17:38) used the new build; both resolved `A-089-01`. Evidence: Ollama's server log loads
+  blob `a9d0a3e1…` at 17:36:21, its only library-model load that afternoon (the runs before it
+  loaded `aeropatch-control` and the ablation exports), and `docs/mcp-transcript.md` was written
+  at 17:38:54. The README's 17 and 18 of 27
   belong to the old build, and it now says so. Benchmarking the new build is a run you can ask for.
 - **Frontier default: `claude-opus-5` → `claude-opus-5-5`** in `config.DEFAULTS`, so the
   README's commands run the model its results report. The run headers keep each run's model;
   resuming an old frontier run under the new default is refused by the header check, as it should
   be. The CLI tests follow the new default.
 - **The global `claude` CLI is 2.1.296** (was 2.1.239, which does not accept Opus 5.5): the
-  version the Week 4 Opus runs used, chosen over the latest (2.1.303) to match them. One live call
+  version the Week 4 Opus runs used, chosen over the latest (2.1.303) to match them; the
+  auto-updater may move it on, and any later version runs the model too. One live call
   through `claude_code_client` with `repair-claude-code`: served by `claude-opus-5-5`, "OK",
   $0.0067 API-equivalent on the subscription.
 - **API-route cost: cache reads are priced per model.** `_cost` charged 0.1× input for every
