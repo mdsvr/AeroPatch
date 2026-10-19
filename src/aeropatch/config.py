@@ -38,7 +38,9 @@ DEFAULTS: dict = {
     # all layers fit the 3050's 4 GB at 8k ctx (3.64 GB peak, 48 tok/s; measured 2026-09-28).
     "local_num_gpu": 99,
     "local_think": False,
-    "frontier_model": "claude-opus-5",
+    # Opus 5.5 since 2026-10-19 (Week 4's reference); Weeks 1 and 2 ran claude-opus-5, as their
+    # run headers record.
+    "frontier_model": "claude-opus-5-5",
     "frontier_effort": "medium",
     "server_side_fallbacks": True,
     "max_tokens_local": 1024,
@@ -104,13 +106,14 @@ CONFIGS: dict[str, dict] = {
     "cascade-claude-code": {"mode": "cascade", "attempt_plan": ["local", "local", "claude-code"]},
 }
 
-# USD per 1M tokens (doc 04 §2; Anthropic table cached 2026-06-24). Re-check before publishing.
+# USD per 1M tokens: input, output, cache read (doc 04 §2; platform.claude.com pricing page,
+# checked 2026-10-19). Cache reads are 0.1x input except Opus 5.5 (0.05x) and Fable 5.1 (0.025x).
 PRICES = {
-    "claude-opus-5": (5.00, 25.00),
-    "claude-opus-5-5": (4.00, 20.00),
-    "claude-sonnet-5": (2.00, 10.00),
-    "claude-haiku-4-5": (1.00, 5.00),
-    "claude-fable-5-1": (10.00, 50.00),
+    "claude-opus-5": (5.00, 25.00, 0.50),
+    "claude-opus-5-5": (4.00, 20.00, 0.20),
+    "claude-sonnet-5": (2.00, 10.00, 0.20),
+    "claude-haiku-4-5": (1.00, 5.00, 0.10),
+    "claude-fable-5-1": (10.00, 50.00, 0.25),
 }
 
 

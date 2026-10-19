@@ -28,7 +28,7 @@ def runner(payload: dict, seen: dict):
 def ok(**kw):
     return {"is_error": False, "stop_reason": "end_turn", "subtype": "success", "result": "RATIONALE: x",
             "total_cost_usd": 0.0421, "usage": {"input_tokens": 3000, "output_tokens": 900},
-            "modelUsage": {"claude-opus-5": {}}, **kw}
+            "modelUsage": {"claude-opus-5-5": {}}, **kw}
 
 
 def test_success_is_tool_less_and_subscription_billed():
@@ -36,9 +36,9 @@ def test_success_is_tool_less_and_subscription_billed():
     gen = cc.generate([{"role": "user", "content": "fix it"}], "SYSTEM", load_config("baseline-claude-code"),
                       0.2, run=runner(ok(), seen))
     assert gen.text == "RATIONALE: x" and not gen.error and gen.refusal is None
-    assert gen.cost_usd == 0.0421 and gen.usage["input_tokens"] == 3000 and gen.usage["served_by"] == "claude-opus-5"
+    assert gen.cost_usd == 0.0421 and gen.usage["input_tokens"] == 3000 and gen.usage["served_by"] == "claude-opus-5-5"
     cmd = seen["cmd"]
-    assert cmd[cmd.index("--tools") + 1] == "" and cmd[cmd.index("--model") + 1] == "claude-opus-5"
+    assert cmd[cmd.index("--tools") + 1] == "" and cmd[cmd.index("--model") + 1] == "claude-opus-5-5"
     assert seen["system"] == "SYSTEM" and seen["input"] == "fix it"
     assert "ANTHROPIC_API_KEY" not in seen["env"]  # never bill an API key by accident
 
@@ -68,7 +68,7 @@ def test_repair_history_is_flattened_in_order():
 
 
 def test_served_by_is_the_requested_model_not_the_cli_side_call():
-    by_model = {"claude-haiku-4-5-20251001": {"costUSD": 0.0009}, "claude-opus-5": {"costUSD": 0.0412}}
+    by_model = {"claude-haiku-4-5-20251001": {"costUSD": 0.0009}, "claude-opus-5-5": {"costUSD": 0.0412}}
     gen = cc.generate([{"role": "user", "content": "fix it"}], "SYSTEM", load_config("baseline-claude-code"),
                       0.2, run=runner(ok(modelUsage=by_model), {}))
-    assert gen.usage["served_by"] == "claude-opus-5" and gen.usage["model_usage"] == by_model
+    assert gen.usage["served_by"] == "claude-opus-5-5" and gen.usage["model_usage"] == by_model

@@ -19,10 +19,10 @@ FALLBACK_BETA = "server-side-fallback-2026-07-01"
 
 
 def _cost(model: str, usage: dict) -> float:
-    inp, out = PRICES.get(model, (0.0, 0.0))
+    inp, out, hit = PRICES.get(model, (0.0, 0.0, 0.0))
     cached = usage.get("cache_read_input_tokens") or 0
     written = usage.get("cache_creation_input_tokens") or 0
-    return round((usage.get("input_tokens", 0) * inp + written * inp * 1.25 + cached * inp * 0.1
+    return round((usage.get("input_tokens", 0) * inp + written * inp * 1.25 + cached * hit
                   + usage.get("output_tokens", 0) * out) / 1e6, 6)
 
 
