@@ -2004,6 +2004,75 @@ and docs disagreed. I did not change the model: no published number moves.
   frontier run went through Claude Code, whose cost is the CLI's own estimate).
 - **Checks**: the full suite, 364 passed (246 s); `ruff check .` clean.
 
+## Retraining v2 on the same data (2026-10-19)
+
+You asked to train the model again on the data it has. This is a reproduction of D19's second run:
+dataset v2 (`train.jsonl` `4bf82d1a…`, `val.jsonl` `25689fd9…`, the same files as the Kaggle
+dataset `aeropatch-train-v2`), `finetune.py` and `training/requirements.txt` unchanged since
+`f43f77a`, seed 3407, the D18 values, kernel run `full-v2`. What can differ: the Kaggle image
+and GPU kernels that are not deterministic.
+
+**How it is read, written before the session.**
+- **Reproduced bit for bit?** The new step-64 GGUF's SHA-256 against D19's (`D:\aeropatch-d19`),
+  and the validation loss at each checkpoint against D19's 0.2595, 0.2560, 0.2577 and 0.2588.
+- **The benchmark, as v2 step 64 was judged** (`repair-local`): dev 3 runs (D19: 26 of 39), test
+  2 runs (D20: 32 of 54), Tier B 2 runs (3 of 20) and Tier C 2 runs (9 of 10). The baselines are
+  the D19 and D20 runs: the local route of the harness has not changed since `c03f33f` (two
+  `re.MULTILINE` lint edits and a base-image check in `remediate`).
+- **Rule.** Within 3 of 54 of v2's 32 on test, the training reproduces. Against the untuned
+  control's 38, D20's rule applies again: 4 or more below is a loss, 4 or more above a gain.
+- This is the second time the test split judges a fine-tune. Nothing is tuned on what it shows.
+
+**The session: kernel version 14, queued 11:42, running 11:52, complete at the 14:24 check.**
+All four steps ended with exit code 0 (`full-v2` and the exports of steps 32, 64 and 96). The
+clone was `e302ebb`, whose `finetune.py` is `f43f77a`'s, and `pip freeze` is identical to D19's.
+
+| | D19 (kernel version 12) | Today (version 14) |
+|---|---|---|
+| Examples, steps | 511, 128 | 511, 128 |
+| Seconds a step, training time | 45.5, 5,820 s | 47.5, 6,082 s |
+| Peak GPU memory | 13.1 GB | 13.1 GB |
+| Validation loss at steps 32, 64, 96, 128 | 0.2595, 0.2560, 0.2577, 0.2588 | 0.2595, 0.2567, 0.2579, 0.2587 |
+| Training loss, first and last logged | 0.3851, 0.1817 | 0.3852, 0.1820 |
+| Step-64 GGUF, SHA-256 | `3331e74d…` (2,783,446,560 bytes) | `6f8a7c5b…` (2,783,446,592 bytes) |
+
+- **Not bit for bit**: the losses agree to the third decimal and part one at step 32 to the
+  fourth, then drift (step 64: 0.2567 against 0.2560), so the T4's kernels are not
+  deterministic at a fixed seed; the GGUF differs, by 32 bytes in length as well.
+- The step-64 GGUF is in Ollama as `aeropatch-v2r-step64` (the same Modelfile), 100% on the GPU
+  at 8k context. Files on `D:\aeropatch-v2r`: the four `pilot.json`, `status.txt`, the frozen
+  requirements, the kernel log and the step-64 GGUF; the other GGUFs stay in the session's output.
+- Benchmark runs `20261019-v2r1` to `-v2r3` (dev), `-v2r1`/`-v2r2` (test, `test_b`, `test_c`),
+  each `-repair-local-<split>`, `--jobs 1` as before, the model unloaded between runs.
+
+**The result: the retrain reproduces v2, and the verdict stands. The fine-tune loses to the
+untuned model.**
+
+| Model, `repair-local` | Untuned control (D19, D20) | v2, step 64 (D19, D20) | v2 retrained, step 64 (today) |
+|---|---|---|---|
+| Dev, 3 runs, of 39 | 26 | 26 | **26** (9, 9, 8) |
+| Test, 2 runs, of 54 | 38 (19, 19) | 32 (18, 14) | **29** (14, 15) |
+| Test, resolved at attempt 1 | 28 | 24 | 22 |
+| Tier B, 2 runs, of 20 | 7 | 3 | **4** (2, 2) |
+| Tier C, 2 runs, of 10 | 9 | 9 | **8** (4, 4) |
+
+- **By the rule written this morning**: 29 is within 3 of v2's 32, so the training reproduces,
+  at the edge of the band. Against the control's 38 it is 9 below, a loss.
+- **Paired, run *i* against run *i*, on test**: the control resolves 11 scenario runs that the
+  retrain does not, and the retrain 2 that the control does not (pooled exact McNemar
+  p = 0.022). The rule reads totals, not this value. The control runs are D20's, five days
+  older and not alternated with today's, and the first v2 against them gave p = 0.146. Against
+  the first v2: 6 against 3 (p = 0.51), no difference.
+- **The same failure shape as D20**: 11 test runs end `STUCK` (7 and 4; the first v2: 9; the
+  control: none), and 8 in `REGRESSION`. Dev resolves more at the first attempt than the first
+  v2 did (23 against 18, the control's 23), with the same total.
+- Decoding at 47.2 to 47.3 tokens a second on dev; no provider error, sandbox error or timeout.
+- **What it means**: the D20 loss was not one unlucky training run. Two trainings on dataset v2
+  give 32 and 29 of 54 against 38 for the untuned model. The 3 between the two trainings is
+  inside the benchmark's own noise: the first v2's two test runs alone scored 18 and 14.
+- Nothing changes in Week 4 or the README's headline: the untuned model stays the served one.
+  `aeropatch-v2r-step64` stays in Ollama (2.8 GB on `F:`) until you say it can go.
+
 ## Next
 
 **Decisions that are yours**
@@ -2036,7 +2105,9 @@ and docs disagreed. I did not change the model: no published number moves.
    exports) went in with the next one on 2026-10-14. Week 4's D22 to D25 went in as #21 on
    2026-10-16, D26 as #22 and D27-D28 as #23, still from this branch. **`v1.0` is the annotated
    tag on #23's merge commit `d92c1f1`, pushed 2026-10-19.** The licence went in as #24;
-   **`v1.0.1`** tags its merge commit `1ecb35c`, and GitHub now shows "Apache License 2.0". The Kaggle kernel clones that branch.
+   **`v1.0.1`** tags its merge commit `1ecb35c`, and GitHub now shows "Apache License 2.0". The
+   model check (2026-10-19) went in as #25, merge commit `caba3a7`, untagged. The Kaggle kernel
+   clones that branch.
    The training data itself (`training/synthetic/`, `training/data/`) is git-ignored and exists
    only on the laptop.
 
