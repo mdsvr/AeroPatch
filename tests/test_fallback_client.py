@@ -61,3 +61,7 @@ def test_text_usage_and_cost():
     assert gen.usage["cache_read_input_tokens"] == 500
     # 1000*5 + 500*0.5 + 200*25 per 1M tokens
     assert abs(gen.cost_usd - (5000 + 250 + 5000) / 1e6) < 1e-9
+    # Opus 5.5 reads its cache at 0.05x input: 1000*4 + 500*0.2 + 200*20
+    opus55 = fallback_client._cost("claude-opus-5-5", {"input_tokens": 1000, "output_tokens": 200,
+                                                       "cache_read_input_tokens": 500})
+    assert abs(opus55 - (4000 + 100 + 4000) / 1e6) < 1e-9

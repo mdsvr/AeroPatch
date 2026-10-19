@@ -108,8 +108,9 @@ table; [notebooks/week4_charts.py](notebooks/week4_charts.py) redraws the charts
 - **Weights**: `Qwen/Qwen3.5-4B` (Apache-2.0), unchanged. Exported through the same merge and GGUF
   path as the fine-tune with no adapter (Unsloth on Kaggle), at Q4_K_M: 2,708,804,192 bytes,
   SHA-256 `51b5c0d6e5a9a2b6a5514231b821378382d72a057de3d7ad3ac09a5bddbbfdc7`.
-- **Served** with Ollama and [training/Modelfile](training/Modelfile), which copies the library
-  model's renderer and sampling parameters, so only the weights differ. Thinking is off.
+- **Served** with Ollama 0.40.3 (every run cited here from 2026-10-12 on) and
+  [training/Modelfile](training/Modelfile), which copies the library model's renderer and sampling
+  parameters, so only the weights differ. Thinking is off.
 - **On an RTX 3050 Laptop (4 GB)**: 100% on the GPU at 8k context, 3,043 MiB peak, 46.5 tokens a
   second; a repair attempt's median latency is about 6 seconds (speed run
   `20261014-121928-repair-local-dev` with `nvidia-smi` sampled into `runs/vram-aeropatch-control.txt`;
@@ -117,6 +118,9 @@ table; [notebooks/week4_charts.py](notebooks/week4_charts.py) redraws the charts
 - **For a quick start** the library `qwen3.5:4b` from Ollama works the same way: every Week 1
   and 2 baseline used it, and it scored 17 and 18 of 27 on test on an older commit
   (`20261003-155954`, `20261003-162838`, each `-repair-local-test`), against the export's 19 and 19.
+  Ollama has since rebuilt that tag: those runs used build `2a654d98e6fb`, and `ollama pull` now
+  gives `d8b0f5e9760c` (the vision projector is a separate file). The newer build resolved
+  `A-089-01` in the fresh-clone test and the MCP transcript; it has not been benchmarked.
 - The fine-tuned adapter is not published: it lost on test and on the real CVEs, and tied on the
   held-out synthetic scenarios.
 - **Intended use**: defensive fixes to code you own or to public projects at pinned commits, each
@@ -166,7 +170,8 @@ uv run aeropatch report runs/<a>.jsonl runs/<b>.jsonl               # intervals,
 
 Splits: `dev`, `test`, `test_b` (real CVEs), `test_c` (held-out synthetic), `adversarial`.
 `--local-model` and `--frontier-model` override the configured models; the Week 4 runs used
-`--local-model aeropatch-control --frontier-model claude-opus-5-5`. `bench` resumes a killed run
+`--local-model aeropatch-control --frontier-model claude-opus-5-5`; Opus 5.5 is now the default
+frontier model (Weeks 1 and 2 ran `claude-opus-5`). `bench` resumes a killed run
 when given the same `--run-id`; `--jobs 2` runs two scenarios at once (two sandboxes; local
 generation stays one at a time).
 
@@ -231,8 +236,8 @@ LoRA on Qwen3.5-4B (r 16, alpha 16, 16-bit base, not QLoRA) with Unsloth on one 
 - **The hand-built scenarios were written with Claude models**, which favours Opus there; the
   real-CVE tier is the fairer comparison and the smallest.
 - **Costs are API-equivalent estimates** reported by the Claude Code CLI; the frontier runs used a
-  subscription. Opus 5.5 ran through the VS Code extension's CLI (2.1.296), since the installed
-  global CLI (2.1.239) did not support the model.
+  subscription. Opus 5.5 ran through Claude Code CLI 2.1.296; an older CLI (2.1.239) does not
+  accept the model.
 - **One machine**: an RTX 3050 Laptop GPU (4 GB) and 16 GB of RAM on Windows 11, with Docker
   Desktop. Speed and memory numbers are for that machine.
 - **Fine-tuning did not help** with 541 examples; a larger dataset was not tried.

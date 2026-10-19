@@ -1967,6 +1967,43 @@ ticked too (all are tests in `tests/test_sandbox_security.py`, passing in the ru
   was never built, so these would be PRs opened by hand from a `remediate` diff); pushing the
   `v1.0` tag; deleting `D:\aeropatch-fresh` and the Kaggle dataset `aeropatch-v2-step64-adapter`.
 
+## Model check (2026-10-19)
+
+You asked me to check the whole model setup and update it. I checked it and fixed where the code
+and docs disagreed. I did not change the model: no published number moves.
+- **No newer Qwen fits 4 GB.** Qwen's Hugging Face listing since Qwen3.5 (2026-03) has
+  Qwen3.6 (27B, 35B-A3B), Qwen3.8 (27B and up) and Qwen-Drive-1.0-4B (a driving model). Nothing
+  general under 9B. Other model families were not surveyed.
+- **`aeropatch-control`** is the blob `sha256-51b5c0d6…bfdc7`, the README's SHA-256, and its
+  Modelfile parameters equal the library model's (`top_k 20`, `top_p 0.95`, `presence_penalty
+  1.5`, `temperature 1`, the `qwen3.5` renderer and parser).
+- **Ollama 0.40.3** since 2026-10-12 12:35 (its app log), before the first cited Week 3 run
+  (`20261012-164903`); the README now says so. Weeks 1 and 2 ran older versions.
+- **The library `qwen3.5:4b` tag was rebuilt.** Weeks 1 and 2 used build `2a654d98e6fb`
+  (3,266,450,553 bytes, reported as 4.7B). The fresh-clone pull at 17:35 on 2026-10-16 replaced
+  it with `d8b0f5e9760c` (3,324,173,934 bytes, 4.2B; the vision projector is now a separate
+  file), which equals the registry today. Only the fresh-clone run and the MCP transcript
+  (17:36-17:38) used the new build; both resolved `A-089-01`. Evidence: Ollama's server log loads
+  blob `a9d0a3e1…` at 17:36:21, its only library-model load that afternoon (the runs before it
+  loaded `aeropatch-control` and the ablation exports), and `docs/mcp-transcript.md` was written
+  at 17:38:54. The README's 17 and 18 of 27
+  belong to the old build, and it now says so. Benchmarking the new build is a run you can ask for.
+- **Frontier default: `claude-opus-5` → `claude-opus-5-5`** in `config.DEFAULTS`, so the
+  README's commands run the model its results report. The run headers keep each run's model;
+  resuming an old frontier run under the new default is refused by the header check, as it should
+  be. The CLI tests follow the new default.
+- **The global `claude` CLI is 2.1.296** (was 2.1.239, which does not accept Opus 5.5): the
+  version the Week 4 Opus runs used, chosen over the latest (2.1.303) to match them; the
+  auto-updater may move it on, and any later version runs the model too. One live call
+  through `claude_code_client` with `repair-claude-code`: served by `claude-opus-5-5`, "OK",
+  $0.0067 API-equivalent on the subscription.
+- **API-route cost: cache reads are priced per model.** `_cost` charged 0.1× input for every
+  model. The pricing page (checked 2026-10-19) gives 0.05× for Opus 5.5 and 0.025× for Fable
+  5.1, so `PRICES` now holds input, output and cache-read prices, and a test covers Opus 5.5.
+  Input and output prices were already right. No published number used this route (every
+  frontier run went through Claude Code, whose cost is the CLI's own estimate).
+- **Checks**: the full suite, 364 passed (246 s); `ruff check .` clean.
+
 ## Next
 
 **Decisions that are yours**
@@ -1992,13 +2029,14 @@ ticked too (all are tests in `tests/test_sandbox_security.py`, passing in the ru
    none with a line that a benchmark reference fix changes; the 20 scenarios in
    `training/rejected.txt` are out.
 2. **Frontier reference: `claude-opus-5-5` from Week 4 on** (D22 section; yours to overrule).
-   Weeks 1 and 2 used `claude-opus-5`.
+   Weeks 1 and 2 used `claude-opus-5`. It is the configured default since 2026-10-19.
 3. **Data mix from dev only** (D14), against doc 14 §5's wording. Also a default.
 4. **Pull requests.** Week 3 lives on `feat/week3-d15-data`, and you merge it into `main` as it
    goes: #11 to #19 are merged, the last (D19) on 2026-10-13, and D20 (the test runs and the
    exports) went in with the next one on 2026-10-14. Week 4's D22 to D25 went in as #21 on
    2026-10-16, D26 as #22 and D27-D28 as #23, still from this branch. **`v1.0` is the annotated
-   tag on #23's merge commit `d92c1f1`, pushed 2026-10-19.** The Kaggle kernel clones that branch.
+   tag on #23's merge commit `d92c1f1`, pushed 2026-10-19.** The licence went in as #24;
+   **`v1.0.1`** tags its merge commit `1ecb35c`, and GitHub now shows "Apache License 2.0". The Kaggle kernel clones that branch.
    The training data itself (`training/synthetic/`, `training/data/`) is git-ignored and exists
    only on the laptop.
 
