@@ -1998,7 +1998,8 @@ ticked too (all are tests in `tests/test_sandbox_security.py`, passing in the ru
    goes: #11 to #19 are merged, the last (D19) on 2026-10-13, and D20 (the test runs and the
    exports) went in with the next one on 2026-10-14. Week 4's D22 to D25 went in as #21 on
    2026-10-16, D26 as #22 and D27-D28 as #23, still from this branch. **`v1.0` is the annotated
-   tag on #23's merge commit `d92c1f1`, pushed 2026-10-19.** The Kaggle kernel clones that branch.
+   tag on #23's merge commit `d92c1f1`, pushed 2026-10-19.** The licence went in as #24;
+   **`v1.0.1`** tags its merge commit `1ecb35c`, and GitHub now shows "Apache License 2.0". The Kaggle kernel clones that branch.
    The training data itself (`training/synthetic/`, `training/data/`) is git-ignored and exists
    only on the laptop.
 
