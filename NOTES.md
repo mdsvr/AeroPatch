@@ -2045,6 +2045,34 @@ clone was `e302ebb`, whose `finetune.py` is `f43f77a`'s, and `pip freeze` is ide
 - Benchmark runs `20261019-v2r1` to `-v2r3` (dev), `-v2r1`/`-v2r2` (test, `test_b`, `test_c`),
   each `-repair-local-<split>`, `--jobs 1` as before, the model unloaded between runs.
 
+**The result: the retrain reproduces v2, and the verdict stands. The fine-tune loses to the
+untuned model.**
+
+| Model, `repair-local` | Untuned control (D19, D20) | v2, step 64 (D19, D20) | v2 retrained, step 64 (today) |
+|---|---|---|---|
+| Dev, 3 runs, of 39 | 26 | 26 | **26** (9, 9, 8) |
+| Test, 2 runs, of 54 | 38 (19, 19) | 32 (18, 14) | **29** (14, 15) |
+| Test, resolved at attempt 1 | 28 | 24 | 22 |
+| Tier B, 2 runs, of 20 | 7 | 3 | **4** (2, 2) |
+| Tier C, 2 runs, of 10 | 9 | 9 | **8** (4, 4) |
+
+- **By the rule written this morning**: 29 is within 3 of v2's 32, so the training reproduces,
+  at the edge of the band. Against the control's 38 it is 9 below, a loss.
+- **Paired, run *i* against run *i*, on test**: the control resolves 11 scenario runs that the
+  retrain does not, and the retrain 2 that the control does not (pooled exact McNemar
+  p = 0.022). This is the first fine-tune comparison under 0.05; D20's v2 was p = 0.146. Against
+  the first v2: 6 against 3 (p = 0.51), no difference.
+- **The same failure shape as D20**: 11 test runs end `STUCK` (7 and 4; the first v2: 9; the
+  control: none), and 8 in `REGRESSION`. Dev resolves more at the first attempt than the first
+  v2 did (23 against 18, the control's 23), with the same total.
+- Decoding at 47.2 to 47.3 tokens a second on dev; no provider error, sandbox error or timeout.
+- **What it means**: the D20 loss was not one unlucky training run. Two trainings on dataset v2
+  give 32 and 29 of 54 against 38 for the untuned model. The run-to-run spread of the training
+  itself (3 of 54 here) is no larger than the benchmark's own (Week 2: 1, with 5 scenarios
+  flipping).
+- Nothing changes in Week 4 or the README's headline: the untuned model stays the served one.
+  `aeropatch-v2r-step64` stays in Ollama (2.8 GB on `F:`) until you say it can go.
+
 ## Next
 
 **Decisions that are yours**

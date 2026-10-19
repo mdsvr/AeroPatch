@@ -2,8 +2,8 @@
 
 Every run in `runs/` (doc 14 part 1): run ID, config, model, split, the commit in its header,
 whether the tree was dirty, and resolved of finished scenarios. The takeaway of each group is
-the short form of its `NOTES.md` section. The run files are git-ignored except the 64 the README
-cites (Week 2 test, Week 3 D17 to D20, Week 4) and four GPU memory traces (`vram-*.txt`), which
+the short form of its `NOTES.md` section. The run files are git-ignored except the 73 the README
+cites (Week 2 test, Week 3 D17 to D20, Week 4, the retrain of 2026-10-19) and four GPU memory traces (`vram-*.txt`), which
 are committed; compare two
 with `uv run aeropatch report runs/<a>.jsonl runs/<b>.jsonl`.
 
@@ -234,3 +234,19 @@ Control pass@1/3/5 on test 45/61/67% (repair loop 70%); cascade 27, 9, 5 in both
 | `20261016-q8b-repair-local-q8-test` | repair-local-q8 | aeropatch-control-q8 | test | `1810d77` | no | 19/27 |
 | `20261016-tka-repair-local-think-test` | repair-local-think | aeropatch-control | test | `1810d77` | no | 21/27 |
 | `20261016-tkb-repair-local-think-test` | repair-local-think | aeropatch-control | test | `d954d1b` | no | 20/27 |
+
+## 2026-10-19: v2 trained again on the same data
+
+The same data, code and seed as D19; the GPU did not reproduce it bit for bit. Dev 26 of 39 (v2: 26), test 29 of 54 (v2: 32, control 38), Tier B 4 of 20 (v2: 3), Tier C 8 of 10 (v2: 9): the same verdict, a loss to the untuned control.
+
+| Run | Config | Model | Split | Commit | Dirty | Resolved |
+|---|---|---|---|---|---|---|
+| `20261019-v2r1-repair-local-dev` | repair-local | aeropatch-v2r-step64 | dev | `944a418` | no | 9/13 |
+| `20261019-v2r2-repair-local-dev` | repair-local | aeropatch-v2r-step64 | dev | `3668928` | no | 9/13 |
+| `20261019-v2r3-repair-local-dev` | repair-local | aeropatch-v2r-step64 | dev | `3668928` | no | 8/13 |
+| `20261019-v2r1-repair-local-test` | repair-local | aeropatch-v2r-step64 | test | `3668928` | no | 14/27 |
+| `20261019-v2r2-repair-local-test` | repair-local | aeropatch-v2r-step64 | test | `3668928` | no | 15/27 |
+| `20261019-v2r1-repair-local-test_b` | repair-local | aeropatch-v2r-step64 | test_b | `3668928` | no | 2/10 |
+| `20261019-v2r2-repair-local-test_b` | repair-local | aeropatch-v2r-step64 | test_b | `3668928` | no | 2/10 |
+| `20261019-v2r1-repair-local-test_c` | repair-local | aeropatch-v2r-step64 | test_c | `3668928` | no | 4/5 |
+| `20261019-v2r2-repair-local-test_c` | repair-local | aeropatch-v2r-step64 | test_c | `3668928` | no | 4/5 |
