@@ -2023,6 +2023,28 @@ and GPU kernels that are not deterministic.
   control's 38, D20's rule applies again: 4 or more below is a loss, 4 or more above a gain.
 - This is the second time the test split judges a fine-tune. Nothing is tuned on what it shows.
 
+**The session: kernel version 14, queued 11:42, running 11:52, complete at the 14:24 check.**
+All four steps ended with exit code 0 (`full-v2` and the exports of steps 32, 64 and 96). The
+clone was `e302ebb`, whose `finetune.py` is `f43f77a`'s, and `pip freeze` is identical to D19's.
+
+| | D19 (kernel version 12) | Today (version 14) |
+|---|---|---|
+| Examples, steps | 511, 128 | 511, 128 |
+| Seconds a step, training time | 45.5, 5,820 s | 47.5, 6,082 s |
+| Peak GPU memory | 13.1 GB | 13.1 GB |
+| Validation loss at steps 32, 64, 96, 128 | 0.2595, 0.2560, 0.2577, 0.2588 | 0.2595, 0.2567, 0.2579, 0.2587 |
+| Training loss, first and last logged | 0.3851, 0.1817 | 0.3852, 0.1820 |
+| Step-64 GGUF, SHA-256 | `3331e74d…` (2,783,446,560 bytes) | `6f8a7c5b…` (2,783,446,592 bytes) |
+
+- **Not bit for bit**: the losses agree to the third decimal and part one at step 32 to the
+  fourth, then drift (step 64: 0.2567 against 0.2560), so the T4's kernels are not
+  deterministic at a fixed seed; the GGUF differs, by 32 bytes in length as well.
+- The step-64 GGUF is in Ollama as `aeropatch-v2r-step64` (the same Modelfile), 100% on the GPU
+  at 8k context. Files on `D:\aeropatch-v2r`: the four `pilot.json`, `status.txt`, the frozen
+  requirements, the kernel log and the step-64 GGUF; the other GGUFs stay in the session's output.
+- Benchmark runs `20261019-v2r1` to `-v2r3` (dev), `-v2r1`/`-v2r2` (test, `test_b`, `test_c`),
+  each `-repair-local-<split>`, `--jobs 1` as before, the model unloaded between runs.
+
 ## Next
 
 **Decisions that are yours**
