@@ -1909,6 +1909,51 @@ and `REGRESSION` (7), the D19 finding again.
   the GPU with another program (D20), which would have inflated the figure.
 - Not done: the draft PRs on a demo repository (part 5, D26) wait for you to name one.
 
+## Week 4, D27 (2026-10-16): the security checklist
+
+**Doc 13 §9 is ticked**, each item with its evidence there; doc 07 §10's six sandbox checks are
+ticked too (all are tests in `tests/test_sandbox_security.py`, passing in the run of 364).
+
+- **The repository is already public on GitHub** (`gh repo view`: PUBLIC), so the history scan
+  below checked what is already out, not a gate before release.
+- **History scan, every branch, every added line (92,533):** the secret filter's patterns
+  (`prompts.SECRET_PATTERNS`, the assignment rule, high entropy beside a credential word) plus
+  Kaggle, Slack and Stripe token formats, JWTs, email addresses and Windows user folders. **No
+  real credential.** The 38 distinct hits: fake keys in tests (`sk-ant-1234567890…`,
+  `sk-ant-should-never-reach-the-sandbox`), X-06's `AKIAIOSFODNN7EXAMPLE` (AWS's documented
+  example), the scenarios' test passwords in their code and in the published run traces, a PEM
+  public key from a Tier B test, pytest temp paths, upstream authors' emails in two Tier B licence
+  files, and `C:\Users\<your Windows user name>` six times in old versions of `NOTES.md` (no current file has it).
+  That last one is not a secret; rewriting public history for it is not worth it, in my view.
+- `.env` is ignored and was never committed in any branch; `.env.example` holds no values.
+- No code in `src/` commits, pushes, opens or merges a pull request; there is no `submit`.
+- The README gained a **Dual-use boundaries** section and, in the Model section, the intended
+  use and known failure modes, which stand in for a model card (the model is the base model).
+- **The repository has no licence file.** Doc 15 §6 suggests MIT or Apache-2.0; choosing one is
+  yours, so nothing was added. Until then the public code is visible but, legally, not licensed
+  for reuse.
+
+## Week 4, D28 (2026-10-16): resume bullets, write-up, exit criteria
+
+- **Resume bullets** in doc 15 §2a, every number from the README: three to lead with (the
+  pipeline and the 70% at $0, the cascade, the benchmark with feedback against resampling), three
+  alternatives (prompt injection 0 of 12, the fine-tune's negative result, the repair gain of 38%),
+  and the filled project-page summary. Each was checked against the run numbers; three wordings
+  were corrected on the way (the scenario counts, what "0 of 12" counts, and the tie on Tier C).
+- **Write-up**: `docs/writeup.md`, about 950 words for a blog: the setup, the small model alone,
+  why fine-tuning lost, feedback against resampling, what the cascade really costs, the injection
+  results with the one gate gap, the ablations, next steps and limits. Linked from the README.
+- **Every README number now traces to a committed file.** A review found numbers outside the
+  Results section (the dev ties, the speed and VRAM figures, the library model's 17 and 18, the
+  Week 2 spread) resting on unpublished runs. 19 more run files and four `nvidia-smi` traces were
+  scanned the same way (only pytest temp paths matched) and committed: 64 run files in all, each
+  named in the README where its number appears.
+- **Exit criteria**: part 2's Week 4 criteria and the whole-project definition of done are ticked
+  (the served model is the untuned base, a recorded change), and part 5 §10.
+- **Left, all yours**: a licence file; a demo repository for the draft PRs (the PR feature itself
+  was never built, so these would be PRs opened by hand from a `remediate` diff); pushing the
+  `v1.0` tag; deleting `D:\aeropatch-fresh` and the Kaggle dataset `aeropatch-v2-step64-adapter`.
+
 ## Next
 
 **Decisions that are yours**
@@ -1939,7 +1984,7 @@ and `REGRESSION` (7), the D19 finding again.
 4. **Pull requests.** Week 3 lives on `feat/week3-d15-data`, and you merge it into `main` as it
    goes: #11 to #19 are merged, the last (D19) on 2026-10-13, and D20 (the test runs and the
    exports) went in with the next one on 2026-10-14. Week 4's D22 to D25 went in as #21 on
-   2026-10-16, still from this branch. The Kaggle kernel clones that branch.
+   2026-10-16 and D26 as #22 the same day, still from this branch. The Kaggle kernel clones that branch.
    The training data itself (`training/synthetic/`, `training/data/`) is git-ignored and exists
    only on the laptop.
 

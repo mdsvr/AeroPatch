@@ -145,11 +145,13 @@ repair context:
 
 ## 11. Tests for the sandbox itself (write these first)
 
-- [ ] A test that tries `socket.create_connection(("1.1.1.1", 53))` fails inside the sandbox.
-- [ ] Writing to `/usr` or `/` fails; writing to `/tmp` beyond 256 MB fails.
-- [ ] A fork bomb is contained by `pids-limit`, and the host stays responsive.
-- [ ] `while True: pass` is killed at the timeout and labelled `TIMEOUT`.
-- [ ] Env vars inside the container contain no API keys (assert on `os.environ`).
-- [ ] Container count returns to zero after a crash mid-run (`finally` cleanup works).
+All six are tests in `tests/test_sandbox_security.py` and pass (full run, 2026-10-16).
+
+- [x] A test that tries `socket.create_connection(("1.1.1.1", 53))` fails inside the sandbox.
+- [x] Writing to `/usr` or `/` fails; writing to `/tmp` beyond 256 MB fails.
+- [x] A fork bomb is contained by `pids-limit`, and the host stays responsive.
+- [x] `while True: pass` is killed at the timeout and labelled `TIMEOUT`.
+- [x] Env vars inside the container contain no API keys (assert on `os.environ`).
+- [x] Container count returns to zero after a crash mid-run (`finally` cleanup works).
 
 Next: [08-orchestration-part1.md](08-orchestration-part1.md)
