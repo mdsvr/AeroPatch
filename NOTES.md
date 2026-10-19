@@ -2106,7 +2106,8 @@ untuned model.**
    2026-10-16, D26 as #22 and D27-D28 as #23, still from this branch. **`v1.0` is the annotated
    tag on #23's merge commit `d92c1f1`, pushed 2026-10-19.** The licence went in as #24;
    **`v1.0.1`** tags its merge commit `1ecb35c`, and GitHub now shows "Apache License 2.0". The
-   model check (2026-10-19) went in as #25, merge commit `caba3a7`, untagged. The Kaggle kernel
+   model check (2026-10-19) went in as #25, merge commit `caba3a7`, and the retrain of v2 as
+   #26, merge commit `f45e2e6`, both untagged. The Kaggle kernel
    clones that branch.
    The training data itself (`training/synthetic/`, `training/data/`) is git-ignored and exists
    only on the laptop.
