@@ -280,6 +280,19 @@ Prompts are scanned for secret patterns before they leave the process; a hit blo
 (the adversarial scenario X-06 shows it). API keys stay in the orchestrator and never reach a
 sandbox (tested). Only scenario code is sent to the frontier model.
 
+## Licence
+
+AeroPatch's code and documentation are under the [Apache License 2.0](LICENSE). It is permissive
+like MIT, and adds an explicit patent grant from contributors and a patent-retaliation clause.
+It is also the licence of the Qwen3.5-4B weights and of most of what the project builds on
+(Bandit, the Docker SDK, Unsloth, Transformers, TRL, PEFT).
+
+Scenario code under `evaluations/scenarios/` keeps the licence named in its `scenario.json`. The
+hand-built (Tier A) and adversarial scenarios are MIT. The real-CVE (Tier B) projects keep their
+upstream licences (MIT, BSD-2-Clause, BSD-3-Clause), whose files are included. The held-out
+synthetic (Tier C) ones are marked `generated`: a local teacher model wrote them. No model
+weights are distributed here.
+
 ## Later
 
 - gVisor or a microVM sandbox on a Linux host.
