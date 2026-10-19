@@ -2,6 +2,8 @@
 name = "aeropatch"
 version = "0.1.0"
 requires-python = ">=3.12"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 dependencies = [
     "anthropic>=1.8.0",
     "bandit>=1.9.4",

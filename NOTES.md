@@ -1950,7 +1950,20 @@ ticked too (all are tests in `tests/test_sandbox_security.py`, passing in the ru
   named in the README where its number appears.
 - **Exit criteria**: part 2's Week 4 criteria and the whole-project definition of done are ticked
   (the served model is the untuned base, a recorded change), and part 5 §10.
-- **Left, all yours**: a licence file; a demo repository for the draft PRs (the PR feature itself
+- **Licence (2026-10-19, you asked me to research and choose): Apache-2.0.** `LICENSE` is the
+  official text from apache.org (SHA-256 `cfc7749b…3d30`, the canonical hash); `pyproject.toml`
+  declares `license = "Apache-2.0"` with `license-files`, and the package metadata shows it. Why:
+  - It is as permissive as MIT and adds an explicit patent grant and patent retaliation, which
+    MIT and BSD do not address.
+  - It matches what the project stands on: the Qwen3.5-4B weights, Bandit, the Docker SDK and
+    the training stack (Unsloth, Transformers, TRL, PEFT) are Apache-2.0; the other direct
+    dependencies are MIT or BSD-3-Clause, all compatible. The FSF itself recommends Apache-2.0
+    among lax permissive licences for substantial programs. Doc 15 §6 recommended it too.
+  - The cost: Apache-2.0 is not compatible with GPLv2-only code (it is with GPLv3). Nothing here
+    is GPLv2, and Opengrep (LGPL-2.1) is an external binary that is not distributed.
+  - Scenario code keeps the licence in its `scenario.json`: Tier A and the adversarial copies MIT,
+    Tier B its upstream MIT or BSD licence, Tier C `generated`. The README says so.
+- **Left, all yours**: a demo repository for the draft PRs (the PR feature itself
   was never built, so these would be PRs opened by hand from a `remediate` diff); pushing the
   `v1.0` tag; deleting `D:\aeropatch-fresh` and the Kaggle dataset `aeropatch-v2-step64-adapter`.
 
@@ -1984,7 +1997,8 @@ ticked too (all are tests in `tests/test_sandbox_security.py`, passing in the ru
 4. **Pull requests.** Week 3 lives on `feat/week3-d15-data`, and you merge it into `main` as it
    goes: #11 to #19 are merged, the last (D19) on 2026-10-13, and D20 (the test runs and the
    exports) went in with the next one on 2026-10-14. Week 4's D22 to D25 went in as #21 on
-   2026-10-16 and D26 as #22 the same day, still from this branch. The Kaggle kernel clones that branch.
+   2026-10-16, D26 as #22 and D27-D28 as #23, still from this branch. **`v1.0` is the annotated
+   tag on #23's merge commit `d92c1f1`, pushed 2026-10-19.** The Kaggle kernel clones that branch.
    The training data itself (`training/synthetic/`, `training/data/`) is git-ignored and exists
    only on the laptop.
 
