@@ -27,7 +27,7 @@ RUNS = {  # {data}: where Kaggle mounted the dataset named first
 # Runs whose earlier checkpoints each get a GGUF in the same session: D18 judges checkpoints
 # through Ollama, and a later session cannot read this one's files.
 EARLIER = {"full", "full-v2", "rehearsal"}
-ORDER = ["control-q8", "control-q5"]  # the first has to pass; a later one may fail and the rest still run
+ORDER = ["full-v2"]  # the first has to pass; a later one may fail and the rest still run
 
 
 def sh(command: str, check: bool = True) -> int:

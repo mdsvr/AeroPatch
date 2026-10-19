@@ -2004,6 +2004,25 @@ and docs disagreed. I did not change the model: no published number moves.
   frontier run went through Claude Code, whose cost is the CLI's own estimate).
 - **Checks**: the full suite, 364 passed (246 s); `ruff check .` clean.
 
+## Retraining v2 on the same data (2026-10-19)
+
+You asked to train the model again on the data it has. This is a reproduction of D19's second run:
+dataset v2 (`train.jsonl` `4bf82d1a…`, `val.jsonl` `25689fd9…`, the same files as the Kaggle
+dataset `aeropatch-train-v2`), `finetune.py` and `training/requirements.txt` unchanged since
+`f43f77a`, seed 3407, the D18 values, kernel run `full-v2`. What can differ: the Kaggle image
+and GPU kernels that are not deterministic.
+
+**How it is read, written before the session.**
+- **Reproduced bit for bit?** The new step-64 GGUF's SHA-256 against D19's (`D:\aeropatch-d19`),
+  and the validation loss at each checkpoint against D19's 0.2595, 0.2560, 0.2577 and 0.2588.
+- **The benchmark, as v2 step 64 was judged** (`repair-local`): dev 3 runs (D19: 26 of 39), test
+  2 runs (D20: 32 of 54), Tier B 2 runs (3 of 20) and Tier C 2 runs (9 of 10). The baselines are
+  the D19 and D20 runs: the local route of the harness has not changed since `c03f33f` (two
+  `re.MULTILINE` lint edits and a base-image check in `remediate`).
+- **Rule.** Within 3 of 54 of v2's 32 on test, the training reproduces. Against the untuned
+  control's 38, D20's rule applies again: 4 or more below is a loss, 4 or more above a gain.
+- This is the second time the test split judges a fine-tune. Nothing is tuned on what it shows.
+
 ## Next
 
 **Decisions that are yours**
