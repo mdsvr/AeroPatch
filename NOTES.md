@@ -2060,16 +2060,16 @@ untuned model.**
   at the edge of the band. Against the control's 38 it is 9 below, a loss.
 - **Paired, run *i* against run *i*, on test**: the control resolves 11 scenario runs that the
   retrain does not, and the retrain 2 that the control does not (pooled exact McNemar
-  p = 0.022). This is the first fine-tune comparison under 0.05; D20's v2 was p = 0.146. Against
+  p = 0.022). The rule reads totals, not this value. The control runs are D20's, five days
+  older and not alternated with today's, and the first v2 against them gave p = 0.146. Against
   the first v2: 6 against 3 (p = 0.51), no difference.
 - **The same failure shape as D20**: 11 test runs end `STUCK` (7 and 4; the first v2: 9; the
   control: none), and 8 in `REGRESSION`. Dev resolves more at the first attempt than the first
   v2 did (23 against 18, the control's 23), with the same total.
 - Decoding at 47.2 to 47.3 tokens a second on dev; no provider error, sandbox error or timeout.
 - **What it means**: the D20 loss was not one unlucky training run. Two trainings on dataset v2
-  give 32 and 29 of 54 against 38 for the untuned model. The run-to-run spread of the training
-  itself (3 of 54 here) is no larger than the benchmark's own (Week 2: 1, with 5 scenarios
-  flipping).
+  give 32 and 29 of 54 against 38 for the untuned model. The 3 between the two trainings is
+  inside the benchmark's own noise: the first v2's two test runs alone scored 18 and 14.
 - Nothing changes in Week 4 or the README's headline: the untuned model stays the served one.
   `aeropatch-v2r-step64` stays in Ollama (2.8 GB on `F:`) until you say it can go.
 

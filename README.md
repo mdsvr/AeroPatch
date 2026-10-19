@@ -216,9 +216,11 @@ LoRA on Qwen3.5-4B (r 16, alpha 16, 16-bit base, not QLoRA) with Unsloth on one 
   synthetic scenarios (Tier C, of 10): 9 each.
 - **Trained again on the same data (2026-10-19)**: the GPU does not reproduce it bit for bit
   (validation loss within 0.0007 of the first run), and the verdict holds. Dev 26 of 39, test
-  29 of 54 against the control's 38 (paired exact McNemar p = 0.022), Tier B 4 of 20, Tier C 8
-  of 10. Runs `20261019-v2r1` to `-v2r3-repair-local-dev`, `-v2r1`/`-v2r2-repair-local-test`,
-  `-test_b` and `-test_c`.
+  29 of 54 against the control's 38, Tier B 4 of 20, Tier C 8 of 10. Paired exact McNemar on
+  test p = 0.022 against the control's runs of five days earlier (the first training: 0.146);
+  the verdict reads totals, and nothing was tuned on test, since the data is the same. Runs
+  `20261019-v2r1` to `-v2r3-repair-local-dev`, `-v2r1`/`-v2r2-repair-local-test`, `-test_b`
+  and `-test_c`.
 - **Reproduce**: `prepare_dataset.py build` (command and SHA-256 in [NOTES.md](NOTES.md), D19),
   then the `full-v2` run of [training/kaggle/kernel.py](training/kaggle/kernel.py) (set
   `ORDER = ["full-v2"]`), which clones the repository and runs
