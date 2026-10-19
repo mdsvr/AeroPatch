@@ -2036,7 +2036,9 @@ and docs disagreed. I did not change the model: no published number moves.
    exports) went in with the next one on 2026-10-14. Week 4's D22 to D25 went in as #21 on
    2026-10-16, D26 as #22 and D27-D28 as #23, still from this branch. **`v1.0` is the annotated
    tag on #23's merge commit `d92c1f1`, pushed 2026-10-19.** The licence went in as #24;
-   **`v1.0.1`** tags its merge commit `1ecb35c`, and GitHub now shows "Apache License 2.0". The Kaggle kernel clones that branch.
+   **`v1.0.1`** tags its merge commit `1ecb35c`, and GitHub now shows "Apache License 2.0". The
+   model check (2026-10-19) went in as #25, merge commit `caba3a7`, untagged. The Kaggle kernel
+   clones that branch.
    The training data itself (`training/synthetic/`, `training/data/`) is git-ignored and exists
    only on the laptop.
 
