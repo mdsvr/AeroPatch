@@ -1,5 +1,7 @@
 # AeroPatch
 
+[![CI](https://github.com/mdsvr/AeroPatch/actions/workflows/ci.yml/badge.svg)](https://github.com/mdsvr/AeroPatch/actions/workflows/ci.yml)
+
 AeroPatch asks how much automated vulnerability remediation a 4B model on a 4 GB laptop GPU can
 do. It fixes Python vulnerabilities locally, proves each fix in a network-less sandbox, retries
 with test feedback, and escalates to a frontier model only when needed. Every claim is measured

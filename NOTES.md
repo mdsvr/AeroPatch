@@ -2235,6 +2235,14 @@ needed (multi-file edits and wider context already exist, local concurrency gain
   only because the quoted form doubles the backslashes. `mcp_server._guard`, the handler every
   tool's errors pass through, now replaces the project root in both forms with `<server>`; the
   test checks both forms and failed here before the fix. The loop's repair feedback is unchanged.
+- **CI runs the whole suite (second review, which you passed on with a yes)**: a `sandbox` job
+  builds the base image and runs the 10 `docker` tests on native Linux Docker (47 s), and the
+  `test` job installs Opengrep 1.30.0, the laptop's version, checked against its release digest,
+  so the 36 rule tests that used to skip there run too: 354 + 10 = 364, the laptop's count. The
+  review's warning about 0700 temp folders did not apply: results come back through the logs,
+  and the read-only mount is the workspace's `src` folder, not a pytest temp folder. Badge on
+  the README. Not taken from that review: deleting `feat/week3-d15-data` (the Kaggle kernel
+  clones it), and calling v3's Tier B and C leads gains (p = 0.73 and 0.50).
 
 ## Next
 

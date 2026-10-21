@@ -1,6 +1,7 @@
-# Lint and the tests that need no Docker sandbox and no model server. The sandbox tests are
-# marked `docker` and skip themselves without the base image; run the full suite on a machine
-# with Docker Desktop (`uv run pytest`).
+# `test`: lint and the tests that need no Docker sandbox and no model server, with Opengrep for
+# the rule tests.
+# `sandbox`: builds the sandbox base image and runs the tests marked `docker` (the sandbox's
+# hardening, the loop through it, the MCP tools that use it) on native Linux Docker.
 name: CI
 
 on:
@@ -18,5 +19,20 @@ jobs:
       - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v6
       - run: uv sync --locked
+      - name: Opengrep 1.30.0, the laptop's version, checked against its release digest
+        run: |
+          mkdir -p .tools
+          curl -fsSL -o .tools/opengrep https://github.com/opengrep/opengrep/releases/download/v1.30.0/opengrep_manylinux_x86
+          echo "35779bdd72e92129c8df2a77f0c55e8c08356801ea92591ef32108d6b28d564c  .tools/opengrep" | sha256sum -c -
+          chmod +x .tools/opengrep
       - run: uv run ruff check .
-      - run: uv run pytest -m "not docker" -q
+      - run: uv run pytest -m "not docker" -q -rs
+
+  sandbox:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --locked
+      - run: uv run aeropatch build-base
+      - run: uv run pytest -m docker -q
