@@ -2215,6 +2215,22 @@ timeout.
   have a passing and a `REGRESSION` edit (64 such edits), so rung 4 aimed at regressions has 19
   distinct prompts, against the report's "about 100 pairs". `aeropatch-v3-step64` and `-step32` stay in Ollama (5.6 GB on `F:`) until you say.
 
+## Repository tidying (2026-10-21)
+
+A review you pasted proposed a v4 roadmap; checked against the code, only its tidying track was
+needed (multi-file edits and wider context already exist, local concurrency gains nothing on one
+4 GB GPU, and a pre-sandbox filter would catch 12 of 148 first attempts). You said to do it:
+- **GitHub About**: a description, ten topics and the write-up as the homepage. Not `qlora`,
+  which the review suggested: training is 16-bit LoRA.
+- **Branches**: the 10 old ones on GitHub, each checked to be inside `main` first, are deleted,
+  and their local copies too. Left: `main` and `feat/week3-d15-data` (the Kaggle kernel clones it).
+- **README**: v3 in the Training section, the headline sentence, Model, Limitations, Later and
+  Layout. Its numbers come from the 22 run files of today it names, published like D26's after
+  the same scan (no user name, folder or real email; the secret filter flags only scenario code
+  and test passwords already public under `evaluations/`).
+- **CI**: `.github/workflows/ci.yml` runs `ruff check .` and `pytest -m "not docker"` on Ubuntu.
+  Dry run here with Docker unreachable and Opengrep hidden: 318 passed, 36 skipped, 44 s.
+
 ## Next
 
 **Decisions that are yours**
