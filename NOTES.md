@@ -2230,6 +2230,11 @@ needed (multi-file edits and wider context already exist, local concurrency gain
   and test passwords already public under `evaluations/`).
 - **CI**: `.github/workflows/ci.yml` runs `ruff check .` and `pytest -m "not docker"` on Ubuntu.
   Dry run here with Docker unreachable and Opengrep hidden: 318 passed, 36 skipped, 44 s.
+- **CI's first run found a real leak** that Windows hid: for an absolute path, `get_context`'s
+  error quoted it back, so the MCP client saw where the server lives. The test passed on Windows
+  only because the quoted form doubles the backslashes. `mcp_server._guard`, the handler every
+  tool's errors pass through, now replaces the project root in both forms with `<server>`; the
+  test checks both forms and failed here before the fix. The loop's repair feedback is unchanged.
 
 ## Next
 

@@ -21,7 +21,7 @@ from mcp.types import ToolAnnotations
 
 from aeropatch import scenario
 from aeropatch.agent import gates, loop
-from aeropatch.config import SCENARIOS_DIR, load_config
+from aeropatch.config import ROOT, SCENARIOS_DIR, load_config
 from aeropatch.sandbox import sandbox
 from aeropatch.tools import context, scanners
 from aeropatch.tools.git_ops import Workspace
@@ -35,6 +35,14 @@ server = MCPServer("aeropatch", instructions=(
     "review. Nothing here commits, pushes or opens pull requests."))
 
 
+def _redact(text: str) -> str:
+    """An expected error may quote a path it was given; where the server lives is not the
+    client's to see, in either form (repr() doubles a Windows path's backslashes)."""
+    for root in {str(ROOT), str(ROOT.resolve())}:
+        text = text.replace(root, "<server>").replace(repr(root)[1:-1], "<server>")
+    return text
+
+
 def _guard(fn):
     """Turn expected errors into short tool errors and hide everything else behind its type name."""
     @functools.wraps(fn)
@@ -42,7 +50,7 @@ def _guard(fn):
         try:
             return fn(*args, **kwargs)
         except (ToolError, PathError, scenario.ScenarioError) as e:
-            raise ToolError(str(e)) from None
+            raise ToolError(_redact(str(e))) from None
         except Exception as e:  # noqa: BLE001 - the message may hold host paths
             raise ToolError(f"internal error: {type(e).__name__}") from None
     return wrapper
