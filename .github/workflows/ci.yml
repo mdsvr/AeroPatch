@@ -1,0 +1,22 @@
+# Lint and the tests that need no Docker sandbox and no model server. The sandbox tests are
+# marked `docker` and skip themselves without the base image; run the full suite on a machine
+# with Docker Desktop (`uv run pytest`).
+name: CI
+
+on:
+  push:
+    branches: [main, feat/week3-d15-data]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --locked
+      - run: uv run ruff check .
+      - run: uv run pytest -m "not docker" -q

@@ -13,7 +13,8 @@ Outputs are **candidate fixes that need human review**.
 
 The headline in one line: the untuned 4B model fixes 70% of the hand-built test scenarios and
 35% of the real CVEs on its own at no API cost; a cascade that hands its third attempt to Claude
-Opus 5.5 fixes 100% and 90%. Fine-tuning it did not help (59% and 15%).
+Opus 5.5 fixes 100% and 90%. Fine-tuning it did not help: on fixes written by others it lost
+(59% and 15%), and on its own sandbox-verified fixes it tied (see [Training](#training-week-3)).
 
 Resolved, with up to three attempts and test feedback between them. Local rows and the cascade
 are two runs pooled, so 27 scenarios count 54 times; 95% Wilson intervals in brackets.
@@ -108,7 +109,8 @@ table; [notebooks/week4_charts.py](notebooks/week4_charts.py) redraws the charts
 - **Weights**: `Qwen/Qwen3.5-4B` (Apache-2.0), unchanged. Exported through the same merge and GGUF
   path as the fine-tune with no adapter (Unsloth on Kaggle), at Q4_K_M: 2,708,804,192 bytes,
   SHA-256 `51b5c0d6e5a9a2b6a5514231b821378382d72a057de3d7ad3ac09a5bddbbfdc7`.
-- **Served** with Ollama 0.40.3 (every run cited here from 2026-10-12 on) and
+- **Served** with Ollama 0.40.3 (every run cited here from 2026-10-12 to 2026-10-19; the runs of
+  2026-10-21 used 0.40.7, apart from the first six and a half sampling runs) and
   [training/Modelfile](training/Modelfile), which copies the library model's renderer and sampling
   parameters, so only the weights differ. Thinking is off.
 - **On an RTX 3050 Laptop (4 GB)**: 100% on the GPU at 8k context, 3,043 MiB peak, 46.5 tokens a
@@ -121,8 +123,8 @@ table; [notebooks/week4_charts.py](notebooks/week4_charts.py) redraws the charts
   Ollama has since rebuilt that tag: those runs used build `2a654d98e6fb`, and `ollama pull` now
   gives `d8b0f5e9760c` (the vision projector is a separate file). The newer build resolved
   `A-089-01` in the fresh-clone test and the MCP transcript; it has not been benchmarked.
-- The fine-tuned adapter is not published: it lost on test and on the real CVEs, and tied on the
-  held-out synthetic scenarios.
+- Neither fine-tuned adapter is published: v2 lost on test and on the real CVEs, and v3 tied the
+  untuned model on all three tiers.
 - **Intended use**: defensive fixes to code you own or to public projects at pinned commits, each
   reviewed by a person before it is merged. **Known failure modes**: on its own the 4B model
   misses fixes that need knowledge it lacks (salted key derivation with its verifier, SSRF checks
@@ -221,6 +223,29 @@ LoRA on Qwen3.5-4B (r 16, alpha 16, 16-bit base, not QLoRA) with Unsloth on one 
   the verdict reads totals, and nothing was tuned on test, since the data is the same. Runs
   `20261019-v2r1` to `-v2r3-repair-local-dev`, `-v2r1`/`-v2r2-repair-local-test`, `-test_b`
   and `-test_c`.
+- **Trained on its own fixes (dataset v3, 2026-10-21)**, after
+  [the model-improvement report](reports/AeroPatch%20model%20improvement.md): every target in v2
+  was written by someone other than the 4B, which pulls a post-trained model away from what it
+  already does well. First the headroom: the untuned model, one attempt at temperature 0.7, 8
+  times on the 105 synthetic scenarios of v2, resolves 70.4% per try and 89.5% within 8 tries
+  ([training/sample_synthetic.py](training/sample_synthetic.py)). Then 144 of its own
+  sandbox-passing answers, with v2's prompts and splits
+  ([training/own_fixes.py](training/own_fixes.py)), trained at v2's settings for 64 steps (run
+  `own-v3` in [kernel.py](training/kaggle/kernel.py)). Against the untuned model alternated with
+  it on the same day:
+
+  | Two runs each | Untuned | v3 | Paired exact McNemar |
+  |---|---|---|---|
+  | Test, of 54 | 41 | 38 | p = 0.58 |
+  | Real CVEs (Tier B), of 20 | 8 | 10 | p = 0.73 |
+  | Held-out synthetic (Tier C), of 10 | 6 | 8 | p = 0.50 |
+
+  No difference on any tier: v3 ties. It repairs v2's damage (v2 lost 6 of 54 to its control, and
+  its runs ended `STUCK` 9 times against v3's 4), which supports the reading that the data was the
+  cause, but the mix, size and epochs changed with it. The untuned model alone scored 16, 16, 20
+  and 21 of 27 on test that day, a wider spread than either fine-tune moved it. Runs
+  `20261021-h1` to `-h8-sample-local-train`; `20261021-c3`/`-c4` (untuned) and `-v3a`/`-v3b`
+  (v3), each `-repair-local-test`, `-test_b` and `-test_c`; `20261021-c1`/`-c2-repair-local-test`.
 - **Reproduce**: `prepare_dataset.py build` (command and SHA-256 in [NOTES.md](NOTES.md), D19),
   then the `full-v2` run of [training/kaggle/kernel.py](training/kaggle/kernel.py) (set
   `ORDER = ["full-v2"]`), which clones the repository and runs
@@ -247,7 +272,8 @@ LoRA on Qwen3.5-4B (r 16, alpha 16, 16-bit base, not QLoRA) with Unsloth on one 
   accept the model.
 - **One machine**: an RTX 3050 Laptop GPU (4 GB) and 16 GB of RAM on Windows 11, with Docker
   Desktop. Speed and memory numbers are for that machine.
-- **Fine-tuning did not help** with 541 examples; a larger dataset was not tried.
+- **Fine-tuning did not help**: 541 examples written by others lost, and 144 of the model's own
+  verified fixes tied. A larger dataset was not tried.
 
 ## Layout
 
@@ -264,7 +290,8 @@ LoRA on Qwen3.5-4B (r 16, alpha 16, 16-bit base, not QLoRA) with Unsloth on one 
 | `docker/` | sandbox base + per-scenario Dockerfiles, `run.sh`, hash-pinned harness tools |
 | `rules/` | AeroPatch's own Opengrep ruleset (22 rules) |
 | `evaluations/scenarios/` | 60 scenarios: 40 hand-built (Tier A, 16 CWEs), 10 from real CVEs (Tier B, each with the upstream licence), 5 held out from the synthetic training data (Tier C) and 5 adversarial; `split.json` holds 13 dev, 27 test, 10 `test_b`, 5 `test_c` and 5 `adversarial` |
-| `training/` | Week 3 data. `inject_cwe.py`: synthetic, sandbox-verified training examples from a local teacher model. `prepare_dataset.py`: real fix pairs from GitHub advisories as SEARCH/REPLACE targets, and the dataset build. `finetune.py`: LoRA and GGUF export; `kaggle/`: the kernel that runs it; `Modelfile`: serving in Ollama |
+| `training/` | Week 3 data. `inject_cwe.py`: synthetic, sandbox-verified training examples from a local teacher model. `prepare_dataset.py`: real fix pairs from GitHub advisories as SEARCH/REPLACE targets, and the dataset build. `finetune.py`: LoRA and GGUF export; `kaggle/`: the kernel that runs it; `Modelfile`: serving in Ollama. `sample_synthetic.py` and `own_fixes.py`: the model's own fixes as dataset v3 |
+| `reports/`, `research_notes/` | the model-improvement report and the four research notes behind it |
 | `notebooks/` | `week4_charts.py` (the README charts) and `runs.ipynb`, a view of every run |
 | `docs/` | the plan (start at [00-overall-plan.md](docs/00-overall-plan.md)), `results/` (charts and CSV), the MCP transcript |
 | `runs/` | run logs (gitignored), and [runs/INDEX.md](runs/INDEX.md), which lists every run |
@@ -310,7 +337,8 @@ weights are distributed here.
 - gVisor or a microVM sandbox on a Linux host.
 - JavaScript and Go (tree-sitter grammars; PatchEval's other languages).
 - Model-driven localization over large repositories.
-- RL with a sandbox reward (GRPO), or fine-tuning again on a larger dataset.
+- A larger executable benchmark (PatchEval, Vul4Py), so that gains under 4 of 54 become visible.
+- RL with a sandbox reward (GRPO), or preference pairs against fixes that break regression tests.
 - A shorter escalation prompt, so the cascade saves more than it does now.
 - Whether Ollama's repetition penalty hurts exact SEARCH copying, and headers copied into edits on
   long files: each a dev experiment and a new config.

@@ -47,7 +47,9 @@ def test_get_context_serves_a_real_call():
 def test_bad_input_is_refused_without_leaking_host_paths(tool, args):
     result = call(tool, **args)
     assert result.is_error
-    assert str(ROOT) not in result.content[0].text and "Traceback" not in result.content[0].text
+    text = result.content[0].text
+    # repr() doubles a Windows path's backslashes: without that form this passed on Windows by accident.
+    assert str(ROOT) not in text and repr(str(ROOT))[1:-1] not in text and "Traceback" not in text
 
 
 @needs_docker[0]
