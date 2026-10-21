@@ -250,3 +250,40 @@ The same data, code and seed as D19; the GPU did not reproduce it bit for bit. D
 | `20261019-v2r2-repair-local-test_b` | repair-local | aeropatch-v2r-step64 | test_b | `3668928` | no | 2/10 |
 | `20261019-v2r1-repair-local-test_c` | repair-local | aeropatch-v2r-step64 | test_c | `3668928` | no | 4/5 |
 | `20261019-v2r2-repair-local-test_c` | repair-local | aeropatch-v2r-step64 | test_c | `3668928` | no | 4/5 |
+
+## 2026-10-21: the model-improvement plan, rungs 2 and 3
+
+Rung 2: the untuned control, one attempt at temperature 0.7, 8 times on the 105 synthetic scenarios of dataset v2: pass@1 70.4%, pass@8 89.5%, 49 partly solved. Rung 3: v3, trained on its own passing answers (v2's settings, 64 steps), against the control alternated with it: test 38 against 41 of 54, Tier B 10 against 8 of 20, Tier C 8 against 6 of 10, no difference shown; dev 28 of 39 (step 64) and 23 (step 32). The control's `c1`/`c2` ran before the candidate, on Ollama 0.40.7 like the rest after 11:45; `h1` to `h6` and part of `h7` ran on 0.40.3.
+
+| Run | Config | Model | Split | Commit | Dirty | Resolved |
+|---|---|---|---|---|---|---|
+| `20261021-h1-sample-local-train` | sample-local | aeropatch-control | train | `71279c2` | no | 72/105 |
+| `20261021-h2-sample-local-train` | sample-local | aeropatch-control | train | `71279c2` | no | 74/105 |
+| `20261021-h3-sample-local-train` | sample-local | aeropatch-control | train | `71279c2` | no | 77/105 |
+| `20261021-h4-sample-local-train` | sample-local | aeropatch-control | train | `71279c2` | no | 71/105 |
+| `20261021-h5-sample-local-train` | sample-local | aeropatch-control | train | `71279c2` | no | 71/105 |
+| `20261021-h6-sample-local-train` | sample-local | aeropatch-control | train | `71279c2` | no | 73/105 |
+| `20261021-h7-sample-local-train` | sample-local | aeropatch-control | train | `71279c2` | no | 79/105 |
+| `20261021-h8-sample-local-train` | sample-local | aeropatch-control | train | `71279c2` | no | 74/105 |
+| `20261021-c1-repair-local-test` | repair-local | aeropatch-control | test | `71279c2` | no | 16/27 |
+| `20261021-c1-repair-local-test_b` | repair-local | aeropatch-control | test_b | `71279c2` | no | 1/10 |
+| `20261021-c2-repair-local-test` | repair-local | aeropatch-control | test | `71279c2` | no | 16/27 |
+| `20261021-c2-repair-local-test_b` | repair-local | aeropatch-control | test_b | `71279c2` | no | 3/10 |
+| `20261021-v3a-repair-local-test` | repair-local | aeropatch-v3-step64 | test | `71279c2` | no | 20/27 |
+| `20261021-c3-repair-local-test` | repair-local | aeropatch-control | test | `71279c2` | no | 20/27 |
+| `20261021-v3b-repair-local-test` | repair-local | aeropatch-v3-step64 | test | `71279c2` | no | 18/27 |
+| `20261021-c4-repair-local-test` | repair-local | aeropatch-control | test | `71279c2` | no | 21/27 |
+| `20261021-v3a-repair-local-test_b` | repair-local | aeropatch-v3-step64 | test_b | `71279c2` | no | 5/10 |
+| `20261021-c3-repair-local-test_b` | repair-local | aeropatch-control | test_b | `71279c2` | no | 3/10 |
+| `20261021-v3b-repair-local-test_b` | repair-local | aeropatch-v3-step64 | test_b | `71279c2` | no | 5/10 |
+| `20261021-c4-repair-local-test_b` | repair-local | aeropatch-control | test_b | `71279c2` | no | 5/10 |
+| `20261021-v3a-repair-local-test_c` | repair-local | aeropatch-v3-step64 | test_c | `71279c2` | no | 4/5 |
+| `20261021-c3-repair-local-test_c` | repair-local | aeropatch-control | test_c | `71279c2` | no | 3/5 |
+| `20261021-v3b-repair-local-test_c` | repair-local | aeropatch-v3-step64 | test_c | `71279c2` | no | 4/5 |
+| `20261021-c4-repair-local-test_c` | repair-local | aeropatch-control | test_c | `71279c2` | no | 3/5 |
+| `20261021-v3a-repair-local-dev` | repair-local | aeropatch-v3-step64 | dev | `71279c2` | no | 9/13 |
+| `20261021-v3s32a-repair-local-dev` | repair-local | aeropatch-v3-step32 | dev | `71279c2` | no | 7/13 |
+| `20261021-v3b-repair-local-dev` | repair-local | aeropatch-v3-step64 | dev | `71279c2` | no | 8/13 |
+| `20261021-v3s32b-repair-local-dev` | repair-local | aeropatch-v3-step32 | dev | `71279c2` | no | 8/13 |
+| `20261021-v3c-repair-local-dev` | repair-local | aeropatch-v3-step64 | dev | `71279c2` | no | 11/13 |
+| `20261021-v3s32c-repair-local-dev` | repair-local | aeropatch-v3-step32 | dev | `71279c2` | no | 8/13 |

@@ -2073,6 +2073,148 @@ untuned model.**
 - Nothing changes in Week 4 or the README's headline: the untuned model stays the served one.
   `aeropatch-v2r-step64` stays in Ollama (2.8 GB on `F:`) until you say it can go.
 
+## The model-improvement plan, rung 2: headroom on the training pool (2026-10-21)
+
+You asked me to check `reports/AeroPatch model improvement.md` and start on it. Checked against
+the run files: the counts it quotes are right (test 38, 32, 29; first attempts 28, 24, 22; STUCK
+0, 9, 11; the student pass's 156 resolved, 111/29/16 by attempt, 35 `REGRESSION`; `lr 2e-4`,
+r = alpha = 16). Corrected:
+- **`A-089-02` is not where tuning helped.** The library `qwen3.5:4b`, the same weights, resolved
+  it in 3 of 12 `repair-local` dev runs (`20261001-175057`, `-182050`, `20261003-113223`), on the
+  same scenario image (`sha256:1db9f3db8ea4`) the control ran. Pooled over all dev runs: base 3 of
+  16, tuned checkpoints 4 of 19.
+- **Only two dev scenarios are never fixed by the base**: `A-328-01` (0 of 37 local runs, tuned
+  included) and `A-918-01` (2 of 37). `A-601-01` was fixed 5 of 18 times by the base, 0 of 19 by
+  the tuned models.
+- **The template is not untested**: D17 checked that Ollama and the Hugging Face template build
+  the same prompt (token counts equal on 25 prompts and on every training example with a count).
+- **Rung 3 as written barely trains.** About 100 to 180 examples, one epoch, batch 8: 13 to 23
+  steps at 2e-5, against v2's 64 at 2e-4. Parity would then say nothing about the data. If it
+  runs, change one thing: v2's settings, the model's own fixes in place of v2's targets.
+- Skipped: rung 1 (its answer is predicted), and rung 0's resampling configs on test (test has
+  judged two fine-tunes and three ablations; a sixth variant landing 4 high by chance is likely).
+
+**How rung 2 is read, written before the runs.** `training/sample_synthetic.py --runs 8 --prefix
+20261021-h`: `sample-local` (one attempt, temperature 0.7, thinking off, the served mode) with
+`aeropatch-control` on the 105 synthetic scenarios of dataset v2, 8 runs, alternating with nothing.
+- **Headroom** if pass@8 is at least 10 points above pass@1 (the report's threshold).
+- **Training signal** is the count of partly solved scenarios (1 to 7 of 8). Under 30, GRPO
+  (rung 5) has too few groups with a gradient, and rung 3 learns mostly what it already does.
+- For scale: the student pass resolved 74 of these 105 at attempt 1 (temperature 0.2) and 93
+  within three attempts with feedback. Tier C, held-out synthetic, is 9 of 10 for the control.
+
+**Interrupted once.** At 11:44:55 Ollama's tray app installed its update (0.40.3 to 0.40.7) and
+stopped the server in run 7, 24 scenarios in: one sample came back `PROVIDER_ERROR` (HTTP 500),
+the next could not connect, and the script stopped. Runs 1 to 6 have no provider error. The
+runner now removes a `PROVIDER_ERROR` sample before it resumes, so that scenario is sampled
+again; it was resumed at 11:49 on 0.40.7, the same model blob. Runs 1 to 6 and the first 24
+samples of run 7 ran on 0.40.3, the rest on 0.40.7.
+
+**Result: headroom, and enough signal. Rung 3 goes ahead.** 8 runs, 840 samples, no provider
+error left in any run file; resolved per run 72, 74, 77, 71, 71, 73, 79, 74 of 105.
+
+| pass@1 | pass@3 | pass@8 | Never solved | Partly solved (1 to 7 of 8) | Always solved |
+|---|---|---|---|---|---|
+| 70.4% | 83.2% | **89.5%** | 11 | **49** | 45 |
+
+- pass@8 is 19.1 points above pass@1 (the rule: 10), and 49 scenarios are partly solved (30).
+- The ceiling is near: the base reaches 89.5% of this pool within 8 tries. What self-training
+  can add here is getting there at the first try; the 11 never solved are out of its reach.
+- Runs `20261021-h1` to `-h8-sample-local-train`, `aeropatch-control`, `dirty: false`.
+
+**Dataset v3: the model's own answers** (`training/own_fixes.py --runs 20261021-h --out
+training/data/v3`). v2's 105 synthetic first prompts and 53 repair turns keep their prompts,
+conversations and split; each target is replaced by an answer of the model that resolved that
+prompt in the sandbox: 2 distinct ones for a partly solved scenario, 1 for an always solved one,
+and for a repair turn the student pass's own next attempt where it resolved. No advisory fix,
+bug fix or reference fix is left.
+- **144 examples: 128 first attempts, 16 repair turns; 133 train, 11 val.** Every sampled prompt
+  equals v2's byte for byte; 2 candidates failed the leakage check (v2's 13-token rule, the
+  system prompt and its format example left out as in v2).
+- `finetune.prepare` on the laptop with the `Qwen/Qwen3.5-4B` tokenizer: every one of the 144
+  prompts has Ollama's own token count, so the chat template is the served one; none is over
+  4,096 tokens (longest 3,488).
+- **The run, `own-v3` in `kernel.py`**: v2's learning rate (2e-4), r = alpha = 16 and its 64
+  steps, checkpoints at 32 and 64. Two differences from v2's step 64: 133 examples make 64 steps
+  about 3.8 epochs (v2: 1), and the linear decay ends at step 64 (v2's step 64 was halfway down a
+  128-step decay), so the total update is about two thirds of v2's.
+- **How it is read, written before the run**: as v2 step 64 was (`repair-local`, dev 3 runs, test
+  2, Tier B 2, Tier C 2), with 2 same-day control runs on test alternated with it. D20's rule:
+  4 or more of 54 below the control is a loss. Beside the totals: first-attempt resolves (control
+  28), `STUCK` (control 0, v2 9 and 11) and `REGRESSION`. If `STUCK` stays near 0 and first
+  attempts hold, the on-policy reading of v2's loss stands; if it collapses as v2 did, it does not.
+
+**The same-day control scores 6 below D20's.** While Kaggle trained, `aeropatch-control` ran
+`repair-local` on Ollama 0.40.7 (runs `20261021-c1-` and `-c2-repair-local-<split>`, 12:20 to
+12:55, `dirty: false`, no provider error, sandbox error or timeout):
+
+| Untuned control | D20 (2026-10-13/14, Ollama 0.40.3) | Today (0.40.7) |
+|---|---|---|
+| Test, of 54 | 38 (19, 19), 28 at attempt 1 | **32** (16, 16), 24 at attempt 1 |
+| Tier B, of 20 | 7 (4, 3) | **4** (1, 3) |
+
+- The prompt is unchanged: all 27 first prompts have Ollama token counts equal to D20's. Decode
+  speed (about 37 tokens a second by latency) and answer length (median 227 output tokens
+  against 238) are D20's too.
+- The loss is spread: only `A-601-02` went from resolved in both D20 runs to neither today.
+  Whether it is the new Ollama or the benchmark's noise, two runs cannot say; either way, D20's
+  38 is not today's bar. These runs came before the candidate, not alternated with it, so v3 is
+  judged against two more control runs alternated with its own; these two are context.
+- **Later the same day, on the same 0.40.7, the alternated control scored 20 and 21** (`c3`,
+  `c4`, below). Today's four control runs on test are 16, 16, 20, 21: a mean of 18.25 a run
+  against D20's 19. No version effect is shown; the two 16s look like the benchmark's own noise.
+
+**The training: kernel version 15, 12:18 to 13:23, both steps exit 0** (`own-v3` and the export
+of its step-32 checkpoint; the clone was the branch on GitHub, `be8e312`, whose `finetune.py` and
+`src/` equal today's). Files on `D:\aeropatch-v3`.
+- 133 examples trained on, none dropped for length, all 133 prompts equal to Ollama's count.
+  64 steps at 31.8 s (34 minutes), peak 11.95 GB, float16 weights as before.
+- **The data is on-policy, as meant**: the first logged training loss is 0.158, against 0.385 for
+  v2 on the same base. That is the report's NLL check, read from the log.
+- **Step 64 overfits**: training loss falls to 0.030 by step 60, validation loss rises from 0.191
+  at step 32 to 0.236 at step 64 (about 3.8 epochs over 133 examples). Step 64 is still the one
+  the rule judges; step 32 runs on dev beside it.
+- The 5 validation prompts give answers that parse, 5 of 5 (D17's untuned export: 2 of 5).
+- In Ollama as `aeropatch-v3-step64` (GGUF SHA-256 `2eddef7f…24ca`) and `aeropatch-v3-step32`
+  (`01d29e21…ac3b`), both 2,783,446,592 bytes, `training/Modelfile` with only `FROM` set.
+
+**The result: v3 ties the untuned model. No difference shown on any tier; the untuned model stays
+the served one.** `repair-local`, 13:43 to 15:25, v3 step 64 alternated with the control on each
+split, then dev for both checkpoints; 18 runs, `dirty: false`, no provider error, sandbox error or
+timeout.
+
+| Two alternated runs each | Untuned control (`c3`, `c4`) | v3, step 64 (`v3a`, `v3b`) | Paired, pooled (control only, v3 only) |
+|---|---|---|---|
+| Test, of 54 | **41** (20, 21) | **38** (20, 18) | 8 against 5, p = 0.58 |
+| Test, at attempt 1 | 29 | 27 | |
+| Test, `STUCK` / `REGRESSION` endings | 2 / 4 | 4 / 5 | |
+| Test, attempts that ended `REGRESSION` | 22 | 30 | |
+| Tier B, of 20 | 8 (3, 5) | **10** (5, 5) | 3 against 5, p = 0.73 |
+| Tier B, `STUCK` endings | 5 | 1 | |
+| Tier C, of 10 | 6 (3, 3) | 8 (4, 4) | 0 against 2, p = 0.50 |
+
+- **By D20's rule**: 3 below the control on test is under 4, so no difference shown, and v3 is
+  not below it on Tier B. It is not a gain either. Over all three tiers: control 55 of 84, v3 56.
+- **The on-policy diagnosis is supported, not isolated.** Against its own alternated control v3
+  loses 3 of 54 (inside the noise: today's control alone scored 16, 16, 20 and 21), where v2 lost
+  6; first attempts hold (27 against 29; v2 24 against 28); `STUCK` on test is 4 against 2, where
+  v2 had 9 against 0. But more than the targets' author changed at once: the mix (synthetic only,
+  no advisory or bug-fix examples), the size (133 against 511), the epochs (about 3.8 against 1)
+  and the total update (about two thirds of v2's, part of the way to a lower learning rate). A
+  run that changes only the targets' author would isolate it.
+- **What is left of the damage**: more attempts break a regression test on test (30 against 22).
+- **Dev, 3 runs each** (no control on dev today; D19's control 26, v2 26): step 64 **28 of 39**
+  (9, 8, 11; 23 at attempt 1, `STUCK` 0), step 32 23 of 39 (7, 8, 8; 9 `REGRESSION` endings).
+  Step 32 had the lower validation loss and is worse on dev; 13 scenarios cannot say more.
+- Runs `20261021-v3a-`, `-v3b-`, `-c3-`, `-c4-repair-local-<split>` and `-v3a`/`-v3b`/`-v3c`
+  (step 64), `-v3s32a`/`b`/`c` (step 32) `-repair-local-dev`.
+- **What it means for the plan**: rung 3 did what the report expected, parity. The rungs that
+  could beat the base are 4 (preference pairs against `REGRESSION`, the cost v3 still carries) and
+  5 (GRPO), and at this benchmark's noise any gain under about 4 of 54 stays invisible. The 840
+  samples hold 591 passing and 249 failing edits, 49 scenarios with both; but only 19 scenarios
+  have a passing and a `REGRESSION` edit (64 such edits), so rung 4 aimed at regressions has 19
+  distinct prompts, against the report's "about 100 pairs". `aeropatch-v3-step64` and `-step32` stay in Ollama (5.6 GB on `F:`) until you say.
+
 ## Next
 
 **Decisions that are yours**
@@ -2106,7 +2248,8 @@ untuned model.**
    2026-10-16, D26 as #22 and D27-D28 as #23, still from this branch. **`v1.0` is the annotated
    tag on #23's merge commit `d92c1f1`, pushed 2026-10-19.** The licence went in as #24;
    **`v1.0.1`** tags its merge commit `1ecb35c`, and GitHub now shows "Apache License 2.0". The
-   model check (2026-10-19) went in as #25, merge commit `caba3a7`, untagged. The Kaggle kernel
+   model check (2026-10-19) went in as #25, merge commit `caba3a7`, and the retrain of v2 as
+   #26, merge commit `f45e2e6`, both untagged. The Kaggle kernel
    clones that branch.
    The training data itself (`training/synthetic/`, `training/data/`) is git-ignored and exists
    only on the laptop.
@@ -2135,7 +2278,11 @@ untuned model.**
    results reported per tier.
 10. Not done from the plan: `propose_fix` and `apply_edits` as MCP tools (`remediate` covers
    them), and a Tier B "before release" group.
-11. Done on 2026-10-16: `docs/architecture-interactive.html` was byte-identical to
+11. **Left from 2026-10-21, yours to delete or keep**: `aeropatch-v3-step64` and
+   `aeropatch-v3-step32` in Ollama (5.6 GB on `F:`, which has 7.8 GB free), the private Kaggle
+   dataset `aeropatch-train-v3`, and `D:\aeropatch-v3` (the two GGUFs and the run's reports).
+   The kernel's `ORDER` is `["own-v3"]` now; set it before the next session.
+12. Done on 2026-10-16: `docs/architecture-interactive.html` was byte-identical to
    `docs/architecture.html` and nothing linked to it; it is removed.
 
 **Cuts found by the over-engineering audit and left for after Week 4**, because they sit on the

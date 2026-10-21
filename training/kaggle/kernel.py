@@ -19,6 +19,8 @@ RUNS = {  # {data}: where Kaggle mounted the dataset named first
     "control": ("aeropatch-train", "--data {data} --max-seq-length 2048 --max-steps 0 --gguf q4_k_m"),
     "full": ("aeropatch-train-4096", "--data {data} --gguf q4_k_m"),  # dataset v1, 2 epochs
     "full-v2": ("aeropatch-train-v2", "--data {data} --gguf q4_k_m"),  # dataset v2, the same run
+    # 2026-10-21: v2's settings and its 64 steps, on the untuned model's own passing answers (own_fixes.py).
+    "own-v3": ("aeropatch-train-v3", "--data {data} --max-steps 64 --gguf q4_k_m"),
     "rehearsal": ("aeropatch-train", "--data {data} --max-seq-length 2048 --max-steps 4"),  # checkpoints 2 and 4
     # D20: the untuned control, the model Week 4 runs, at the plan's two other levels (its Q4_K_M is D17's).
     "control-q8": ("aeropatch-train", "--data {data} --max-seq-length 2048 --max-steps 0 --gguf q8_0"),
@@ -26,8 +28,8 @@ RUNS = {  # {data}: where Kaggle mounted the dataset named first
 }
 # Runs whose earlier checkpoints each get a GGUF in the same session: D18 judges checkpoints
 # through Ollama, and a later session cannot read this one's files.
-EARLIER = {"full", "full-v2", "rehearsal"}
-ORDER = ["full-v2"]  # the first has to pass; a later one may fail and the rest still run
+EARLIER = {"full", "full-v2", "own-v3", "rehearsal"}
+ORDER = ["own-v3"]  # the first has to pass; a later one may fail and the rest still run
 
 
 def sh(command: str, check: bool = True) -> int:
