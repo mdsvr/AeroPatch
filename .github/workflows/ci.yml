@@ -1,6 +1,6 @@
-# Lint and the tests that need no Docker sandbox and no model server. The sandbox tests are
-# marked `docker` and skip themselves without the base image; run the full suite on a machine
-# with Docker Desktop (`uv run pytest`).
+# `test`: lint and the tests that need no Docker sandbox and no model server.
+# `sandbox`: builds the sandbox base image and runs the tests marked `docker` (the sandbox's
+# hardening, the loop through it, the MCP tools that use it) on native Linux Docker.
 name: CI
 
 on:
@@ -20,3 +20,12 @@ jobs:
       - run: uv sync --locked
       - run: uv run ruff check .
       - run: uv run pytest -m "not docker" -q
+
+  sandbox:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --locked
+      - run: uv run aeropatch build-base
+      - run: uv run pytest -m docker -q
