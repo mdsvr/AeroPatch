@@ -67,13 +67,13 @@ def test_ensure_image_builds_the_base_first_on_a_fresh_machine(monkeypatch):
 def test_original_rule_rescan_reports_present_absent_or_unavailable(monkeypatch, tmp_path):
     original = Finding(tool="opengrep", rule_id="aeropatch.python.test", path="app.py", line=10)
     finding = Finding(tool="opengrep", rule_id="aeropatch.python.test", path="app.py", line=12)
-    monkeypatch.setattr(scanners, "run_opengrep", lambda repo: [finding])
+    monkeypatch.setattr(scanners, "run_opengrep", lambda repo, **_: [finding])
     assert scanners.original_rule_present(tmp_path, original) is True
 
-    monkeypatch.setattr(scanners, "run_opengrep", lambda repo: [])
+    monkeypatch.setattr(scanners, "run_opengrep", lambda repo, **_: [])
     assert scanners.original_rule_present(tmp_path, original) is False
 
-    monkeypatch.setattr(scanners, "run_opengrep", lambda repo: None)
+    monkeypatch.setattr(scanners, "run_opengrep", lambda repo, **_: None)
     assert scanners.original_rule_present(tmp_path, original) is None
 
 

@@ -59,6 +59,13 @@ DEFAULTS: dict = {
     "sandbox_pids": 256,
     "scenario_wallclock_s": 600,
     "localization": "oracle",
+    # Doc 17 part 2 §2. The defaults are today's behaviour, so every earlier config keeps its meaning.
+    # hidden_suites: suites still run (their results stay in the record) but are kept out of the
+    # model's prompt and out of the stop rule. rescan_feedback: tell the model when the finding's
+    # rule still fires. run_tests: False skips the sandbox (gates and re-scan only, nothing runs).
+    "hidden_suites": [],
+    "rescan_feedback": False,
+    "run_tests": True,
     "forbidden_globs": FORBIDDEN_GLOBS,
     "risky_modules": RISKY_MODULES,
     "risky_calls": RISKY_CALLS,
@@ -104,6 +111,15 @@ CONFIGS: dict[str, dict] = {
     # scenario's context exceeds ~6k tokens. Today's largest is ~115.
     "cascade": {"mode": "cascade", "attempt_plan": ["local", "local", "frontier"]},
     "cascade-claude-code": {"mode": "cascade", "attempt_plan": ["local", "local", "claude-code"]},
+    # Label measurement (doc 17 part 2 §1): V1 is a user with good tests (the PoC is hidden), V2 a
+    # user with none (both suites hidden). Each attempt still records the hidden suites as truth.
+    "repair-local-v1": {"attempt_plan": ["local", "local", "local"], "hidden_suites": ["poc"],
+                        "rescan_feedback": True},
+    "repair-local-v2": {"attempt_plan": ["local", "local", "local"], "hidden_suites": ["poc", "regression"],
+                        "rescan_feedback": True},
+    # The Suggest level: V2's loop with no sandbox, so a user without Docker gets V2's numbers.
+    "suggest-local": {"attempt_plan": ["local", "local", "local"], "hidden_suites": ["poc", "regression"],
+                      "rescan_feedback": True, "run_tests": False},
 }
 
 # USD per 1M tokens: input, output, cache read (doc 04 §2; platform.claude.com pricing page,

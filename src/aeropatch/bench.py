@@ -134,7 +134,8 @@ def run_benchmark(cfg: dict, split: str = "dev", run_id: str | None = None,
 
     def run_one(sid: str):
         task = scenario.load(sid)
-        scenario.ensure_image(sid)
+        if cfg.get("run_tests", True):  # the Suggest level needs no Docker (doc 17)
+            scenario.ensure_image(sid)
         return loop.run(task, cfg, run_dir)
 
     pending = [sid for sid in ids if sid not in finished]

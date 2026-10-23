@@ -26,6 +26,7 @@ class Finding(_Json):
     severity: str = "medium"
     message: str = ""
     fingerprint: str = ""
+    confidence: str = ""  # Bandit's own high | medium | low; empty for Opengrep (doc 17 part 3 §2)
 
 
 @dataclass
@@ -81,6 +82,7 @@ class Failure(_Json):
     kind: str  # failure | error | skipped
     message: str
     trace: str = ""
+    suite: str = ""  # poc | regression; lets a config hide one suite from the model (doc 17 part 2)
 
 
 @dataclass
@@ -94,7 +96,7 @@ class SandboxResult(_Json):
     rescan_clean: bool | None = None
     original_rule_present: bool | None = None
     failures: list[Failure] = field(default_factory=list)
-    label: str = ""  # RESOLVED | POC_FAIL | REGRESSION | IMPORT_ERROR | SYNTAX_ERROR | TIMEOUT | ...
+    label: str = ""  # RESOLVED | POC_FAIL | REGRESSION | IMPORT_ERROR | SYNTAX_ERROR | TIMEOUT | NOT_RUN | ...
     duration_s: float = 0.0
     timed_out: bool = False
     apply_error: str = ""
@@ -114,10 +116,11 @@ class Attempt(_Json):
     diff: str = ""
     gate: GateResult | None = None
     sandbox: SandboxResult | None = None
-    label: str = ""
+    label: str = ""  # the true label, for the records
     latency_s: float = 0.0
     cost_usd: float = 0.0
     refusal: dict | None = None
+    user_label: str = ""  # what a user would be told, from the visible checks only (labels.py)
 
 
 @dataclass
@@ -129,3 +132,4 @@ class RunResult(_Json):
     label: str
     final_diff: str = ""
     duration_s: float = 0.0
+    user_label: str = ""

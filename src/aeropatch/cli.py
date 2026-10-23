@@ -64,7 +64,8 @@ def cmd_remediate(args) -> int:
 
     cfg = load_config(args.config, local_model=args.local_model, frontier_model=args.frontier_model)
     task = scenario.load(args.scenario)
-    scenario.ensure_image(args.scenario)
+    if cfg.get("run_tests", True):  # the Suggest level needs no Docker (doc 17)
+        scenario.ensure_image(args.scenario)
     run_dir = RUNS_DIR / f"remediate-{args.scenario}-{cfg['name']}"
     result = loop.run(task, cfg, run_dir)
     print(f"{task.id}: {result.label} in {result.duration_s}s -> {run_dir / task.id / 'report.md'}")
@@ -89,6 +90,52 @@ def cmd_mcp(args) -> int:
     from aeropatch import mcp_server
 
     mcp_server.server.run("stdio")
+    return 0
+
+
+def cmd_doctor(args) -> int:
+    from aeropatch import doctor
+
+    return doctor.main()
+
+
+def _folder(arg: str) -> Path | None:
+    folder = Path(arg)
+    if not folder.is_dir():
+        print(f"There is no folder at {folder}. Check the path and try again.", file=sys.stderr)
+        return None
+    return folder
+
+
+def cmd_check(args) -> int:
+    from aeropatch import check
+
+    folder = _folder(args.folder)
+    if folder is None:
+        return 2
+    res = check.check_folder(folder)
+    print(check.format_text(res, show_all=args.all))
+    if args.open:
+        import webbrowser
+
+        page = check.write_html(res)
+        webbrowser.open(page.resolve().as_uri())
+        print(f"\nThe same results are open in your browser: {page}")
+    return 0
+
+
+def cmd_dismiss(args) -> int:
+    from aeropatch import check
+
+    folder = _folder(args.folder)
+    if folder is None:
+        return 2
+    try:
+        f = check.dismiss(folder, args.n, args.reason)
+    except (IndexError, ValueError) as e:
+        print(f"Could not dismiss problem {args.n}: {e}", file=sys.stderr)
+        return 2
+    print(f"Dismissed {f.path}:{f.line}. It stays hidden until that code changes.")
     return 0
 
 
@@ -144,6 +191,19 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("jsonl", nargs="+")
     s.add_argument("--csv", default=None, help="also write each table as a CSV into this folder")
     s.set_defaults(fn=cmd_report)
+
+    sub.add_parser("doctor", help="check that what AeroPatch needs is installed and running (doc 17)"
+                   ).set_defaults(fn=cmd_doctor)
+    s = sub.add_parser("check", help="read-only check of a folder: up to five problems, explained (doc 17)")
+    s.add_argument("folder")
+    s.add_argument("--all", action="store_true", help="also list the problems set aside as likely false alarms")
+    s.add_argument("--open", action="store_true", help="also open the results as a page in your browser")
+    s.set_defaults(fn=cmd_check)
+    s = sub.add_parser("dismiss", help="hide one problem from later checks, with a reason")
+    s.add_argument("folder")
+    s.add_argument("n", type=int, help="the problem's number in the last check")
+    s.add_argument("--reason", required=True)
+    s.set_defaults(fn=cmd_dismiss)
 
     sub.add_parser("mcp", help="serve the tools over MCP on stdio (doc 06)").set_defaults(fn=cmd_mcp)
     sub.add_parser("prune", help="remove leftover sandbox containers").set_defaults(fn=cmd_prune)

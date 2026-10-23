@@ -187,6 +187,8 @@ def parse_logs(logs: str, timed_out: bool = False, duration: float = 0.0) -> San
                 tail = junit.clean(s.get(f"LOG-{suite}", ""))[-1500:]
                 failures = [junit.Failure(test_id=f"<{suite}>", kind="error",
                                           message=f"no tests ran (pytest exit {rc or '?'})", trace=tail)]
+            for f in failures:
+                f.suite = suite
             res.failures.extend(failures)
             labels.append(junit.classify(failures) or ("POC_FAIL" if suite == "poc" else "REGRESSION"))
 

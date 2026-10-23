@@ -85,6 +85,11 @@ sandbox tests, the gates, the scenario validator, the baselines, or traceable nu
 | 14e | [14-timeline-part5.md](14-timeline-part5.md) | Timeline | Week 4 in detail: what D20 already covers, cuts and why, runs, adversarial scenarios, packaging | 268 |
 | 15 | [15-resume-and-deliverables.md](15-resume-and-deliverables.md) | Outcomes | Resume claim fixes, bullet templates, deliverables, README outline, demo | 141 |
 | 16 | [16-sources.md](16-sources.md) | References | All sources, claim→source confidence map, open verification items | 152 |
+| 17a | [17-easy-use-part1.md](17-easy-use-part1.md) | Easy use (2026-10-22) | Goal, three install levels, what blocks it in the code, labels, phases, your decisions, deferred list | 177 |
+| 17b | [17-easy-use-part2.md](17-easy-use-part2.md) | Easy use | Phase 0: hidden-suite runs (V1/V2) for label precision, loop changes, model-digest check, `aeropatch doctor` | 141 |
+| 17c | [17-easy-use-part3.md](17-easy-use-part3.md) | Easy use | Phase 1a: read-only `check`, HTML page, triage, cards, secrets card | 94 |
+| 17d | [17-easy-use-part4.md](17-easy-use-part4.md) | Easy use | Phase 1b: `fix`/`apply`/`undo`, folder sandbox image, the user's tests, error messages, review test | 159 |
+| 17e | [17-easy-use-part5.md](17-easy-use-part5.md) | Easy use | Phase 2 (`install.ps1` by level, local page) and Phase 3 (attack tests, "Ask Claude"), definition of done | 155 |
 
 Suggested reading order: 00 → 01 → 02 → 03/04 → 05 → 14a/14b, then each week's docs as you
 reach that week.
