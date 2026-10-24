@@ -106,6 +106,21 @@ without an import passes the gates and is stopped by the sandbox and the tests. 
 `uv run aeropatch report runs/<a>.jsonl runs/<b>.jsonl ... [--csv <dir>]` regenerates every
 table; [notebooks/week4_charts.py](notebooks/week4_charts.py) redraws the charts.
 
+**Without the exploit test** ([doc 17](docs/17-easy-use-part2.md), 2026-10-24). A user's own code
+has no hand-written PoC, so the benchmark was rerun with it hidden from the model and from the stop
+rule, while still recording it as the truth. Two runs pooled, untuned model:
+
+| What the user is told | Shown | Right |
+|---|---|---|
+| "Scanner quiet, your tests still pass" (PoC hidden, test) | 34 of 54 | 25 of 34 (74%) |
+| "Your tests still pass; the scanner could not re-check this" (PoC hidden, real CVEs) | 14 of 20 | 8 of 14 (57%) |
+| "Scanner quiet, not tested" (both suites hidden, test) | 43 of 54 | 23 of 43 (53%) |
+
+Resolved under that feedback: 46% on test and 40% on the real CVEs with the regression tests
+visible, 43% on test with none. Opengrep and Bandit find none of the 10 real CVEs on their own (0
+of 10 within 3 lines of the advisory). The library `qwen3.5:4b` build d8b0f5e9760c ties the export
+(38 against 38 of 54). Runs in [runs/INDEX.md](runs/INDEX.md), details in `NOTES.md`.
+
 ## Model
 
 - **Weights**: `Qwen/Qwen3.5-4B` (Apache-2.0), unchanged. Exported through the same merge and GGUF

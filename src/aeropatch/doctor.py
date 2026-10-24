@@ -27,10 +27,11 @@ MIN_DOCKER_MEM = 4 * GB
 MIN_FREE_DISK = 10 * GB
 LOG_TAIL_BYTES = 64 * 1024
 # Build prefixes (the digest /api/tags reports) that AeroPatch has benchmarked, per model tag.
-# The library qwen3.5:4b runs of Weeks 1 and 2 used 2a654d98e6fb; `ollama pull` now gives
-# d8b0f5e9760c, which has not been benchmarked (README, "Model"). Phase 0's comparison (doc 17
-# part 2 §3) adds the export's digest.
-MEASURED_DIGESTS: dict[str, tuple[str, ...]] = {"qwen3.5:4b": ("2a654d98e6fb",)}
+# The library qwen3.5:4b runs of Weeks 1 and 2 used 2a654d98e6fb. `ollama pull` now gives
+# d8b0f5e9760c, which Phase 0 measured on 2026-10-24 against the export aeropatch-control
+# (81771ad1e5cf): 38 and 38 of 54 on test, alternated, Ollama 0.40.10 (doc 17 part 2 §3).
+MEASURED_DIGESTS: dict[str, tuple[str, ...]] = {"qwen3.5:4b": ("2a654d98e6fb", "d8b0f5e9760c"),
+                                                "aeropatch-control": ("81771ad1e5cf",)}
 MARKERS = {"blocking": "[x]", "warning": "[!]", "info": "[-]"}
 _START = re.compile(r"starting ollama server", re.IGNORECASE)
 _STAGED = re.compile(r"update (already )?downloaded", re.IGNORECASE)

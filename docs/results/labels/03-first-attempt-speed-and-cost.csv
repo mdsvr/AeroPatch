@@ -1,0 +1,7 @@
+Run,Model,Applied @1,PoC fixed @1,p50 latency s,p95 latency s,tok/s,Refusals,Cost $,$ per resolved,Input tok per resolved,Output tok per resolved,Cache-read tok per resolved
+20261024-v1a-repair-local-v1-test,aeropatch-control,27/27,17/27,5.7,13.6,49.0,0,0.00,0.000,"6,192","1,142",0
+20261024-v1b-repair-local-v1-test,aeropatch-control,27/27,20/27,6.0,12.4,48.1,0,0.00,0.000,"4,664",943,0
+20261024-v2a-repair-local-v2-test,aeropatch-control,26/27,16/27,6.9,12.3,48.1,0,0.00,0.000,"3,623","1,011",0
+20261024-v2b-repair-local-v2-test,aeropatch-control,27/27,18/27,6.4,14.2,48.1,0,0.00,0.000,"3,320",946,0
+20261024-v1a-repair-local-v1-test_b,aeropatch-control,10/10,5/10,9.4,20.6,47.8,0,0.00,0.000,"7,215","1,848",0
+20261024-v1b-repair-local-v1-test_b,aeropatch-control,10/10,5/10,9.9,22.6,47.5,0,0.00,0.000,"7,114","1,998",0

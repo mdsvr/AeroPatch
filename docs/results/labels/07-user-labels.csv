@@ -1,0 +1,13 @@
+Run,User label,Tasks,Yield,Right,95% CI
+20261024-v1a-repair-local-v1-test,"Scanner quiet, your tests still pass",17,17/27 (63%),12/17,47%-87%
+20261024-v1a-repair-local-v1-test,"Not fixed, warning kept",10,10/27 (37%),5/10,24%-76%
+20261024-v1b-repair-local-v1-test,"Scanner quiet, your tests still pass",17,17/27 (63%),13/17,53%-90%
+20261024-v1b-repair-local-v1-test,"Not fixed, warning kept",10,10/27 (37%),6/10,31%-83%
+20261024-v2a-repair-local-v2-test,"Scanner quiet, not tested",21,21/27 (78%),12/21,37%-76%
+20261024-v2a-repair-local-v2-test,"Not fixed, warning kept",6,6/27 (22%),4/6,30%-90%
+20261024-v2b-repair-local-v2-test,"Scanner quiet, not tested",22,22/27 (81%),11/22,31%-69%
+20261024-v2b-repair-local-v2-test,"Not fixed, warning kept",5,5/27 (19%),1/5,4%-62%
+20261024-v1a-repair-local-v1-test_b,Your tests still pass; the scanner could not re-check this,7,7/10 (70%),4/7,25%-84%
+20261024-v1a-repair-local-v1-test_b,"Not fixed, warning kept",3,3/10 (30%),3/3,44%-100%
+20261024-v1b-repair-local-v1-test_b,Your tests still pass; the scanner could not re-check this,7,7/10 (70%),4/7,25%-84%
+20261024-v1b-repair-local-v1-test_b,"Not fixed, warning kept",3,3/10 (30%),3/3,44%-100%

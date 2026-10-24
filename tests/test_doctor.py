@@ -9,7 +9,7 @@ from aeropatch.doctor import GB, LEVELS, Check
 
 CFG = {"local_host": "http://localhost:11434", "local_model": "qwen3.5:4b"}
 MEASURED = "2a654d98e6fb" + "0" * 52
-REBUILT = "d8b0f5e9760c" + "1" * 52
+REBUILT = "ffffffffffff" + "1" * 52
 # The unpatched probes, kept before the autouse fixture replaces them.
 REAL = {n: getattr(doctor, n) for n in ("probe_ollama_update", "probe_docker", "probe_ollama_version",
                                         "probe_ollama_models")}
@@ -124,7 +124,7 @@ def test_fault_wording(monkeypatch):
     assert failing(probe_ollama_models=lambda host: [])["Model downloaded"].fix == \
         "Run: ollama pull qwen3.5:4b (about 3 GB)"
     build = failing(probe_ollama_models=lambda host: [{"name": "qwen3.5:4b", "digest": REBUILT}])["Model build"]
-    assert "d8b0f5e9760c has not been tested" in build.message
+    assert "ffffffffffff has not been tested" in build.message
     assert "Only Bandit will run" in failing(probe_opengrep=lambda: None)["Opengrep"].message
     assert "1-1.5 GB" in failing(probe_free_disk=lambda: 3 * GB)["Disk space"].fix
 

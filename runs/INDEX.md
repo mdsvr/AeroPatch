@@ -287,3 +287,27 @@ Rung 2: the untuned control, one attempt at temperature 0.7, 8 times on the 105 
 | `20261021-v3s32b-repair-local-dev` | repair-local | aeropatch-v3-step32 | dev | `71279c2` | no | 8/13 |
 | `20261021-v3c-repair-local-dev` | repair-local | aeropatch-v3-step64 | dev | `71279c2` | no | 11/13 |
 | `20261021-v3s32c-repair-local-dev` | repair-local | aeropatch-v3-step32 | dev | `71279c2` | no | 8/13 |
+
+## Doc 17 Phase 0: label measurement (2026-10-24)
+
+Oracle 27/27 and 10/10, with the one-file re-scan giving the same `original_rule_present` as
+`20261005-201131-oracle-test` on all 27. With the PoC hidden (V1) "Scanner quiet, your tests still
+pass" was right 25 of 34 times on test; with both suites hidden (V2) "Scanner quiet, not tested" was
+right 23 of 43; on Tier B "Your tests still pass; the scanner could not re-check this" was right 8 of
+14. The library `qwen3.5:4b` (d8b0f5e9760c) tied the export, 38 against 38 of 54. Block 1 (o1, v1a
+to v2b) ran on Ollama 0.40.7, block 2 (Tier B and q/e) on 0.40.10. `NOTES.md`, "Doc 17 Phase 0".
+
+| Run | Config | Model | Split | Commit | Dirty | Resolved |
+|---|---|---|---|---|---|---|
+| `20261024-o1-oracle-test` | oracle | oracle | test | `37043ef` | no | 27/27 |
+| `20261024-o1-oracle-test_b` | oracle | oracle | test_b | `37043ef` | no | 10/10 |
+| `20261024-v1a-repair-local-v1-test` | repair-local-v1 | aeropatch-control | test | `37043ef` | no | 12/27 |
+| `20261024-v2a-repair-local-v2-test` | repair-local-v2 | aeropatch-control | test | `37043ef` | no | 12/27 |
+| `20261024-v1b-repair-local-v1-test` | repair-local-v1 | aeropatch-control | test | `37043ef` | no | 13/27 |
+| `20261024-v2b-repair-local-v2-test` | repair-local-v2 | aeropatch-control | test | `37043ef` | no | 11/27 |
+| `20261024-v1a-repair-local-v1-test_b` | repair-local-v1 | aeropatch-control | test_b | `37043ef` | no | 4/10 |
+| `20261024-v1b-repair-local-v1-test_b` | repair-local-v1 | aeropatch-control | test_b | `37043ef` | no | 4/10 |
+| `20261024-q1-repair-local-test` | repair-local | qwen3.5:4b | test | `37043ef` | no | 17/27 |
+| `20261024-e1-repair-local-test` | repair-local | aeropatch-control | test | `37043ef` | no | 21/27 |
+| `20261024-q2-repair-local-test` | repair-local | qwen3.5:4b | test | `37043ef` | no | 21/27 |
+| `20261024-e2-repair-local-test` | repair-local | aeropatch-control | test | `37043ef` | no | 17/27 |

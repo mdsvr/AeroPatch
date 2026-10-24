@@ -2244,6 +2244,44 @@ needed (multi-file edits and wider context already exist, local concurrency gain
   the README. Not taken from that review: deleting `feat/week3-d15-data` (the Kaggle kernel
   clones it), and calling v3's Tier B and C leads gains (p = 0.73 and 0.50).
 
+## Doc 17 Phase 0: how often each user label is right (2026-10-24)
+
+The easy-use plan (docs/17-easy-use-part2.md) asks how often the label a user would see is right
+on code without a hand-written exploit test, before Phase 1b shows any label to anyone. Code at
+`37043ef` (feat/easy-use), clean tree, `aeropatch-control` unless stated. Block 1 (oracle, V1 and
+V2 on test) ran on Ollama 0.40.7. Ollama downloaded 0.40.10 at 13:23 during block 1; I installed it
+before block 2 (Tier B and the model comparison), so each comparison ran on one version.
+
+**Labels**, two runs pooled, 95% Wilson intervals (`docs/results/labels/07-user-labels.csv`):
+
+| Label | Where | Shown | Right |
+|---|---|---|---|
+| Scanner quiet, your tests still pass | V1, test | 34 of 54 | 25 of 34, 74% [57-85] |
+| Your tests still pass; the scanner could not re-check this | V1, test_b | 14 of 20 | 8 of 14, 57% [33-79] |
+| Scanner quiet, not tested | V2, test (= the Suggest level) | 43 of 54 | 23 of 43, 53% [39-67] |
+
+- **Resolved under realistic feedback:** V1 25/54 (46%) on test and 8/20 (40%) on Tier B; V2
+  23/54 (43%). These, not the 70% and 35% earned with PoC feedback, are the rates to quote to
+  users. On Tier B, V1's 40% is no worse than the 35% with the PoC visible.
+- **"Not fixed" hides correct fixes:** in 9 of V1's 20 "not fixed" tasks on test some attempt
+  passed both hidden suites, but the rule still fired or a test failed, so nothing was offered.
+- **Oracle:** 27/27 and 10/10. The one-file re-scan gives the same `original_rule_present` as the
+  whole-repo scan of `20261005-201131-oracle-test` on all 27.
+- **Library model:** `qwen3.5:4b` build d8b0f5e9760c scored 17 and 21, the export 21 and 17:
+  38 against 38 of 54, alternated, within the pre-set bar of 4. Users can pull the library model;
+  the doctor now lists both builds as measured, and publishing the export is not needed.
+- **Detection on real code (host-side, no runs):** Opengrep and Bandit report 85 findings over the
+  10 Tier B repos and none within 3 lines of the advisory's location: 0 of 10.
+
+**What this changes (part 2 §6), defaults taken:**
+- Phase 1b ships "Scanner quiet, your tests still pass" as the Test level's label, with "on 27
+  practice apps, right 25 of 34 times". The benchmark's regression tests are stronger than most
+  users', so this is an upper bound.
+- "Scanner quiet, not tested" is right about half the time, so the Suggest level shows its change
+  as "a suggestion to review", never as a fix.
+- On real code the scanners are the bottleneck: they found none of the ten CVEs. Better rules and
+  triage come before any model work, and the 1a check on 10 public repos matters more.
+
 ## Next
 
 **Decisions that are yours**
