@@ -10,7 +10,9 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 CARDS = json.loads((ROOT / "rules" / "cards.json").read_text(encoding="utf-8"))
-RULES_YML = (ROOT / "rules" / "aeropatch-python.yml").read_text(encoding="utf-8")
+RULES_YML = "\n".join((ROOT / d / f).read_text(encoding="utf-8") for d, f in
+                      (("rules", "aeropatch-python.yml"), ("rules-extra", "aeropatch-extra.yml")))
+OTHER_TOOLS = {"regexploit.redos": "CWE-1333"}  # cards for findings that come from neither ruleset nor Bandit
 # One chunk per `- id:` line: the id, then its body up to the next rule.
 PROJECT_CWE = {
     chunk.split()[0]: re.search(r'cwe: "(CWE-\d+)', chunk)[1]
@@ -69,8 +71,8 @@ def test_no_status_words(name):
 
 
 def test_every_project_rule_has_a_card_with_its_cwe():
-    assert len(PROJECT_CWE) >= 22  # a broken regex must not pass with nothing parsed
-    for rule_id, cwe in PROJECT_CWE.items():
+    assert len(PROJECT_CWE) >= 28  # a broken regex must not pass with nothing parsed
+    for rule_id, cwe in {**PROJECT_CWE, **OTHER_TOOLS}.items():
         assert CARDS["rules"][rule_id]["cwe"] == cwe, rule_id
 
 
@@ -79,6 +81,8 @@ def test_every_key_is_a_real_rule_id(bandit_ids):
     for key in CARDS["rules"]:
         if key.startswith("aeropatch."):
             assert key in PROJECT_CWE, key
+        elif key in OTHER_TOOLS:
+            continue
         else:
             assert re.fullmatch(r"B\d{3}", key) and key in bandit_ids, key
 

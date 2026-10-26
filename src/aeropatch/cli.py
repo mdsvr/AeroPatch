@@ -113,7 +113,7 @@ def cmd_check(args) -> int:
     folder = _folder(args.folder)
     if folder is None:
         return 2
-    res = check.check_folder(folder)
+    res = check.check_folder(folder, offline=args.offline, extra_rules=args.extra_rules, use_judge=args.judge)
     print(check.format_text(res, show_all=args.all))
     if args.open:
         import webbrowser
@@ -131,7 +131,7 @@ def cmd_dismiss(args) -> int:
     if folder is None:
         return 2
     try:
-        f = check.dismiss(folder, args.n, args.reason)
+        f = check.dismiss(folder, args.n, args.reason, extra_rules=args.extra_rules, use_judge=args.judge)
     except (IndexError, ValueError) as e:
         print(f"Could not dismiss problem {args.n}: {e}", file=sys.stderr)
         return 2
@@ -202,11 +202,22 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("folder")
     s.add_argument("--all", action="store_true", help="also list the problems set aside as likely false alarms")
     s.add_argument("--open", action="store_true", help="also open the results as a page in your browser")
+    s.add_argument("--offline", action="store_true",
+                   help="skip the advisory lookup at osv.dev (it sends package names and versions, no code)")
+    check_options = (
+        (("--extra-rules",), {"action": "store_true",
+                              "help": "also run the extra taint rules (rules-extra/; not yet measured on real repos)"}),
+        (("--judge",), {"action": "store_true",
+                        "help": "let the local model set aside likely false alarms near the top (needs Ollama)"}))
+    for flags, kw in check_options:
+        s.add_argument(*flags, **kw)
     s.set_defaults(fn=cmd_check)
     s = sub.add_parser("dismiss", help="hide one problem from later checks, with a reason")
     s.add_argument("folder")
     s.add_argument("n", type=int, help="the problem's number in the last check")
     s.add_argument("--reason", required=True)
+    for flags, kw in check_options:  # the same options as that check, so n is the same card
+        s.add_argument(*flags, **kw)
     s.set_defaults(fn=cmd_dismiss)
 
     sub.add_parser("mcp", help="serve the tools over MCP on stdio (doc 06)").set_defaults(fn=cmd_mcp)

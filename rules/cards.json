@@ -437,6 +437,83 @@
         "Type ' OR '1'='1 into a login or search field: you should see no extra records."
       ],
       "cwe": "CWE-89"
+    },
+    "aeropatch.extra.header-injection": {
+      "headline": "Someone could add their own lines to your app's replies by sending crafted text",
+      "what_could_happen": "Text from a request is copied into a reply header. A line break hidden in that text starts a new header or even a new page, so someone could set cookies or show their own content to other people.",
+      "when_it_matters": "If the value can come from a visitor, for example a web address parameter, and the reply goes to other people's browsers.",
+      "the_change": "The usual change removes carriage returns and line breaks from the value before it goes into the header, or refuses the request when it has them.",
+      "try_yourself": [
+        "Send the request with %0d%0aX-Test:%20yes added to the value: the reply should not contain an X-Test header.",
+        "After the change, check that normal values still appear."
+      ],
+      "cwe": "CWE-113"
+    },
+    "aeropatch.extra.path-traversal-taint": {
+      "headline": "Someone could read any file on this computer by sending a crafted file name",
+      "what_could_happen": "A file name from a web request reaches a file open. A name like ../../settings.txt climbs out of the intended folder, so someone could read passwords, settings or other users' files.",
+      "when_it_matters": "If the app is reachable by people you do not fully trust, and the folder sits on a computer with other files worth reading.",
+      "the_change": "The usual change keeps only the last part of the name, or works out the full path and refuses any name that ends up outside the intended folder.",
+      "try_yourself": [
+        "Request a file name with ../ in front of it: the app should refuse instead of showing a file.",
+        "After the change, check that normal file names still open."
+      ],
+      "cwe": "CWE-22"
+    },
+    "aeropatch.extra.code-injection-taint": {
+      "headline": "Someone could run their own Python code inside your app",
+      "what_could_happen": "Text from a web request is run as Python code. Whoever sends the request could read your files and passwords, change data, or take over the computer the app runs on.",
+      "when_it_matters": "Whenever the app can be reached by anyone other than you. This is one of the most serious kinds of problem.",
+      "the_change": "The usual change stops running the text as code. If the text should be a number or a simple value, it is read with int(), float() or ast.literal_eval instead.",
+      "try_yourself": [
+        "Find which request field reaches this line.",
+        "Send __import__('os').getcwd() in that field: the app should refuse it instead of answering with a folder name."
+      ],
+      "cwe": "CWE-94"
+    },
+    "aeropatch.extra.decompression-bomb": {
+      "headline": "A small crafted upload could use up all of your app's memory",
+      "what_could_happen": "Compressed data from a request is unpacked with no size limit. A file of a few kilobytes can unpack to gigabytes, so one request could stop the app or the whole computer.",
+      "when_it_matters": "If people you do not fully trust can send compressed data to the app, and the app needs to keep running for others.",
+      "the_change": "The usual change unpacks with a size limit, for example zlib.decompressobj().decompress(data, limit), and refuses data that would grow past it.",
+      "try_yourself": [
+        "Note the largest upload a real user sends.",
+        "After the change, send a small file that unpacks to far more than that: the app should refuse it quickly."
+      ],
+      "cwe": "CWE-409"
+    },
+    "aeropatch.extra.unbounded-body-read": {
+      "headline": "One large request could use up all of your app's memory",
+      "what_could_happen": "The app reads the whole request body at whatever length the sender claims. One request claiming gigabytes could make the app run out of memory and stop answering everyone.",
+      "when_it_matters": "If the app can be reached by people you do not fully trust and needs to keep answering others.",
+      "the_change": "The usual change sets a largest allowed body size and refuses a request that claims more before reading anything.",
+      "try_yourself": [
+        "Decide the largest body a real user ever sends.",
+        "After the change, send a request with a much larger Content-Length: the app should refuse it at once."
+      ],
+      "cwe": "CWE-400"
+    },
+    "aeropatch.extra.jwt-decode-unverified": {
+      "headline": "Someone could sign in as any user with a home-made login token",
+      "what_could_happen": "A login token is read without checking its signature, or the token itself chooses how it is checked. Someone could write a token naming any user, including an administrator, and the app would accept it.",
+      "when_it_matters": "If these tokens decide who a person is or what they may do in your app.",
+      "the_change": "The usual change always checks the signature and names the one algorithm your app uses, for example jwt.decode(token, key, algorithms=[\"HS256\"]).",
+      "try_yourself": [
+        "Change one character in the last part of a real token and send it: the app should refuse it.",
+        "After the change, check that normal sign-in still works."
+      ],
+      "cwe": "CWE-347"
+    },
+    "regexploit.redos": {
+      "headline": "A long, crafted piece of text could freeze your app",
+      "what_could_happen": "A text pattern here (a regular expression, used to check or search text) can take an enormous time on some inputs. One crafted entry could keep the app busy for minutes, so nobody else gets served.",
+      "when_it_matters": "Only if text from users or the internet is checked against this pattern, and the app needs to keep answering other people.",
+      "the_change": "The usual change rewrites the pattern so it cannot try huge numbers of combinations, or limits how long the text may be before it is checked.",
+      "try_yourself": [
+        "Find which field or input this pattern checks.",
+        "Type about 40 copies of the same letter followed by a symbol like ! into it: the app should answer within a second."
+      ],
+      "cwe": "CWE-1333"
     }
   }
 }

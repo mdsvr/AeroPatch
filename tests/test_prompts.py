@@ -35,3 +35,19 @@ def test_redacted_sandbox_feedback_passes_the_filter_without_the_value():
     assert "sk-ant" not in redact("key = sk-ant-1234567890abcdefghijklmnopqrst")
     with pytest.raises(SecretInPrompt):  # whatever redaction leaves behind still meets the filter
         check_no_secrets(redact("see sk-ant-1234567890abcdefghijklmnopqrst"))
+
+
+def test_fix_recipe_only_with_the_recipes_config_and_only_for_its_classes():
+    from aeropatch import scenario
+    from aeropatch.agent.prompts import FIX_RECIPES, first_user_message
+    from aeropatch.tools.context import get_context
+
+    for sid, has in (("A-022-01", True), ("A-089-01", False)):
+        task = scenario.load(sid)
+        ctx = get_context(task.repo_path, task.finding.path, task.finding.line, task.allowed_paths)
+        plain, with_recipe = first_user_message(task, ctx), first_user_message(task, ctx, recipes=True)
+        assert "Usual fix" not in plain
+        assert (with_recipe != plain) is has
+        if has:
+            assert FIX_RECIPES[task.cwe] in with_recipe and with_recipe.replace(
+                f"\n\nUsual fix for this kind of problem: {FIX_RECIPES[task.cwe]}", "") == plain

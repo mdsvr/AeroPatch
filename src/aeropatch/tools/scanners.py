@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -17,6 +18,8 @@ from pathlib import Path
 from aeropatch.config import ROOT, RULES_DIR
 from aeropatch.contracts import Finding
 
+EXTRA_RULES_DIR = ROOT / "rules-extra"
+EXTRA_PREFIX = "aeropatch.extra."
 SEV = {"ERROR": "high", "WARNING": "medium", "INFO": "low", "HIGH": "high", "MEDIUM": "medium", "LOW": "low"}
 
 
@@ -43,12 +46,17 @@ def _snippet(repo: Path, path: str, line: int) -> str:
         return ""
 
 
-def run_opengrep(repo: Path, rules: Path = RULES_DIR, targets: list[str] | None = None) -> list[Finding] | None:
-    """`targets`: repo-relative files to scan instead of the whole repository."""
+def run_opengrep(repo: Path, rules: Path = RULES_DIR, targets: list[str] | None = None,
+                 extra: bool = False) -> list[Finding] | None:
+    """`targets`: repo-relative files to scan instead of the whole repository. `extra`: also run
+    rules-extra/ with intra-file taint analysis. Off by default, because this scan also decides
+    `original_rule_present` for every measured config."""
     binary = opengrep_binary()
     if not binary:
         return None
     cmd = [binary, "scan", "--config", str(rules), "--json", "--quiet", "--disable-version-check"]
+    if extra:
+        cmd += ["--config", str(EXTRA_RULES_DIR), "--taint-intrafile"]
     if Path(binary).name.startswith("semgrep"):
         cmd += ["--metrics", "off"]
     proc = subprocess.run(cmd + (targets or ["."]), cwd=repo, capture_output=True, text=True, encoding="utf-8",
@@ -62,8 +70,9 @@ def run_opengrep(repo: Path, rules: Path = RULES_DIR, targets: list[str] | None 
         meta = r.get("extra", {}).get("metadata", {})
         path = Path(r["path"]).as_posix()
         line = r["start"]["line"]
-        rule_id = r["check_id"].split(".")[-1]
-        rule_id = f"aeropatch.python.{rule_id}" if not r["check_id"].startswith("aeropatch") else r["check_id"]
+        # The check id carries the rules folder's path in front ("F.AeroPatch.rules-extra.aeropatch.extra.x").
+        own = re.search(r"aeropatch\.(?:python|extra)\.[^.]+$", r["check_id"])
+        rule_id = own[0] if own else f"aeropatch.python.{r['check_id'].split('.')[-1]}"
         cwe = meta.get("cwe", "")
         cwe = cwe[0] if isinstance(cwe, list) else cwe
         out.append(Finding(
@@ -103,7 +112,8 @@ def rule_hits(repo: Path, finding: Finding) -> list[int] | None:
     """Lines where the finding's rule fires in the finding's own file, scanning only that file.
     None when no re-scan applies (an advisory finding, or the scanner is missing or failed)."""
     if finding.tool == "opengrep":
-        findings = run_opengrep(repo, targets=[finding.path])
+        # A finding of the extra rules is re-scanned with them; any other is re-scanned as before.
+        findings = run_opengrep(repo, targets=[finding.path], extra=finding.rule_id.startswith(EXTRA_PREFIX))
     elif finding.tool == "bandit":
         findings = run_bandit(repo, targets=[finding.path])
     else:
@@ -126,10 +136,14 @@ def original_rule_present(repo: Path, original: Finding, before: int | None = No
     return len(hits) >= max(before or 0, 1)
 
 
-def scan(repo: Path) -> dict:
-    """Returns {"findings": [...], "opengrep": bool}. Findings on the same line are both kept."""
+def scan(repo: Path, extra: bool = False) -> dict:
+    """Returns {"findings": [...], "opengrep": bool}. Findings on the same line are both kept,
+    except an extra rule's finding where one of AeroPatch's own rules already reports that CWE."""
     repo = repo.resolve()
-    og = run_opengrep(repo)
+    og = run_opengrep(repo, extra=extra)
+    if og:
+        own = {(f.path, f.line, f.cwe) for f in og if not f.rule_id.startswith(EXTRA_PREFIX)}
+        og = [f for f in og if not (f.rule_id.startswith(EXTRA_PREFIX) and (f.path, f.line, f.cwe) in own)]
     findings = (og or []) + (run_bandit(repo) or [])
     findings.sort(key=lambda f: (f.path, f.line, f.tool))
     return {"findings": findings, "opengrep": og is not None}

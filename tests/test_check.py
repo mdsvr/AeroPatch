@@ -7,7 +7,7 @@ import shutil
 
 import pytest
 
-from aeropatch import check, config, scenario
+from aeropatch import check, config, judge, scenario
 from aeropatch.contracts import Finding
 from aeropatch.tools import scanners
 
@@ -49,7 +49,7 @@ def test_check_leaves_the_folder_byte_identical(proj):
     (proj / ".aeropatch").mkdir()
     (proj / ".aeropatch" / "dismissed.json").write_text('{"0123456789abcdef": {"reason": "r", "date": "2026-10-01"}}\n')
     before = snapshot(proj)
-    res = check.check_folder(proj)
+    res = check.check_folder(proj, extra_rules=True)  # the ReDoS checker and the extra rules too
     check.format_text(res, show_all=True)
     check.write_html(res)
     assert snapshot(proj) == before
@@ -294,3 +294,38 @@ def test_scenario_finding_is_in_the_top_five():
     print(f"\nscenario finding in the top five: {hits}/{len(ids)}", *misses, sep="\n  ")
     assert len(ids) == 27
     assert hits >= 25, misses
+
+
+def _verdicts(parks: set[int], asked: list):
+    def ask(folder, f):
+        asked.append(f.line)
+        return judge.Verdict(keep=f.line not in parks, reason="the value is a constant", seconds=1.0)
+    return ask
+
+
+def test_judge_sets_aside_near_the_top_never_secrets_and_stops_asking(proj, monkeypatch):
+    findings = [fnd("app.py", n) for n in range(1, 16)]
+    asked = []
+    monkeypatch.setattr(check, "_is_secret", lambda folder, f, also: f.line == 2)
+    monkeypatch.setattr(check.judge, "ask", _verdicts({1, 3}, asked))
+    res = check.triage(proj, findings, use_judge=True)
+    assert [c.finding.line for c in res.shown] == [2, 4, 5, 6, 7]
+    assert 2 not in asked and asked == [1, 3, 4, 5, 6, 7]  # stops once five are kept
+    judged = [(f.line, r) for f, r in res.parked if r.startswith(check.JUDGED)]
+    assert judged == [(1, f"{check.JUDGED}: the value is a constant"), (3, f"{check.JUDGED}: the value is a constant")]
+    assert "reviewed 6 findings and set 2 aside" in res.notes[0]
+
+
+def test_judge_asks_at_most_ten_and_keeps_everything_when_ollama_is_down(proj, monkeypatch):
+    findings = [fnd("app.py", n) for n in range(1, 16)]
+    asked = []
+    monkeypatch.setattr(check.judge, "ask", _verdicts(set(range(1, 16)), asked))
+    res = check.triage(proj, findings, use_judge=True)
+    assert len(asked) == check.JUDGE_MAX and [c.finding.line for c in res.shown] == [11, 12, 13, 14, 15]
+
+    def down(folder, f):
+        raise judge.LocalServerDown("no server")
+    monkeypatch.setattr(check.judge, "ask", down)
+    res = check.triage(proj, findings, use_judge=True)
+    assert [c.finding.line for c in res.shown] == [1, 2, 3, 4, 5] and res.notes == [check.NO_JUDGE]
+    assert not check.triage(proj, findings).notes  # off by default: no model is asked

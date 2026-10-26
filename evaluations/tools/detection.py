@@ -47,7 +47,8 @@ def _positions(text: str) -> list[dict]:
 def freeze(csv_path: Path) -> None:
     if HELDOUT.exists():
         raise SystemExit(f"{HELDOUT} is frozen; a new draw needs a new file name")
-    rows = list(csv.DictReader(io.open(csv_path, encoding="utf-8-sig")))
+    with open(csv_path, encoding="utf-8-sig") as f:
+        rows = list(csv.DictReader(f))
     rng = random.Random(SEED)
     picked = []
     for cwe, n in PER_CWE.items():
@@ -128,7 +129,7 @@ def _span(path: Path, function: str) -> tuple[int, int] | None:
 
 
 def _hits(copy: Path, positions: list[dict], extra: str | None) -> tuple[list[dict], list[str]]:
-    from aeropatch.tools import scanners
+    from aeropatch.tools import redos, scanners
     root = _project_root(copy)
     found, notes = [], []
     files = {}
@@ -140,8 +141,8 @@ def _hits(copy: Path, positions: list[dict], extra: str | None) -> tuple[list[di
         files.setdefault(f, []).append(pos["function"])
     for f, funcs in files.items():
         rel = f.relative_to(root).as_posix()
-        findings = (scanners.run_opengrep(root, targets=[rel], extra=extra) or []) + \
-                   (scanners.run_bandit(root, targets=[rel]) or [])
+        findings = (scanners.run_opengrep(root, targets=[rel], extra=extra == "taint") or []) + \
+                   (scanners.run_bandit(root, targets=[rel]) or []) + redos.scan_file(root, rel)
         spans = [s for s in (_span(f, fn) for fn in funcs) if s]
         if not spans:
             notes.append(f"no function {funcs} in {rel}; whole file used")

@@ -15,17 +15,18 @@ import hashlib
 import html
 import json
 import math
+import os
 import re
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 from string import Template
 
-from aeropatch import config
+from aeropatch import config, judge
 from aeropatch.agent import prompts
 from aeropatch.agent.gates import _forbidden
 from aeropatch.contracts import Finding
-from aeropatch.tools import scanners
+from aeropatch.tools import advisories, redos, scanners
 
 CARDS_PATH = config.ROOT / "rules" / "cards.json"
 SHOW = 5
@@ -47,6 +48,9 @@ SEVERITY_RANK = {"high": 0, "medium": 1, "low": 2}
 IN_TESTS, IN_TOOLS = "in test code", "in a tools or build folder"
 UNSURE = "Bandit is unsure about this one"
 LOWER = "ranked below the five shown"
+JUDGED = "the local model judged it a likely false alarm"
+JUDGE_MAX = 2 * SHOW  # findings the model is asked about, at most: the shown ones and the next few
+NO_JUDGE = "The local model is not running, so it did not review the findings. `aeropatch doctor` shows how to start it."
 NO_OPENGREP = ("Only Bandit ran: Opengrep was not found, so AeroPatch's own rules were skipped and some "
                "problems may be missing. `aeropatch doctor` shows what to install.")
 
@@ -101,6 +105,8 @@ class CheckResult:
     parked: list[tuple[Finding, str]]
     dismissed: list[tuple[Finding, str]]
     opengrep: bool
+    advisories: list[advisories.Advisory] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)  # what ran, or did not, beyond the scanners
 
 
 def _usable(card) -> bool:
@@ -172,8 +178,32 @@ def _card(n: int, f: Finding, also: list[Finding], secret: bool, cards: dict) ->
     return card
 
 
-def triage(folder: Path, findings: list[Finding], opengrep: bool = True) -> CheckResult:
-    """Part 3 §2, steps 2-7, over the findings of `scanners.scan(folder)`."""
+def _judge(folder: Path, candidates: list, ask=None) -> tuple[list, list[tuple[Finding, str]], list[str]]:
+    """Phase C: the model may set aside a near-top finding, never delete one. Secrets are not sent,
+    and Ollama being down keeps everything. (kept candidates, set aside, notes)"""
+    ask = ask or judge.ask
+    kept, aside, asked, seconds = [], [], 0, 0.0
+    for i, c in enumerate(candidates):
+        if c[2] or len(kept) >= SHOW or asked >= JUDGE_MAX:
+            kept.append(c)
+            continue
+        try:
+            v = ask(folder, c[0])
+        except judge.LocalServerDown:
+            return kept + candidates[i:], aside, [NO_JUDGE]
+        asked, seconds = asked + 1, seconds + v.seconds
+        if v.keep:
+            kept.append(c)
+        else:
+            aside.append((c[0], f"{JUDGED}: {v.reason}" if v.reason else JUDGED))
+    note = (f"The local model reviewed {asked} findings and set {len(aside)} aside ({seconds:.0f} s)"
+            + ("; they are listed with --all." if aside else "."))
+    return kept, aside, [note] if asked else []
+
+
+def triage(folder: Path, findings: list[Finding], opengrep: bool = True, use_judge: bool = False) -> CheckResult:
+    """Part 3 §2, steps 2-7, over the findings of `scanners.scan(folder)`; with `use_judge`, the
+    local model reviews the top of the ranking before the five are cut (Phase C)."""
     folder = Path(folder).resolve()
     findings = [dataclasses.replace(f, message=SECRET_MESSAGE if f.rule_id in SECRET_RULES
                                     else prompts.redact(f.message)) for f in findings]
@@ -215,17 +245,38 @@ def triage(folder: Path, findings: list[Finding], opengrep: bool = True) -> Chec
     spans: dict = {}  # 6. severity, then function size, then the CWEs the local model always fixed
     candidates.sort(key=lambda c: (SEVERITY_RANK.get(c[0].severity, 1), _function_size(folder, c[0], spans),
                                    c[0].cwe not in ALWAYS_FIXED_CWES, c[0].path, c[0].line))
+    notes = []
+    if use_judge:
+        candidates, aside, notes = _judge(folder, candidates)
+        parked += aside
     cards = load_cards(CARDS_PATH)
     shown = [_card(n, f, also, secret, cards) for n, (f, also, secret) in enumerate(candidates[:SHOW], 1)]
     parked += [(f, LOWER) for f, _, _ in candidates[SHOW:]]  # 7. the rest stay one --all away
     return CheckResult(folder=folder, run_dir=_run_dir(folder), shown=shown, parked=parked,
-                       dismissed=dismissed, opengrep=opengrep)
+                       dismissed=dismissed, opengrep=opengrep, notes=notes)
 
 
-def check_folder(folder: Path) -> CheckResult:
+def python_files(folder: Path) -> list[str]:
+    """Folder-relative .py files outside the excluded folders, which are never walked."""
+    out = []
+    for root, dirs, files in os.walk(folder):
+        dirs[:] = sorted(d for d in dirs if d not in EXCLUDED_DIRS and not d.endswith(".egg-info"))
+        out += [(Path(root) / f).relative_to(folder).as_posix() for f in sorted(files) if f.endswith(".py")]
+    return out
+
+
+def check_folder(folder: Path, offline: bool = False, extra_rules: bool = False, use_judge: bool = False) -> CheckResult:
+    """`offline`: skip the advisory lookup, the one step that uses the network (package names and
+    versions only). `extra_rules`: also run rules-extra/ with taint analysis. `use_judge`: Phase C."""
     folder = Path(folder).resolve()
-    scan = scanners.scan(folder)
-    result = triage(folder, scan["findings"], scan["opengrep"])
+    scan = scanners.scan(folder, extra=extra_rules)
+    py = python_files(folder)
+    result = triage(folder, scan["findings"] + redos.scan(folder, py), scan["opengrep"], use_judge)
+    if not offline:
+        result.advisories, n, error = advisories.audit(folder, py)
+        result.notes.insert(0, error or (f"Looked up {n} pinned packages in the OSV advisory database at osv.dev "
+                                         "(package names and versions only; no code was sent)." if n else ""))
+        result.notes = [x for x in result.notes if x]
     result.run_dir.mkdir(parents=True, exist_ok=True)
     (result.run_dir / "check.json").write_text(json.dumps(asdict(result), indent=2, default=str) + "\n",
                                                encoding="utf-8")
@@ -244,10 +295,32 @@ def _more_line(result: CheckResult) -> str:
     return ", ".join(f"{n} {text}" for n, text in counts if n)
 
 
+ADVISORY_HEADLINE = "A package this project pins has published security problems"
+
+
+def advisory_fields(a: advisories.Advisory) -> list[tuple[str, str]]:
+    """The fixed card for a vulnerable pin (Phase B1): no model, and the user edits the pin."""
+    p = a.pin
+    change = (f"In {p.path}, change {p.name}=={p.version} to {p.name}=={a.fixed}, reinstall, and run your tests."
+              if a.fixed else
+              "No single newer version fixes all of these yet. Read the advisories to see whether the "
+              "problem reaches your app, or replace the package.")
+    used = (f"Imported in {', '.join(a.imported_in[:3])}{' and more' if len(a.imported_in) > 3 else ''}."
+            if a.imported_in else
+            "AeroPatch found no import of it in your code, but another package you use may still use it.")
+    return [("Advisories", ", ".join(a.ids[:6]) + (f" and {len(a.ids) - 6} more" if len(a.ids) > 6 else "")
+             + (f": {a.summary}" if a.summary else "")),
+            ("Used here", used), ("What the change does", change)]
+
+
 def format_text(result: CheckResult, show_all: bool = False) -> str:
     out = [f"AeroPatch checked {result.folder}"]
     if not result.opengrep:
         out.append(NO_OPENGREP)
+    out += result.notes
+    for a in result.advisories:
+        out += ["", f"* {ADVISORY_HEADLINE}: {a.pin.name} {a.pin.version}", f"   {a.pin.path}:{a.pin.line}"]
+        out += [f"   {label}: {text}" for label, text in advisory_fields(a)]
     if not result.shown:
         out.append("\nNo problems to show.")
     for c in result.shown:
@@ -336,6 +409,12 @@ def _card_html(c: Card, folder: Path) -> str:
 def render_html(result: CheckResult) -> str:
     e = html.escape
     body = [f'<p class="note">{e(NO_OPENGREP)}</p>'] if not result.opengrep else []
+    body += [f'<p class="sub">{e(n)}</p>' for n in result.notes]
+    body += ['<article class="card">'
+             f'<h2>{e(ADVISORY_HEADLINE)}: {e(a.pin.name)} {e(a.pin.version)}</h2>'
+             f'<p class="where">{e(a.pin.path)}:{a.pin.line}</p>'
+             "<dl>" + "".join(f"<dt>{e(k)}</dt><dd>{e(v)}</dd>" for k, v in advisory_fields(a)) + "</dl></article>"
+             for a in result.advisories]
     body += [_card_html(c, result.folder) for c in result.shown] or ["<p>No problems to show.</p>"]
     for title, items in (("Set aside", result.parked), ("Dismissed earlier", result.dismissed)):
         if items:
@@ -352,12 +431,13 @@ def write_html(result: CheckResult) -> Path:
     return page
 
 
-def dismiss(folder: Path, n: int, reason: str) -> Finding:
+def dismiss(folder: Path, n: int, reason: str, extra_rules: bool = False, use_judge: bool = False) -> Finding:
     """Hide shown card n from later checks. The fingerprint includes the code line, so the
-    dismissal lapses when that code changes."""
+    dismissal lapses when that code changes. Pass the options the check ran with, so n means
+    the same card; advisory cards are not numbered, so no lookup is needed."""
     if not reason.strip():
         raise ValueError("give a reason, so you know later why it was hidden")
-    result = check_folder(folder)
+    result = check_folder(folder, offline=True, extra_rules=extra_rules, use_judge=use_judge)
     if not 1 <= n <= len(result.shown):
         raise IndexError(f"the check shows {len(result.shown)} problems, so there is no number {n}")
     f = result.shown[n - 1].finding

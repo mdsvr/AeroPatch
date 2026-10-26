@@ -117,6 +117,10 @@ CONFIGS: dict[str, dict] = {
                         "rescan_feedback": True},
     "repair-local-v2": {"attempt_plan": ["local", "local", "local"], "hidden_suites": ["poc", "regression"],
                         "rescan_feedback": True},
+    # Phase D2 (reports/Real bug detection and model mix.md): V1 plus an abstract fix pattern in the
+    # first message for CWE-22, 328 and 918 (prompts.FIX_RECIPES). Compared with repair-local-v1 on test.
+    "repair-local-v1-recipes": {"attempt_plan": ["local", "local", "local"], "hidden_suites": ["poc"],
+                                "rescan_feedback": True, "fix_recipes": True},
     # The Suggest level: V2's loop with no sandbox, so a user without Docker gets V2's numbers.
     "suggest-local": {"attempt_plan": ["local", "local", "local"], "hidden_suites": ["poc", "regression"],
                       "rescan_feedback": True, "run_tests": False},

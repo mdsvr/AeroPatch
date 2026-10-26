@@ -1,0 +1,172 @@
+# AeroPatch's extra Opengrep rules (Phase B3 of reports/Real bug detection and model mix.md).
+# Kept out of rules/ on purpose: `--config rules` loads every file there, and that scan also decides
+# `original_rule_present` for every measured config. These run only when asked (`check --extra-rules`,
+# `scanners.scan(extra="taint")`), together with `--taint-intrafile`.
+# Written on the dev scenarios and on the frameworks' public documentation, never on Tier B code or
+# on the held-out projects in evaluations/detection/heldout.json.
+# Messages state facts; they are not instructions to a model.
+rules:
+  # Werkzeug (Flask), Django and Bottle refuse newlines in header values, so only the APIs that
+  # write a header as given are sinks: http.server's send_header and a raw WSGI start_response.
+  - id: aeropatch.extra.header-injection
+    languages: [python]
+    severity: WARNING
+    message: Request data reaches a response header without removing line breaks.
+    metadata: {cwe: "CWE-113: HTTP response splitting"}
+    mode: taint
+    pattern-sources: &sources
+      - patterns:
+          - pattern: request.$A
+          - metavariable-regex:
+              metavariable: $A
+              regex: ^(args|form|values|headers|cookies|files|data|json|get_json|get_data|stream|query_string|GET|POST|COOKIES|META|FILES|body|query_params|path_params)$
+      - patterns:
+          - pattern-inside: |
+              class $H(..., $BASE, ...):
+                ...
+          - metavariable-regex:
+              metavariable: $BASE
+              regex: (^|\.)(BaseHTTPRequestHandler|SimpleHTTPRequestHandler)$
+          - pattern-either:
+              - pattern: self.path
+              - pattern: self.headers
+              - pattern: self.rfile
+      # A raw WSGI app, by PEP 3333's parameter names (any two-argument function matched before).
+      - patterns:
+          - pattern-inside: |
+              def $APP(environ, start_response):
+                ...
+          - pattern: environ
+    pattern-sanitizers:
+      - pattern: $X.replace(...)
+      - pattern: re.sub(...)
+      - pattern: quote(...)
+      - pattern: urllib.parse.quote(...)
+      - pattern: int(...)
+    pattern-sinks:
+      - patterns:
+          - pattern: $H.send_header($K, $V)
+          - focus-metavariable: $V
+      - patterns:
+          - pattern: $START($STATUS, $HEADERS, ...)
+          - metavariable-regex:
+              metavariable: $START
+              regex: ^start_response$
+          - focus-metavariable: $HEADERS
+
+  - id: aeropatch.extra.path-traversal-taint
+    languages: [python]
+    severity: ERROR
+    message: Request data reaches a file open without a check that the path stays inside a folder.
+    metadata: {cwe: "CWE-22: Path traversal"}
+    mode: taint
+    pattern-sources: *sources
+    pattern-sanitizers:
+      - pattern: secure_filename(...)
+      - pattern: werkzeug.utils.secure_filename(...)
+      - pattern: os.path.basename(...)
+      - pattern: safe_join(...)
+      - pattern: werkzeug.utils.safe_join(...)
+      - pattern: int(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: open($P, ...)
+              - pattern: io.open($P, ...)
+              - pattern: send_file($P, ...)
+              - pattern: flask.send_file($P, ...)
+              - pattern: FileResponse($P, ...)
+          # A containment check before the open: the path was resolved and compared with the folder.
+          - pattern-not-inside: |
+              if not $C.startswith(...):
+                ...
+              ...
+          - pattern-not-inside: |
+              if not $C.is_relative_to(...):
+                ...
+              ...
+          - pattern-not-inside: |
+              if $C.startswith(...):
+                ...
+          - focus-metavariable: $P
+
+  - id: aeropatch.extra.code-injection-taint
+    languages: [python]
+    severity: ERROR
+    message: Request data reaches eval, exec or compile.
+    metadata: {cwe: "CWE-94: Code injection"}
+    mode: taint
+    pattern-sources: *sources
+    pattern-sanitizers:
+      - pattern: int(...)
+      - pattern: float(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: eval($X, ...)
+              - pattern: exec($X, ...)
+              - pattern: compile($X, ...)
+          - focus-metavariable: $X
+
+  - id: aeropatch.extra.decompression-bomb
+    languages: [python]
+    severity: WARNING
+    message: Request data is decompressed with no limit on the output size.
+    metadata: {cwe: "CWE-409: Highly compressed data"}
+    mode: taint
+    pattern-sources: *sources
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: zlib.decompress($X, ...)
+              - pattern: gzip.decompress($X, ...)
+              - pattern: bz2.decompress($X, ...)
+              - pattern: lzma.decompress($X, ...)
+          - focus-metavariable: $X
+
+  - id: aeropatch.extra.unbounded-body-read
+    languages: [python]
+    severity: WARNING
+    message: The request body is read in full at whatever length the client claims.
+    metadata: {cwe: "CWE-400: Uncontrolled resource consumption"}
+    patterns:
+      - pattern-either:
+          - pattern: self.rfile.read(int(self.headers[...]))
+          - pattern: self.rfile.read(int(self.headers.get(...)))
+          - pattern: self.rfile.read(int(self.headers.get(..., ...)))
+          - patterns:
+              - pattern-inside: |
+                  $N = int(self.headers.get(...))
+                  ...
+              - pattern: self.rfile.read($N)
+          - patterns:
+              - pattern-inside: |
+                  $N = int(self.headers[...])
+                  ...
+              - pattern: self.rfile.read($N)
+      - pattern-not-inside: |
+          if $N > $MAX:
+            ...
+          ...
+      - pattern-not-inside: |
+          $N = min(...)
+          ...
+
+  # The app-side exposure of PyJWT's advisories: tokens accepted without checking the signature, or
+  # with the algorithm left to the token (CVE-2022-29217 is the get_default_algorithms() form).
+  - id: aeropatch.extra.jwt-decode-unverified
+    languages: [python]
+    severity: ERROR
+    message: A JSON Web Token is decoded without a fixed algorithm or without checking its signature.
+    metadata: {cwe: "CWE-347: Improper verification of a signature"}
+    pattern-either:
+      - pattern: 'jwt.decode(..., options={..., "verify_signature": False, ...}, ...)'
+      - pattern: jwt.decode(..., verify=False, ...)
+      - pattern: jwt.decode(..., algorithms=jwt.algorithms.get_default_algorithms(), ...)
+      - pattern: jwt.decode(..., algorithms=get_default_algorithms(), ...)
+      - pattern: jwt.decode(..., algorithms=[$H["alg"]], ...)
+      - pattern: jwt.decode(..., algorithms=$H["alg"], ...)
+      - pattern: jwt.decode(..., algorithms=[jwt.get_unverified_header(...)["alg"]], ...)
+      - patterns:
+          - pattern: jwt.decode($T, $K, ...)
+          - pattern-not: jwt.decode(..., algorithms=$A, ...)

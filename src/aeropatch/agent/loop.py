@@ -56,7 +56,7 @@ def run(task: Task, cfg: dict, run_dir: Path | None = None) -> RunResult:
         hits0 = None if hits is None else len(hits)
     # Week 1 uses oracle localization: the finding location is given (doc 11 §7).
     context = get_context(task.repo_path, task.finding.path, task.finding.line, task.allowed_paths)
-    messages = [{"role": "user", "content": prompts.first_user_message(task, context)}]
+    messages = [{"role": "user", "content": prompts.first_user_message(task, context, cfg.get("fix_recipes", False))}]
     attempts: list[Attempt] = []
     older: list[str] = []
     seen: set[str] = set()  # hashes of edits already tried
