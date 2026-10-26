@@ -1,0 +1,499 @@
+{
+  "_note": "Frozen 2026-10-26, before any rule of Phase B was written: {'22': 10, '94': 10, '79': 10} CVEs per CWE drawn with random.Random(20261026) from PySASTBench's RealworldDataset.csv (108 CVEs; github.com/Victor725/PySASTBench, data CC-BY-4.0 at zenodo.org/records/17936545). Never write or tune a rule on these projects.",
+  "items": [
+    {
+      "cve": "CVE-2021-41127",
+      "cwe": "CWE-22",
+      "type": "path traversal",
+      "project": "https://github.com/RasaHQ/rasa",
+      "version": "",
+      "positions": [
+        {
+          "path": "rasa/model.py",
+          "function": "unpack_model"
+        },
+        {
+          "path": "rasa/nlu/persistor.py",
+          "function": "Persistor._decompress"
+        },
+        {
+          "path": "rasa/utils/io.py",
+          "function": "unarchive"
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2024-32023",
+      "cwe": "CWE-22",
+      "type": "path traversal",
+      "project": "https://github.com/bmaltais/kohya_ss",
+      "version": "",
+      "positions": [
+        {
+          "path": "kohya_gui/common_gui.py",
+          "function": "find_replace"
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2022-35920",
+      "cwe": "CWE-22",
+      "type": "path traversal",
+      "project": "https://github.com/sanic-org/sanic",
+      "version": "",
+      "positions": [
+        {
+          "path": "sanic/response.py",
+          "function": "file"
+        },
+        {
+          "path": "sanic/response.py",
+          "function": "file_stream"
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2023-41040",
+      "cwe": "CWE-22",
+      "type": "path traversal",
+      "project": "https://github.com/gitpython-developers/GitPythonhttps://github.com/gitpython-developers/GitPythonhttps://github.com/gitpython-developers/GitPythonhttps://github.com/gitpython-developers/GitPythonhttps://github.com/gitpython-developers/GitPython",
+      "version": "",
+      "positions": [
+        {
+          "path": "git/refs/symbolic.py",
+          "function": "SymbolicReference._get_ref_info_helper"
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2021-45452",
+      "cwe": "CWE-22",
+      "type": "path traversal",
+      "project": "https://github.com/django/djangohttps://github.com/django/django",
+      "version": "Django 2.2 before 2.2.26, 3.2 before 3.2.11, and 4.0 before 4.0.1",
+      "positions": [
+        {
+          "path": "django/core/files/storage.py",
+          "function": "Storage._save"
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2024-5547",
+      "cwe": "CWE-22",
+      "type": "path traversal",
+      "project": "https://github.com/stitionai/devika",
+      "version": "",
+      "positions": [
+        {
+          "path": "devika.py",
+          "function": "project_files"
+        },
+        {
+          "path": "src/apis/project.py",
+          "function": "create_project"
+        },
+        {
+          "path": "src/apis/project.py",
+          "function": "delete_project"
+        },
+        {
+          "path": "src/apis/project.py",
+          "function": "download_project"
+        },
+        {
+          "path": "src/apis/project.py",
+          "function": "download_project_pdf"
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2024-3573",
+      "cwe": "CWE-22",
+      "type": "path traversal",
+      "project": "https://github.com/mlflow/mlflow",
+      "version": "",
+      "positions": [
+        {
+          "path": "mlflow/utils/file_utils.py",
+          "function": "mkdir"
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2024-5926",
+      "cwe": "CWE-22",
+      "type": "path traversal",
+      "project": "https://github.com/stitionai/devika",
+      "version": "",
+      "positions": [
+        {
+          "path": "src/state.py",
+          "function": "AgentState.get_project_files"
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2021-34363",
+      "cwe": "CWE-22",
+      "type": "path traversal",
+      "project": "https://github.com/nvbn/thefuck",
+      "version": "before 3.31",
+      "positions": [
+        {
+          "path": "thefuck/rules/dirty_untar.py",
+          "function": "side_effect"
+        },
+        {
+          "path": "thefuck/rules/dirty_unzip.py",
+          "function": "side_effect"
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2017-9416",
+      "cwe": "CWE-22",
+      "type": "path traversal",
+      "project": "https://github.com/odoo/odoo",
+      "version": "Odoo 8.0, 9.0, and 10.0",
+      "positions": [
+        {
+          "path": "odoo/tools/misc.py",
+          "function": "_fileopen"
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2021-25283",
+      "cwe": "CWE-94",
+      "type": "code injection",
+      "project": "https://github.com/saltstack/salt",
+      "version": "",
+      "positions": [
+        {
+          "path": "salt/utils/templates.py",
+          "function": "render_jinja_tmpl"
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2024-5751",
+      "cwe": "CWE-94",
+      "type": "code injection",
+      "project": "https://github.com/BerriAI/litellm",
+      "version": "version v1.35.8",
+      "positions": [
+        {
+          "path": "litellm/utils.py",
+          "function": "get_secret"
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2018-8097",
+      "cwe": "CWE-94",
+      "type": "code injection",
+      "project": "https://github.com/pyeve/evehttps://github.com/pyeve/evehttps://github.com/pyeve/eve",
+      "version": "",
+      "positions": [
+        {
+          "path": "eve/io/mongo/parser.py",
+          "function": "MongoVisitor.visit_Call"
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2018-1000070",
+      "cwe": "CWE-94",
+      "type": "code injection",
+      "project": "https://github.com/Bitmessage/PyBitmessagehttps://github.com/Bitmessage/PyBitmessagehttps://github.com/Bitmessage/PyBitmessage",
+      "version": "",
+      "positions": [
+        {
+          "path": "src/messagetypes/__init__.py",
+          "function": "constructObject"
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2023-38942",
+      "cwe": "CWE-94",
+      "type": "code injection",
+      "project": "https://github.com/PantsuDango/Dango-Translatorhttps://github.com/PantsuDango/Dango-Translatorhttps://github.com/PantsuDango/Dango-Translatorhttps://github.com/PantsuDango/Dango-Translatorhttps://github.com/PantsuDango/Dango-Translator",
+      "version": "",
+      "positions": [
+        {
+          "path": "ui/settin.py",
+          "function": "Settin.getInitConfig"
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2023-6940",
+      "cwe": "CWE-94",
+      "type": "code injection",
+      "project": "https://github.com/mlflow/mlflow",
+      "version": "",
+      "positions": [
+        {
+          "path": "mlflow/utils/file_utils.py",
+          "function": "render_and_merge_yaml"
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2023-38941",
+      "cwe": "CWE-94",
+      "type": "code injection",
+      "project": "https://github.com/Ehco1996/django-sspanelhttps://github.com/Ehco1996/django-sspanelhttps://github.com/Ehco1996/django-sspanelhttps://github.com/Ehco1996/django-sspanelhttps://github.com/Ehco1996/django-sspanel",
+      "version": "",
+      "positions": [
+        {
+          "path": "apps/sspanel/admin_views.py",
+          "function": "GoodsCreateView.post"
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2024-41950",
+      "cwe": "CWE-94",
+      "type": "code injection",
+      "project": "https://github.com/deepset-ai/haystack",
+      "version": "has been fixed with Haystack 2.3.1",
+      "positions": [
+        {
+          "path": "haystack/components/builders/chat_prompt_builder.py",
+          "function": "ChatPromptBuilder.__init__"
+        },
+        {
+          "path": "haystack/components/builders/chat_prompt_builder.py",
+          "function": "ChatPromptBuilder.run"
+        },
+        {
+          "path": "haystack/components/builders/prompt_builder.py",
+          "function": "PromptBuilder.__init__"
+        },
+        {
+          "path": "haystack/components/builders/prompt_builder.py",
+          "function": "PromptBuilder.run"
+        },
+        {
+          "path": "haystack/components/converters/output_adapter.py",
+          "function": "OutputAdapter.__init__"
+        },
+        {
+          "path": "haystack/components/converters/output_adapter.py",
+          "function": "OutputAdapter.run"
+        },
+        {
+          "path": "haystack/components/converters/output_adapter.py",
+          "function": "OutputAdapter._extract_variables"
+        },
+        {
+          "path": "haystack/components/routers/conditional_router.py",
+          "function": "ConditionalRouter.__init__"
+        },
+        {
+          "path": "haystack/components/routers/conditional_router.py",
+          "function": "ConditionalRouter.run"
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2024-3098",
+      "cwe": "CWE-94",
+      "type": "code injection",
+      "project": "https://github.com/run-llama/llama_index",
+      "version": "-",
+      "positions": [
+        {
+          "path": "llama-index-core/llama_index/core/exec_utils.py",
+          "function": "safe_eval"
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2024-39877",
+      "cwe": "CWE-94",
+      "type": "code injection",
+      "project": "https://github.com/apache/airflow",
+      "version": "2.4.0, and versions before 2.9.3",
+      "positions": [
+        {
+          "path": "airflow/models/dag.py",
+          "function": "DAG.get_doc_md"
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2024-39863",
+      "cwe": "CWE-79",
+      "type": "cross-site scripting",
+      "project": "https://github.com/apache/airflow",
+      "version": "versions before 2.9.3",
+      "positions": [
+        {
+          "path": "airflow/www/views.py",
+          "function": "ProviderView._clean_description"
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2024-41656",
+      "cwe": "CWE-79",
+      "type": "cross-site scripting",
+      "project": "https://github.com/getsentry/sentry",
+      "version": "Starting in version 10.0.0 and prior to version 24.7.1",
+      "positions": [
+        {
+          "path": "src/sentry/integrations/mixins/issues.py",
+          "function": "IssueBasicMixin.map_external_issues_to_annotations"
+        },
+        {
+          "path": "src/sentry/models/platformexternalissue.py",
+          "function": "PlatformExternalIssue.get_annotations_for_group_list"
+        },
+        {
+          "path": "src/sentry/plugins/bases/issue.py",
+          "function": "IssueTrackingPlugin.tags"
+        },
+        {
+          "path": "src/sentry/plugins/bases/issue2.py",
+          "function": "IssueTrackingPlugin2.tags"
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2018-15635",
+      "cwe": "CWE-79",
+      "type": "cross-site scripting",
+      "project": "https://github.com/odoo/odoo",
+      "version": "Odoo Community 12.0 and earlier, and Odoo Enterprise 12.0 and earlier",
+      "positions": [
+        {
+          "path": "addons/mail/wizard/invite.py",
+          "function": "Invite.default_get"
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2023-6568",
+      "cwe": "CWE-79",
+      "type": "cross-site scripting",
+      "project": "https://github.com/mlflow/mlflow",
+      "version": "",
+      "positions": [
+        {
+          "path": "mlflow/server/auth/__init__.py",
+          "function": "create_user"
+        },
+        {
+          "path": "mlflow/server/handlers.py",
+          "function": "search_datasets_handler"
+        },
+        {
+          "path": "mlflow/server/handlers.py",
+          "function": "create_promptlab_run_handler"
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2024-41675",
+      "cwe": "CWE-79",
+      "type": "cross-site scripting",
+      "project": "https://github.com/ckan/ckanhttps://github.com/ckan/ckanhttps://github.com/ckan/ckan",
+      "version": "",
+      "positions": [
+        {
+          "path": "ckanext/datatablesview/blueprint.py",
+          "function": "ajax"
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2018-1000559",
+      "cwe": "CWE-79",
+      "type": "cross-site scripting",
+      "project": "https://github.com/qutebrowser/qutebrowser",
+      "version": "",
+      "positions": [
+        {
+          "path": "qutebrowser/browser/qutescheme.py",
+          "function": "history_data"
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2022-39348",
+      "cwe": "CWE-79",
+      "type": "cross-site scripting",
+      "project": "https://github.com/twisted/twistedhttps://github.com/twisted/twistedhttps://github.com/twisted/twisted",
+      "version": "",
+      "positions": [
+        {
+          "path": "src/twisted/web/vhost.py",
+          "function": "NameVirtualHost._getResourceForRequest"
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2024-21520",
+      "cwe": "CWE-79",
+      "type": "cross-site scripting",
+      "project": "https://github.com/encode/django-rest-framework",
+      "version": "before 3.15.2",
+      "positions": [
+        {
+          "path": "rest_framework/templatetags/rest_framework.py",
+          "function": "break_long_headers"
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2020-11001",
+      "cwe": "CWE-79",
+      "type": "cross-site scripting",
+      "project": "https://github.com/wagtail/wagtail",
+      "version": "",
+      "positions": [
+        {
+          "path": "wagtail/admin/compare.py",
+          "function": "RichTextFieldComparison.htmldiff"
+        },
+        {
+          "path": "wagtail/admin/compare.py",
+          "function": "BlockComparison.htmlvalue"
+        }
+      ]
+    },
+    {
+      "cve": "CVE-2024-5711",
+      "cwe": "CWE-79",
+      "type": "cross-site scripting",
+      "project": "https://github.com/stitionai/devika",
+      "version": "",
+      "positions": [
+        {
+          "path": "devika.py",
+          "function": "project_files"
+        },
+        {
+          "path": "src/apis/project.py",
+          "function": "create_project"
+        },
+        {
+          "path": "src/apis/project.py",
+          "function": "delete_project"
+        },
+        {
+          "path": "src/apis/project.py",
+          "function": "download_project"
+        },
+        {
+          "path": "src/apis/project.py",
+          "function": "download_project_pdf"
+        }
+      ]
+    }
+  ]
+}
