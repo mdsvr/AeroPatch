@@ -62,7 +62,11 @@ class Workspace:
             p = safe_join(self.repo, rel)
             if not p.is_file():
                 raise FileNotFoundError(rel)
-            p.write_text(content, encoding="utf-8", newline="\n")
+            # Keep the file's own line endings: read() hands out LF, and writing a CRLF file back
+            # as LF made every line of it a change (doc 17: a Windows user's own repos are CRLF).
+            # Every benchmark scenario is LF, so their diffs are unchanged.
+            eol = "\r\n" if b"\r\n" in p.read_bytes() else "\n"
+            p.write_text(content, encoding="utf-8", newline=eol)
         self._record_changed()
 
     def apply_patch(self, patch: str) -> str:

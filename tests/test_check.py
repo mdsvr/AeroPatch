@@ -67,6 +67,12 @@ def test_test_code_and_tool_folders_are_set_aside(proj):
     assert {f.path: r for f, r in res.parked} == aside
 
 
+def test_the_same_rule_twice_on_one_line_is_one_card(proj):
+    """Opengrep reported url-prefix-allowlist twice on Quintyx demo.py:74 (2026-10-24)."""
+    res = check.triage(proj, [fnd("app.py", 10), fnd("app.py", 10)])
+    assert len(res.shown) == 1
+
+
 def test_merge_across_tools_keeps_opengrep_before_the_unsure_step(proj):
     og, og2 = fnd("app.py", 10), fnd("app.py", 11, rule_id="aeropatch.python.subprocess-shell", cwe="CWE-78")
     # Bandit's B608 comes out at LOW confidence: merged first, so the Opengrep finding survives.

@@ -147,6 +147,10 @@ def cmd_prune(args) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # A Windows console is often cp1252; a diff of real code (a "→" in a comment) crashed printing.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(errors="replace")
     p = argparse.ArgumentParser(prog="aeropatch", description=__doc__)
     sub = p.add_subparsers(dest="cmd", required=True)
 

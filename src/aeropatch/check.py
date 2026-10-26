@@ -177,6 +177,8 @@ def triage(folder: Path, findings: list[Finding], opengrep: bool = True) -> Chec
     folder = Path(folder).resolve()
     findings = [dataclasses.replace(f, message=SECRET_MESSAGE if f.rule_id in SECRET_RULES
                                     else prompts.redact(f.message)) for f in findings]
+    # One scanner can report the same rule twice on one line (two matching patterns): one card.
+    findings = list({(f.tool, f.rule_id, f.path, f.line): f for f in findings}.values())
     parked: list[tuple[Finding, str]] = []
     kept = []
     for f in findings:  # 2. test code, tools and build folders
