@@ -302,9 +302,11 @@ def advisory_fields(a: advisories.Advisory) -> list[tuple[str, str]]:
     """The fixed card for a vulnerable pin (Phase B1): no model, and the user edits the pin."""
     p = a.pin
     change = (f"In {p.path}, change {p.name}=={p.version} to {p.name}=={a.fixed}, reinstall, and run your tests."
-              if a.fixed else
-              "No single newer version fixes all of these yet. Read the advisories to see whether the "
-              "problem reaches your app, or replace the package.")
+              if a.fixed else "")
+    if a.unfixed:
+        change += ((" " if change else "") + f"No newer version fixes {', '.join(a.unfixed[:3])} yet: read "
+                   + ("that advisory" if len(a.unfixed) == 1 else "those advisories")
+                   + " to see whether the problem reaches your app.")
     used = (f"Imported in {', '.join(a.imported_in[:3])}{' and more' if len(a.imported_in) > 3 else ''}."
             if a.imported_in else
             "AeroPatch found no import of it in your code, but another package you use may still use it.")

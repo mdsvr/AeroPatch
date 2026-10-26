@@ -43,7 +43,8 @@ class Advisory:
     pin: Pin
     ids: list[str]  # OSV ids, with CVE aliases first where there are any
     summary: str
-    fixed: str  # the lowest fixed version above the pinned one; "" when none is published
+    fixed: str  # the lowest version that fixes every advisory with a published fix; "" when none has one
+    unfixed: list[str] = field(default_factory=list)  # advisories with no fixed version published
     imported_in: list[str] = field(default_factory=list)  # files that import the package
 
 
@@ -104,6 +105,15 @@ def _fixed_above(vuln: dict, name: str, version: str) -> str:
     return str(min(fixed)) if fixed else ""
 
 
+def _names(vuln: dict) -> list[str]:
+    """CVE aliases where there are any, else the OSV id."""
+    return [a for a in vuln.get("aliases", []) if a.startswith("CVE-")] or [vuln["id"]]
+
+
+def _name(vuln: dict) -> str:
+    return _names(vuln)[0]
+
+
 def _importers(folder: Path, name: str, py_files: list[str]) -> list[str]:
     module = IMPORT_NAMES.get(name, name.replace("-", "_"))
     pat = re.compile(rf"^\s*(?:import|from)\s+{re.escape(module)}(?:[\s.,]|$)", re.MULTILINE)
@@ -137,13 +147,14 @@ def audit(folder: Path, py_files: list[str], post=_post, get=_get) -> tuple[list
             vulns = [details[i] for i in ids]
             names = []
             for v in vulns:
-                cves = [a for a in v.get("aliases", []) if a.startswith("CVE-")]
-                names += [n for n in (cves or [v["id"]]) if n not in names]
-            fixes = [f for f in (_fixed_above(v, pin.name, pin.version) for v in vulns) if f]
+                names += [n for n in _names(v) if n not in names]
+            by_vuln = [(v, _fixed_above(v, pin.name, pin.version)) for v in vulns]
+            fixes = [f for _, f in by_vuln if f]
             summary = next((v.get("summary", "") for v in vulns if v.get("summary")), "")
-            # One version must fix them all; none when any advisory has no fix published.
+            # The lowest version that fixes every advisory that has a fix; the rest are named.
             out.append(Advisory(pin=pin, ids=names, summary=summary,
-                                fixed=str(max(map(Version, fixes))) if len(fixes) == len(vulns) else "",
+                                fixed=str(max(map(Version, fixes))) if fixes else "",
+                                unfixed=[_name(v) for v, f in by_vuln if not f],
                                 imported_in=_importers(folder, pin.name, py_files)))
         return out, len(pins), ""
     except (urllib.error.URLError, TimeoutError, OSError, ValueError, KeyError) as e:

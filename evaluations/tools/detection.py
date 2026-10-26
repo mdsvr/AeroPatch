@@ -32,6 +32,11 @@ HELDOUT = ROOT / "evaluations" / "detection" / "heldout.json"
 ZIP_URL = "https://zenodo.org/records/17936545/files/RealworldDataset.zip?download=1"
 SEED = 20261026
 PER_CWE = {"22": 10, "94": 10, "79": 10}  # the classes the new rules target (report, Phase A)
+# A finding inside the CVE's function counts only when its CWE is the CVE's class, so an `assert`
+# (B101) in a path-traversal function is not a detection. Bandit tags eval (B307) CWE-78.
+# Set on 2026-10-26 after the baseline's loose count, before any extra rule was scored.
+SAME_CLASS = {"CWE-22": {"CWE-22", "CWE-23", "CWE-36", "CWE-73"}, "CWE-94": {"CWE-94", "CWE-95", "CWE-78"},
+              "CWE-79": {"CWE-79", "CWE-80", "CWE-116"}}
 
 
 def _positions(text: str) -> list[dict]:
@@ -148,7 +153,7 @@ def _hits(copy: Path, positions: list[dict], extra: str | None) -> tuple[list[di
             notes.append(f"no function {funcs} in {rel}; whole file used")
         for x in findings:
             if not spans or any(a <= x.line <= b for a, b in spans):
-                found.append({"tool": x.tool, "rule": x.rule_id, "path": rel, "line": x.line})
+                found.append({"tool": x.tool, "rule": x.rule_id, "cwe": x.cwe, "path": rel, "line": x.line})
     return found, notes
 
 
@@ -159,10 +164,14 @@ def score(data: Path, extra: str | None, out: Path | None) -> None:
         d = data / it["cve"]
         vul, notes = _hits(d / "vul", it["positions"], extra)
         fix, _ = _hits(d / "fix", it["positions"], extra) if (d / "fix").is_dir() else ([], ["no fix copy"])
-        rows.append({"cve": it["cve"], "cwe": it["cwe"], "found": bool(vul), "still_on_fix": bool(fix),
-                     "vul_hits": vul, "fix_hits": fix, "notes": notes})
-        print(f"{it['cve']:16} {it['cwe']:7} found={bool(vul)!s:5} on_fix={bool(fix)!s:5} "
-              f"{sorted({h['rule'] for h in vul})} {'; '.join(notes)}", flush=True)
+        same = SAME_CLASS[it["cwe"]]
+        found = [h for h in vul if h["cwe"] in same]
+        on_fix = [h for h in fix if h["cwe"] in same]
+        rows.append({"cve": it["cve"], "cwe": it["cwe"], "found": bool(found), "still_on_fix": bool(on_fix),
+                     "any_in_function": bool(vul), "vul_hits": vul, "fix_hits": fix, "notes": notes})
+        print(f"{it['cve']:16} {it['cwe']:7} found={bool(found)!s:5} on_fix={bool(on_fix)!s:5} "
+              f"{sorted({h['rule'] for h in found})} other={sorted({h['rule'] for h in vul} - {h['rule'] for h in found})} "
+              f"{'; '.join(notes)}", flush=True)
     n = sum(r["found"] for r in rows)
     print(f"\nfound {n} of {len(rows)}; of those, still reported on the fixed copy: "
           f"{sum(r['found'] and r['still_on_fix'] for r in rows)}")

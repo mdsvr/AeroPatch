@@ -63,18 +63,21 @@ def test_audit_names_the_lowest_version_that_fixes_every_advisory(tmp_path):
     (tmp_path / "requirements.txt").write_text("pyjwt==2.3.0\nclick==8.1.7\n", encoding="utf-8")
     (tmp_path / "app.py").write_text("import jwt\n", encoding="utf-8")
     vulns = {"GHSA-1": _vuln("GHSA-1", "CVE-2022-29217", [{"fixed": "2.4.0"}]),
-             "GHSA-2": _vuln("GHSA-2", "CVE-2026-1", [{"fixed": "1.7.2"}, {"introduced": "2.0"}, {"fixed": "2.10.1"}])}
+             "GHSA-2": _vuln("GHSA-2", "CVE-2026-1", [{"fixed": "1.7.2"}, {"introduced": "2.0"}, {"fixed": "2.10.1"}]),
+             "GHSA-3": _vuln("GHSA-3", "CVE-2026-2", [])}  # no fix published
     sent = []
 
     def post(url, body):
         sent.append(body)
-        return {"results": [{"vulns": [{"id": "GHSA-1"}, {"id": "GHSA-2"}]}, {}]}
+        return {"results": [{"vulns": [{"id": "GHSA-1"}, {"id": "GHSA-2"}, {"id": "GHSA-3"}]}, {}]}
 
     adv, n, err = advisories.audit(tmp_path, ["app.py"], post=post, get=lambda url: vulns[url.rsplit("/", 1)[1]])
     assert (n, err) == (2, "")
     assert json.dumps(sent).count('"version"') == 2 and "import jwt" not in json.dumps(sent)  # no code sent
     [a] = adv
-    assert (a.pin.name, a.ids, a.fixed, a.imported_in) == ("pyjwt", ["CVE-2022-29217", "CVE-2026-1"], "2.10.1", ["app.py"])
+    assert (a.pin.name, a.ids, a.fixed, a.unfixed, a.imported_in) == (
+        "pyjwt", ["CVE-2022-29217", "CVE-2026-1", "CVE-2026-2"], "2.10.1", ["CVE-2026-2"], ["app.py"])
+    assert "No newer version fixes CVE-2026-2 yet" in dict(check.advisory_fields(a))["What the change does"]
 
 
 def test_audit_reports_nothing_when_the_lookup_fails(tmp_path):

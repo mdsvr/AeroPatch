@@ -2282,6 +2282,110 @@ before block 2 (Tier B and the model comparison), so each comparison ran on one 
 - On real code the scanners are the bottleneck: they found none of the ten CVEs. Better rules and
   triage come before any model work, and the 1a check on 10 public repos matters more.
 
+## Detection report, phases A to D (2026-10-26)
+
+The plan is `reports/Real bug detection and model mix.md`. Everything below needs no model run
+and no labeller; what does is listed at the end. Branch `feat/easy-use`, not pushed.
+
+**Phase A, held-out detection set.** `evaluations/detection/heldout.json`: 30 CVEs, 10 each of
+CWE-22, 94 and 79, drawn with `random.Random(20261026)` from PySASTBench's 108 (ICSE'26). It was
+committed (`f8b3490`) before any new rule was written. The GitHub repo has no licence; the data is
+CC-BY-4.0 on Zenodo (record 17936545, a 6.2 GB zip), so only the list is kept here.
+`evaluations/tools/remote_zip.py` reads the 30 vulnerable and fixed copies out of the zip by HTTP
+range requests into `D:\aeropatch-detection`, and `detection.py score` scans each CVE's named files.
+- **The measure:** a finding counts when it lies inside a named function and has the CVE's class
+  (`SAME_CLASS`; Bandit tags `eval` CWE-78). I set that after the first, looser count (14 of 30:
+  it took a B101 `assert` and a B110 `try/except/pass` as detections) and before any extra rule
+  was scored.
+- **Baseline, today's scanners plus regexploit: 12 of 30.** CWE-22 1 of 10, CWE-79 3 of 10,
+  CWE-94 8 of 10, mostly Bandit's B307 `eval`. Of the 12, 5 are still reported on the fixed copy.
+  `docs/results/detection/phase-a-baseline.json`.
+- **Not done:** precision of the shown findings on the 10 public repos of 1a and your own repos.
+  It needs two labellers.
+
+**Phase B, deterministic sources.**
+- **B1, advisories: on by default, `check --offline` skips them.** Instead of pip-audit or
+  OSV-Scanner, `tools/advisories.py` asks api.osv.dev directly (stdlib `urllib`). It reads
+  `name==version` pins from the top-level `requirements*.txt` and `pyproject.toml`, and it
+  installs, builds and writes nothing. Only package names and versions are sent, and the check
+  prints that line. When the lookup fails, it prints a note and reports nothing. The one new
+  dependency is `packaging`, for version order.
+  - Each vulnerable pin gets a fixed card: the advisories, whether the code imports the package,
+    and the one-line pin change. Advisories with no published fix are named, not hidden.
+  - **Plumbing check, `evaluations/tools/advisory_plumbing.py`: 10 of 10.** For each Tier B
+    library, an app pinning the newest vulnerable release is flagged and offered a fixed version.
+    The same app pinned at the advisory's fixed version is not flagged for that advisory. So
+    downstream detection is 10 of 10, while library-source detection stays 0 of 10.
+- **B2, ReDoS: regexploit 1.0.0, on by default.** It is Apache-2.0, has no dependencies and runs
+  on CPU only. It imports `sre_parse`, which has been deprecated since Python 3.11: it works on
+  3.13, and the import fails when Python removes it.
+  - On A-1333-02 it flags the vulnerable regex and not the model's correct rewrite, which the
+    Opengrep rule re-flagged.
+  - It misses B-1333-01 (geopy). Tier B is a sanity check, so I did not look into why.
+- **B3, `rules-extra/`, opt-in with `check --extra-rules`.** It has six rules: header injection,
+  path traversal, code injection and decompression as taint rules, and `jwt.decode` misuse and
+  unbounded body reads as pattern rules. The plan said 3 taint and 2 pattern; decompression needs
+  a request source, so it became a taint rule.
+  - The rules live outside `rules/`, so `--config rules` and every config's re-scan are unchanged.
+    A finding of an extra rule is re-scanned with `rules-extra/`.
+  - Each rule fires on its seeded fixture and not on its fixed twin (`tests/fixtures/extra_rules`).
+  - With `--taint-intrafile`, the 22 own rules give the same findings on all 50 dev, test and
+    Tier B scenarios.
+  - The first WSGI source treated the first parameter of any two-argument function as request
+    data. It fired on A-022-01, A-502-02 and two Tier B repos. Now it matches only
+    `def app(environ, start_response)`, and the extra rules fire on none of the 50.
+  - **Held-out recall: 13 against 12 of 30, one discordant CVE (CVE-2024-5547, CWE-22).** The
+    exact McNemar test needs at least 6-0, so B's recall criterion is not met, and the rules stay
+    opt-in. One extra hit sits in an XSS CVE's function, and the devika fix is still flagged.
+    `docs/results/detection/phase-b-extra-rules.json`.
+- **1a still holds:** the scenario finding is in the top five on 27 of 27 test scenarios with
+  the new default sources. The folder stays byte-identical, now also checked with `--extra-rules`.
+- **Labels unchanged:** applying each reference fix and re-scanning gives the same
+  `original_rule_present` as `20261024-o1-oracle-test` and `-test_b` on 37 of 37. This needs no
+  Docker. The full oracle replay was not rerun, because the default scan path is unchanged.
+
+**Phase C, judge: opt-in with `check --judge`** (`judge.py`).
+- It asks the local model at most 10 findings near the top, one call each. The answer is JSON held
+  to a schema: keep or park, plus a reason.
+- It leans toward keep. A parked finding is listed with `--all` with the model's reason. Secrets are
+  never sent. If Ollama is down, everything is kept and a note says so.
+- `dismiss` takes the same flags, so its numbers match the check's.
+- Smoke test on 0.40.10: about 2 s a finding once loaded (12 s with the load), 0 of 6 parked.
+- **Not measured:** the exit criterion needs labelled findings.
+- Starting the tray app ran a staged Ollama installer, which reinstalled 0.40.10 (the file
+  versions were equal), so the version is unchanged since Phase 0.
+
+**Phase D, repair.**
+- **D0: in all 9 tasks, the attempt that passed both hidden suites still had its rule firing.**
+  That corrects "or a test failed" above. No test was flaky, and no later, worse attempt was kept
+  over a good one. All attempts are in `20261024-v1a` and `-v1b`.
+  - The rules were html-fstring-unescaped (A-079-02), redos-nested-quantifier (A-1333-02, both
+    runs), dynamic-import-deserialization (A-502-03, both), hardcoded-credential (A-798-01,
+    -02), url-prefix-allowlist (A-918-03) and sqli-string-query (A-089-04).
+  - These rules match the code's shape, so a correct fix can keep the shape: `escape()` assigned
+    before the f-string, an allowlist check before the SQL f-string, a module allowlist before
+    `import_module`.
+  - Loosening them because of these diffs would be tuning on test, so the rules were not changed.
+    That is your call; if they change, do it as a new ruleset and say it came from test results.
+- **D1 already exists.** The loop hashes normalised edits, retries once hotter, then marks STUCK
+  (`loop.py`). Nothing was added.
+- **D2: config `repair-local-v1-recipes`.** It is V1 plus one abstract fix line for CWE-22, 328
+  and 918 (`prompts.FIX_RECIPES`), written from the dev scenarios and OWASP's cheat sheets.
+  - The choice of the three classes comes from test-split resolve rates (`OFTEN_MISSED_CWES`), so
+    a small leak is admitted.
+  - Every other config's prompts are unchanged; the golden prompts still pass.
+  - **Not run.**
+
+**Phase E** was not started. It is optional and comes after D, and its downloads (about 16 GB)
+need room on F: (7.7 GB free) or the model store moved to D:.
+
+**Left for you:**
+1. Label the 1a repos (two people). B's precision bar and C's exit criterion need those labels.
+2. D2's runs, attended: `aeropatch bench --config repair-local-v1-recipes --split test --run-id
+   20261026-r1-repair-local-v1-recipes-test`, three times, alternated with one more
+   `repair-local-v1` run. Compare per task with the exact McNemar test.
+3. Whether to loosen the 7 syntactic rules of D0 as a new ruleset.
+
 ## Next
 
 **Decisions that are yours**

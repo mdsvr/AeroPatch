@@ -306,6 +306,7 @@ LoRA on Qwen3.5-4B (r 16, alpha 16, 16-bit base, not QLoRA) with Unsloth on one 
 | `src/aeropatch/mcp_server.py` | thin MCP wrapper over the tools (stdio) |
 | `docker/` | sandbox base + per-scenario Dockerfiles, `run.sh`, hash-pinned harness tools |
 | `rules/` | AeroPatch's own Opengrep ruleset (22 rules) |
+| `rules-extra/` | 6 extra rules (4 taint, 2 pattern) for `check --extra-rules`; kept apart so the measured re-scan is unchanged |
 | `evaluations/scenarios/` | 60 scenarios: 40 hand-built (Tier A, 16 CWEs), 10 from real CVEs (Tier B, each with the upstream licence), 5 held out from the synthetic training data (Tier C) and 5 adversarial; `split.json` holds 13 dev, 27 test, 10 `test_b`, 5 `test_c` and 5 `adversarial` |
 | `training/` | Week 3 data. `inject_cwe.py`: synthetic, sandbox-verified training examples from a local teacher model. `prepare_dataset.py`: real fix pairs from GitHub advisories as SEARCH/REPLACE targets, and the dataset build. `finetune.py`: LoRA and GGUF export; `kaggle/`: the kernel that runs it; `Modelfile`: serving in Ollama. `sample_synthetic.py` and `own_fixes.py`: the model's own fixes as dataset v3 |
 | `reports/`, `research_notes/` | the model-improvement report and the four research notes behind it |
