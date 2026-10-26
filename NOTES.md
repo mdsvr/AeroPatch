@@ -2300,8 +2300,24 @@ range requests into `D:\aeropatch-detection`, and `detection.py score` scans eac
 - **Baseline, today's scanners plus regexploit: 12 of 30.** CWE-22 1 of 10, CWE-79 3 of 10,
   CWE-94 8 of 10, mostly Bandit's B307 `eval`. Of the 12, 5 are still reported on the fixed copy.
   `docs/results/detection/phase-a-baseline.json`.
-- **Not done:** precision of the shown findings on the 10 public repos of 1a and your own repos.
-  It needs two labellers.
+- **Precision of the shown findings on real repos: 11 of 42, 26%, against doc 17's bar of 50%.**
+  `evaluations/tools/repo_precision.py` checked 14 repos three ways: 10 public repos in
+  `D:\aeropatch-repos` and your 4 in `runs/github`.
+  - The public repos, shallow-cloned on 2026-10-26 with commits and licences recorded in
+    `evaluations/detection/repo_labels.csv`: PyGoat, vulpy and DVPWA (all MIT), microblog and
+    flasky (MIT), fastapi-realworld-example-app and full-stack-fastapi-template (MIT),
+    tldr-python-client (MIT), buku (GPL-3.0) and cookiecutter (BSD-3).
+  - I am the only labeller so far. A finding is real when the flagged code has the rule's
+    weakness and outside input can reach it. Every check left its folder byte-identical, 14 of 14.
+  - Nearly all the real ones are in the deliberately vulnerable apps: PyGoat 5 of 5, vulpy 4 of 5,
+    DVPWA 1 of 3, and 1 of 29 everywhere else.
+  - The false alarms repeat. sqli-string-query fires on constant SQL (`'VACUUM'`) in buku.py:
+    only in the whole file, never when that method or class is scanned alone, cause not found.
+    tar-extract-unfiltered fires on `zipfile.extractall`, which drops `..` names. Bandit flags
+    B105 on `password == ''` and B324 on gravatar MD5. Constant `os.system` calls are flagged in a
+    developer CLI.
+  - `--extra-rules` shows the same 42 cards. It adds 2 real PyGoat findings below the five shown.
+  - Advisory cards: 36, all in PyGoat, microblog and DVPWA.
 
 **Phase B, deterministic sources.**
 - **B1, advisories: on by default, `check --offline` skips them.** Instead of pip-audit or
@@ -2361,7 +2377,15 @@ range requests into `D:\aeropatch-detection`, and `detection.py score` scans eac
   now reads the code with comments and docstrings blanked (`judge.strip_prose`, line numbers
   kept), and parks 0 of the 5. Other string literals still reach the model, and a parked finding
   is always listed with `--all`.
-- **Not measured:** the exit criterion needs labelled findings.
+- **On the 14 labelled repos, the first version fails C's bar.** It raised precision from 11 of 42
+  (26%) to 10 of 27 (37%), but it set aside 4 real findings against the bar of at most 1. Those
+  were DVPWA's and PyGoat's MD5 or SHA-1 password hashes, and Quintyx's bind to 0.0.0.0. Its
+  reasons were wrong: "the input is a constant", or "the host is set to localhost" when it is not.
+- **After that, the judge only sees input-flow classes** (`check.JUDGE_CWES`: injection, path,
+  XSS, SSRF, redirect, XXE, deserialisation, error disclosure). Crypto, secret and config
+  findings are always kept. With the gate: 12 of 32 (38%), 0 real set aside.
+  - This gate was set after seeing these repos, so the number is not held-out evidence.
+  - Precision is still under 50%, so `--judge` stays opt-in.
 - Starting the tray app ran a staged Ollama installer, which reinstalled 0.40.10 (the file
   versions were equal). That is Phase 0 block 2's version. V1's test runs `v1a` and `v1b` ran on
   0.40.7 (block 1).
@@ -2385,7 +2409,16 @@ range requests into `D:\aeropatch-detection`, and `detection.py score` scans eac
   - The choice of the three classes comes from test-split resolve rates (`OFTEN_MISSED_CWES`), so
     a small leak is admitted.
   - Every other config's prompts are unchanged; the golden prompts still pass.
-  - **Not run.**
+  - **The recipes did not help (2026-10-26, Ollama 0.40.10, alternated, `paired.py arms`).**
+    `repair-local-v1` resolved 15, 13 and 13 of 27; the recipes config 14, 11 and 9.
+    - By each task's majority of three runs: 14 against 11. Three tasks went only to V1
+      (A-079-02, A-352-02, A-918-03) and none only to the recipes; exact McNemar p = 0.25.
+    - "Scanner quiet, your tests still pass" was right 41 of 51 times for V1 and 34 of 47 for the
+      recipes.
+    - The pooled gap, 41 against 34 of 81, is past the bar of 4 in V1's favour, but McNemar does
+      not separate them. So the config stays a research config and V1 stays the default.
+    - Runs `20261026-d2-{1,2,3}-repair-local-v1(-recipes)-test`. The first pair's header says
+      dirty: an evaluation script was untracked; the loop code was the same in all six.
 
 **Phase E0 and E1 (2026-10-26, Ollama 0.40.10, `evaluations/tools/model_fit.py`,
 `docs/results/model-mix/`).** I pulled, measured and removed one model at a time.
@@ -2407,16 +2440,11 @@ range requests into `D:\aeropatch-detection`, and `detection.py score` scans eac
   `paired.py mix`.
 
 **Left for you:**
-1. Label the 1a repos (two people). B's precision bar and C's exit criterion need those labels.
-2. D2's runs, attended, all on one Ollama version. V1's existing runs were on 0.40.7, so the
-   baseline is run again: 3 runs of `repair-local-v1` and 3 of `repair-local-v1-recipes`,
-   alternated, each with its own run id, for example
-   `aeropatch bench --config repair-local-v1 --split test --run-id 20261027-d2v1-1-repair-local-v1-test`, then
-   `aeropatch bench --config repair-local-v1-recipes --split test --run-id 20261027-d2r-1-repair-local-v1-recipes-test`,
-   then `-2` and `-3` of each. That is about 11 minutes a run, so roughly 70 minutes. Take each
-   task's majority of three runs, then use the exact McNemar test on the tasks where the arms
-   differ.
-3. Whether to loosen the 7 syntactic rules of D0 as a new ruleset.
+1. Second labeller: go through `evaluations/detection/repo_labels.csv` and list where you disagree.
+2. Whether to loosen the 7 syntactic rules of D0, and fix the buku and zipfile false alarms
+   above, as a new ruleset.
+3. An Ollama 0.40.11 installer has been staged since 13:02. Installing it from here was refused,
+   so every run today used 0.40.10.
 
 ## Next
 
