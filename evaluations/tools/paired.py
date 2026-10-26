@@ -23,10 +23,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
-from aeropatch import labels  # noqa: E402
-from aeropatch.bench import read_run  # noqa: E402
-from aeropatch.contracts import SandboxResult  # noqa: E402
-from aeropatch.metrics import mcnemar_exact  # noqa: E402
+from aeropatch import labels
+from aeropatch.bench import read_run
+from aeropatch.contracts import SandboxResult
+from aeropatch.metrics import mcnemar_exact
 
 
 def _results(path: Path) -> dict[str, dict]:

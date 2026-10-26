@@ -25,8 +25,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
-from aeropatch import check  # noqa: E402
-from aeropatch.tools import scanners  # noqa: E402
+from aeropatch import check
+from aeropatch.tools import scanners
 
 MODES = {"default": {}, "extra": {"extra_rules": True}, "extra+judge": {"extra_rules": True, "use_judge": True}}
 FIELDS = ["repo", "commit", "mode", "n", "kind", "tool", "rule_id", "cwe", "path", "line", "code", "judge", "label",
@@ -43,7 +43,7 @@ def _digest(folder: Path) -> str:
 
 
 def _commit(folder: Path) -> str:
-    r = subprocess.run(["git", "-C", str(folder), "rev-parse", "--short=12", "HEAD"], capture_output=True, text=True)
+    r = subprocess.run(["git", "-C", str(folder), "rev-parse", "--short=12", "HEAD"], capture_output=True, text=True, check=False)
     return r.stdout.strip()
 
 

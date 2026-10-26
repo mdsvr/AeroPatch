@@ -24,16 +24,16 @@ import httpx
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
-from aeropatch import config, scenario  # noqa: E402
-from aeropatch.agent import edits, prompts  # noqa: E402
-from aeropatch.tools.context import get_context  # noqa: E402
+from aeropatch import config, scenario
+from aeropatch.agent import edits, prompts
+from aeropatch.tools.context import get_context
 
 HOST = "http://127.0.0.1:11434"
 
 
 def _gpu_mib() -> int:
     out = subprocess.run(["nvidia-smi", "--query-gpu=memory.used", "--format=csv,noheader,nounits"],
-                         capture_output=True, text=True).stdout
+                         capture_output=True, text=True, check=False).stdout
     return int(out.split()[0]) if out.strip() else 0
 
 
