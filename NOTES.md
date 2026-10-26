@@ -2439,6 +2439,31 @@ range requests into `D:\aeropatch-detection`, and `detection.py score` scans eac
   Qwen x10 with Qwen x5 + Gemma x5 on test, over three repetitions, batched by model, with
   `paired.py mix`.
 
+**Phase E2: the mix does not clear its pre-registered bar, so users keep one model.**
+Runs `20261026-e2-s{1,2,3}-q{1..10}` and `-g{1..5}` (`sample-local` on test, Ollama 0.40.10,
+batched by model, no provider errors). Analysed with `paired.py mix`.
+- Mean pass@1: Qwen 47.2% (30 runs), Gemma 4 E2B 30.4% (15 runs).
+- Per repetition, Qwen x10 against Qwen x5 + Gemma x5:
+
+  | Repetition | Coverage (oracle), Qwen / mix | Deployable, Qwen / mix | Solved by Gemma and no Qwen sample |
+  |---|---|---|---|
+  | 1 | 18 / 20 | 13 / 15 | A-078-03, A-338-02 |
+  | 2 | 19 / 21 | 12 / 15 | A-089-03, A-918-03 |
+  | 3 | 22 / 21 | 14 / 15 | A-328-02, A-338-02 |
+
+- By each task's majority of three repetitions, the mix wins 2 tasks and loses none, at both
+  layers. Coverage is 19 against 21 of 27, deployable 13 against 15; exact McNemar p = 0.50 at
+  each. The bar needs at least 6-0, so it is not met.
+- The direction is the same in all three repetitions on the deployable layer (+2, +3, +1), and
+  the tasks Gemma adds sit in classes Qwen often misses (CWE-338, 328, 918). So a larger test
+  could pay off, but this one does not show a gain, and per the plan the mix stays a research
+  idea.
+- The Tier B sanity runs were not done, because the main bar already failed.
+- `gemma4:e2b-it-qat` (4.3 GB) is still in the Ollama store on F:; nemotron and ministral were
+  removed. F: has about 4 GB free.
+
+**All tests:** 609 passed with Docker and Ollama running, and ruff is clean.
+
 **Left for you:**
 1. Second labeller: go through `evaluations/detection/repo_labels.csv` and list where you disagree.
 2. Whether to loosen the 7 syntactic rules of D0, and fix the buku and zipfile false alarms
