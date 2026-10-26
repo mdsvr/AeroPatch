@@ -208,7 +208,8 @@ def main(argv: list[str] | None = None) -> int:
         (("--extra-rules",), {"action": "store_true",
                               "help": "also run the extra taint rules (rules-extra/; not yet measured on real repos)"}),
         (("--judge",), {"action": "store_true",
-                        "help": "let the local model set aside likely false alarms near the top (needs Ollama)"}))
+                        "help": "let the local model set aside likely false alarms near the top (needs Ollama; "
+                                "it reads code without comments or docstrings; what it sets aside is listed with --all)"}))
     for flags, kw in check_options:
         s.add_argument(*flags, **kw)
     s.set_defaults(fn=cmd_check)

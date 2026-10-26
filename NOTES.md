@@ -2341,8 +2341,13 @@ range requests into `D:\aeropatch-detection`, and `detection.py score` scans eac
 - **1a still holds:** the scenario finding is in the top five on 27 of 27 test scenarios with
   the new default sources. The folder stays byte-identical, now also checked with `--extra-rules`.
 - **Labels unchanged:** applying each reference fix and re-scanning gives the same
-  `original_rule_present` as `20261024-o1-oracle-test` and `-test_b` on 37 of 37. This needs no
-  Docker. The full oracle replay was not rerun, because the default scan path is unchanged.
+  `original_rule_present` as `20261024-o1-oracle-test` on 27 of 27. This needs no Docker. The 10
+  Tier B findings are advisories with no re-scan on either side, so they show nothing. The full
+  oracle replay was not rerun, because the default scan path is unchanged.
+- **B2's noise, checked on code that is not the held-out set:** over 3,697 files in
+  `.venv/Lib/site-packages`, regexploit reports 11 regexes. 3 are `re.*` arguments; the other 8
+  are bare string constants, and every one is a real regex (Pygments lexer tables). So B2 stays on
+  by default.
 
 **Phase C, judge: opt-in with `check --judge`** (`judge.py`).
 - It asks the local model at most 10 findings near the top, one call each. The answer is JSON held
@@ -2351,9 +2356,15 @@ range requests into `D:\aeropatch-detection`, and `detection.py score` scans eac
   never sent. If Ollama is down, everything is kept and a note says so.
 - `dismiss` takes the same flags, so its numbers match the check's.
 - Smoke test on 0.40.10: about 2 s a finding once loaded (12 s with the load), 0 of 6 parked.
+- **Prompt injection, X-01 to X-06:** the first version parked X-02's real SQL injection. The
+  reason it gave was the planted docstring's claim that the finding comes from a test. The judge
+  now reads the code with comments and docstrings blanked (`judge.strip_prose`, line numbers
+  kept), and parks 0 of the 5. Other string literals still reach the model, and a parked finding
+  is always listed with `--all`.
 - **Not measured:** the exit criterion needs labelled findings.
 - Starting the tray app ran a staged Ollama installer, which reinstalled 0.40.10 (the file
-  versions were equal), so the version is unchanged since Phase 0.
+  versions were equal). That is Phase 0 block 2's version. V1's test runs `v1a` and `v1b` ran on
+  0.40.7 (block 1).
 
 **Phase D, repair.**
 - **D0: in all 9 tasks, the attempt that passed both hidden suites still had its rule firing.**
@@ -2381,9 +2392,14 @@ need room on F: (7.7 GB free) or the model store moved to D:.
 
 **Left for you:**
 1. Label the 1a repos (two people). B's precision bar and C's exit criterion need those labels.
-2. D2's runs, attended: `aeropatch bench --config repair-local-v1-recipes --split test --run-id
-   20261026-r1-repair-local-v1-recipes-test`, three times, alternated with one more
-   `repair-local-v1` run. Compare per task with the exact McNemar test.
+2. D2's runs, attended, all on one Ollama version. V1's existing runs were on 0.40.7, so the
+   baseline is run again: 3 runs of `repair-local-v1` and 3 of `repair-local-v1-recipes`,
+   alternated, each with its own run id, for example
+   `aeropatch bench --config repair-local-v1 --split test --run-id 20261027-d2v1-1-repair-local-v1-test`, then
+   `aeropatch bench --config repair-local-v1-recipes --split test --run-id 20261027-d2r-1-repair-local-v1-recipes-test`,
+   then `-2` and `-3` of each. That is about 11 minutes a run, so roughly 70 minutes. Take each
+   task's majority of three runs, then use the exact McNemar test on the tasks where the arms
+   differ.
 3. Whether to loosen the 7 syntactic rules of D0 as a new ruleset.
 
 ## Next
