@@ -139,8 +139,14 @@ def _run_dir(folder: Path) -> Path:
     return config.RUNS_DIR / "folders" / f"{name}-{hashlib.sha1(str(folder).encode()).hexdigest()[:8]}"
 
 
+def _tool_dir(name: str) -> bool:
+    """Folders of tools, builds and installed packages. Hidden folders count: on AeroPatch's own
+    repo, .venv-notebook/site-packages and .claude/worktrees filled the top five (2026-10-26)."""
+    return name in EXCLUDED_DIRS or name.endswith(".egg-info") or name.startswith(".") or name == "site-packages"
+
+
 def _set_aside(path: str) -> str | None:
-    if any(p in EXCLUDED_DIRS or p.endswith(".egg-info") for p in PurePosixPath(path).parts[:-1]):
+    if any(_tool_dir(p) for p in PurePosixPath(path).parts[:-1]):
         return IN_TOOLS
     return IN_TESTS if _forbidden(path, TEST_GLOBS) else None
 
@@ -265,7 +271,7 @@ def python_files(folder: Path) -> list[str]:
     """Folder-relative .py files outside the excluded folders, which are never walked."""
     out = []
     for root, dirs, files in os.walk(folder):
-        dirs[:] = sorted(d for d in dirs if d not in EXCLUDED_DIRS and not d.endswith(".egg-info"))
+        dirs[:] = sorted(d for d in dirs if not _tool_dir(d))
         out += [(Path(root) / f).relative_to(folder).as_posix() for f in sorted(files) if f.endswith(".py")]
     return out
 

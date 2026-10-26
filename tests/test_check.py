@@ -61,7 +61,8 @@ def test_test_code_and_tool_folders_are_set_aside(proj):
     aside = {"tests/test_a.py": check.IN_TESTS, "pkg/tests/helpers.py": check.IN_TESTS, "test_b.py": check.IN_TESTS,
              "src/c_test.py": check.IN_TESTS, "conftest.py": check.IN_TESTS, ".venv/lib/site.py": check.IN_TOOLS,
              "node_modules/x/y.py": check.IN_TOOLS, "build/lib/z.py": check.IN_TOOLS,
-             "foo.egg-info/w.py": check.IN_TOOLS}
+             "foo.egg-info/w.py": check.IN_TOOLS, ".venv-notebook/Lib/site-packages/j.py": check.IN_TOOLS,
+             ".claude/worktrees/x/app.py": check.IN_TOOLS, "vendor/site-packages/k.py": check.IN_TOOLS}
     res = check.triage(proj, [fnd(p) for p in aside] + [fnd("app/main.py")])
     assert [c.finding.path for c in res.shown] == ["app/main.py"]
     assert {f.path: r for f, r in res.parked} == aside
