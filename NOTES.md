@@ -2387,8 +2387,24 @@ range requests into `D:\aeropatch-detection`, and `detection.py score` scans eac
   - Every other config's prompts are unchanged; the golden prompts still pass.
   - **Not run.**
 
-**Phase E** was not started. It is optional and comes after D, and its downloads (about 16 GB)
-need room on F: (7.7 GB free) or the model store moved to D:.
+**Phase E0 and E1 (2026-10-26, Ollama 0.40.10, `evaluations/tools/model_fit.py`,
+`docs/results/model-mix/`).** I pulled, measured and removed one model at a time.
+
+| Model | Fully on GPU | Peak GPU | tok/s | Thinking seen | Edits that apply (dev, 13) | E1: resolved, 1 attempt, dev |
+|---|---|---|---|---|---|---|
+| qwen3.5:4b (baseline) | yes | 2,995 MiB | 48.8 | 0 | 12 | 8 |
+| nemotron-3-nano:4b | yes | 2,897 MiB | 59.3 | 0 | **3** (its SEARCH text does not match the file) | not run |
+| ministral-3:3b | yes | **3,883 MiB** | 68.0 | 0 | 13 | 4 (none that Qwen missed) |
+| gemma4:e2b-it-qat | yes (1.66 GB loaded) | 2,791 MiB | 90.0 | 0 | 9 | 5 (A-328-01, which Qwen missed) |
+
+- Nemotron fails E0 on edits that apply, and was removed.
+- Ministral's peak sits on the 3.8 GiB bar, counting about 350 MiB of desktop use.
+- `think: false` works for all three: no thinking text came back. NVIDIA's Open Model License was
+  read: local use is allowed, and the user downloads the weights, so AeroPatch distributes none.
+- **Pre-registered for E2, before any test run: gemma4:e2b-it-qat.** It is the only candidate
+  that solved a dev task no Qwen sample did, and it fits with room to spare. E2 compares
+  Qwen x10 with Qwen x5 + Gemma x5 on test, over three repetitions, batched by model, with
+  `paired.py mix`.
 
 **Left for you:**
 1. Label the 1a repos (two people). B's precision bar and C's exit criterion need those labels.
