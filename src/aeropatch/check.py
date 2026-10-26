@@ -50,6 +50,11 @@ UNSURE = "Bandit is unsure about this one"
 LOWER = "ranked below the five shown"
 JUDGED = "the local model judged it a likely false alarm"
 JUDGE_MAX = 2 * SHOW  # findings the model is asked about, at most: the shown ones and the next few
+# Only classes where "does outside input reach this line?" decides the verdict. On 14 real repos
+# (2026-10-26) the 4B model parked 4 real weak-hash and bind-all findings as "constant input";
+# this gate was set after seeing that, so its effect is measured on the same repos only.
+JUDGE_CWES = {"CWE-22", "CWE-78", "CWE-79", "CWE-89", "CWE-94", "CWE-95", "CWE-113", "CWE-502", "CWE-601",
+              "CWE-611", "CWE-918", "CWE-209"}
 NO_JUDGE = "The local model is not running, so it did not review the findings. `aeropatch doctor` shows how to start it."
 NO_OPENGREP = ("Only Bandit ran: Opengrep was not found, so AeroPatch's own rules were skipped and some "
                "problems may be missing. `aeropatch doctor` shows what to install.")
@@ -184,7 +189,7 @@ def _judge(folder: Path, candidates: list, ask=None) -> tuple[list, list[tuple[F
     ask = ask or judge.ask
     kept, aside, asked, seconds = [], [], 0, 0.0
     for i, c in enumerate(candidates):
-        if c[2] or len(kept) >= SHOW or asked >= JUDGE_MAX:
+        if c[2] or c[0].cwe not in JUDGE_CWES or len(kept) >= SHOW or asked >= JUDGE_MAX:
             kept.append(c)
             continue
         try:

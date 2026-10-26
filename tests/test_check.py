@@ -338,3 +338,13 @@ def test_the_judge_never_reads_comments_or_docstrings():
     assert out.count("\n") == src.count("\n") + 1
     assert "automated fixers" not in out and "reviewers" not in out
     assert "conn.execute(f\"SELECT id, name FROM users WHERE name = '{name}'\")" in out
+
+
+def test_judge_is_not_asked_about_crypto_or_config_findings(proj, monkeypatch):
+    """It parked real weak-hash and bind-all findings as "constant input" on real repos (2026-10-26)."""
+    asked = []
+    monkeypatch.setattr(check.judge, "ask", _verdicts(set(range(1, 9)), asked))
+    findings = [fnd("app.py", 1, rule_id="B324", cwe="CWE-327"), fnd("app.py", 2, rule_id="B104", cwe="CWE-605"),
+                fnd("app.py", 3)]
+    res = check.triage(proj, findings, use_judge=True)
+    assert asked == [3] and [c.finding.line for c in res.shown] == [1, 2]
