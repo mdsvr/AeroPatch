@@ -25,10 +25,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
-from aeropatch import check
+from aeropatch import check, false_alarms
 from aeropatch.tools import scanners
 
-MODES = {"default": {}, "extra": {"extra_rules": True}, "extra+judge": {"extra_rules": True, "use_judge": True}}
+MODES = {"default": {}, "extra": {"extra_rules": True}, "extra+judge": {"extra_rules": True, "use_judge": True},
+         "unfiltered": {}}  # "unfiltered": today's check without the false-alarm shapes (point 2's other arm)
 FIELDS = ["repo", "commit", "mode", "n", "kind", "tool", "rule_id", "cwe", "path", "line", "code", "judge", "label",
           "note"]
 
@@ -55,7 +56,13 @@ def run(repo_roots: list[Path], out: Path, modes: list[str]) -> None:
         before = _digest(folder)
         for mode in modes:
             start = time.monotonic()
-            res = check.check_folder(folder, offline=mode != "default", **MODES[mode])
+            real_reason = false_alarms.reason
+            if mode == "unfiltered":
+                false_alarms.reason = lambda *a: None
+            try:
+                res = check.check_folder(folder, offline=mode != "default", **MODES[mode])
+            finally:
+                false_alarms.reason = real_reason
             secs = round(time.monotonic() - start, 1)
             same = _digest(folder) == before
             timing.append({"repo": folder.name, "mode": mode, "seconds": secs, "byte_identical": same,

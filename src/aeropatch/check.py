@@ -22,7 +22,7 @@ from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 from string import Template
 
-from aeropatch import config, judge
+from aeropatch import config, false_alarms, judge
 from aeropatch.agent import prompts
 from aeropatch.agent.gates import _forbidden
 from aeropatch.contracts import Finding
@@ -49,6 +49,7 @@ IN_TESTS, IN_TOOLS = "in test code", "in a tools or build folder"
 UNSURE = "Bandit is unsure about this one"
 LOWER = "ranked below the five shown"
 JUDGED = "the local model judged it a likely false alarm"
+LIKELY_FALSE = "likely a false alarm"
 JUDGE_MAX = 2 * SHOW  # findings the model is asked about, at most: the shown ones and the next few
 # Only classes where "does outside input reach this line?" decides the verdict. On 14 real repos
 # (2026-10-26) the 4B model parked 4 real weak-hash and bind-all findings as "constant input";
@@ -222,10 +223,12 @@ def triage(folder: Path, findings: list[Finding], opengrep: bool = True, use_jud
     findings = list({(f.tool, f.rule_id, f.path, f.line): f for f in findings}.values())
     parked: list[tuple[Finding, str]] = []
     kept = []
-    for f in findings:  # 2. test code, tools and build folders
+    shapes: dict = {}
+    for f in findings:  # 2. test code, tools and build folders; then known false-alarm shapes
         reason = _set_aside(f.path)
-        if reason:
-            parked.append((f, reason))
+        why = None if reason else false_alarms.reason(folder, f, shapes)
+        if reason or why:
+            parked.append((f, reason or f"{LIKELY_FALSE}: {why}"))
         else:
             kept.append(f)
 

@@ -2464,6 +2464,49 @@ batched by model, no provider errors). Analysed with `paired.py mix`.
 
 **All tests:** 609 passed with Docker and Ollama running, and ruff is clean.
 
+## Precision: known false-alarm shapes (point 2, 2026-10-27)
+
+`src/aeropatch/false_alarms.py` sets aside, inside `check`'s triage, findings whose flagged statement
+has a shape no scanner rule can tell from the dangerous one. Each one is listed with `--all` and
+its reason. `rules/` is unchanged, so no measured config's re-scan moves.
+
+The shapes:
+- SQL text written out in full, or only `', '.join(['?'] * n)` placeholders built into it.
+- A shell command written out in full.
+- A comparison with an empty or placeholder value (`password == ''`, `token == 'your_access_token'`).
+- A credential-named variable whose value is a token type (`token_type = 'bearer'`).
+- `extractall` on a `ZipFile`, which already drops `..` names.
+- `startswith` prefixes that are not web addresses.
+
+**Guards, all met:**
+- None of the 14 labelled-real findings on the 14 tuning repos is set aside.
+- None of the 12 held-out PySASTBench detections is lost.
+- The scenario finding is still in the top five on 27 of 27.
+
+**Fresh repos, chosen and committed before any check** (`evaluations/detection/fresh_repos.json`,
+`899775c`):
+- The 10 repos: DSVW, vulnpy, sqlite-utils, records, httpie, bakerydemo, rich-cli, APIFairy,
+  flask-boilerplate and environs.
+- I labelled the union of both arms' cards in a shuffled order, without the arm in view
+  (`evaluations/detection/fresh_labels.csv`).
+
+| Arm | Fresh 10: shown, real | Tuning 14: shown, real |
+|---|---|---|
+| Today's check, no shapes | 25, 14 (56%) | 42, 11 (26%) |
+| First shape set | 22, 12 (55%), **4 real set aside** | 27, 11 |
+| Revised shape set (kept) | **24, 14 (58%), 0 real set aside** | 30, 11 (37%) |
+
+- **Two shapes failed on the fresh repos and were dropped.** "A credential-named string with a
+  space is a message" hid flask-boilerplate's real `SECRET_KEY = 'my precious'` twice. "A weak
+  hash whose names mention no password" hid vulnpy's two deliberate MD5/SHA-1 sinks.
+- The surviving shapes were part of the set frozen before the fresh check. There they removed one
+  false alarm (a fixed `twine upload` command) and no real finding.
+- **Precision on the fresh repos is 58%, over doc 17's 50% bar,** but the two deliberately
+  vulnerable apps give 9 of the 14 real findings. On the 8 ordinary fresh repos it is 5 of 14.
+- On the tuning repos it is 37%, still under the bar.
+- The largest remaining false alarm is SQL f-strings built only from `quote_identifier(...)` calls:
+  sqlite-utils 0 of 5. A shape for it was not added, because it would be tuned on the fresh repos.
+
 **Left for you:**
 1. Second labeller: go through `evaluations/detection/repo_labels.csv` and list where you disagree.
 2. Whether to loosen the 7 syntactic rules of D0, and fix the buku and zipfile false alarms
