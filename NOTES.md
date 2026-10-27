@@ -2464,6 +2464,61 @@ batched by model, no provider errors). Analysed with `paired.py mix`.
 
 **All tests:** 609 passed with Docker and Ollama running, and ruff is clean.
 
+## Doc 17 Phase 1b: fix a folder (2026-10-27)
+
+`aeropatch fix FOLDER N [--suggest]`, `apply FOLDER N`, `undo FOLDER N` and `prune --images`. The
+code is in `src/aeropatch/folder.py`, plus `docker/folder.Dockerfile`, `folder_run.sh` and
+`folder_runner.py`. `docker/run.sh` and the base image are byte-identical, so every scenario image
+is unchanged.
+
+**How it works:**
+- `fix` builds a Task from card N of the check. It stages the folder into
+  `runs/folders/<name>-<hash>/context` without environments, caches, VCS data or `.env` files.
+- The image is built from that staged copy. The dependencies come from, first match wins:
+  uv.lock, then Pipfile.lock, then requirements files, then `pip install .[test]`. On a build
+  error it retries once with the native-package table.
+- The user's tests run twice on the pristine code. The tests that passed both times are baked into
+  the image, and only those run after an edit.
+- It runs the V1 loop (`fix-local`). Without Docker, or with `--suggest`, it runs `suggest-local`,
+  and nothing runs.
+- The proposed files are kept under `runs/`; the folder is not touched.
+- `apply` refuses a file that changed since the fix, and backs up each file with a manifest
+  first. `undo` restores only files still as applied; otherwise it changes nothing and names the
+  backup.
+- Every failure gets one plain sentence (`folder.MESSAGES`), and the lower levels keep working.
+
+**Bugs found while building it, now fixed:**
+- The safety gate rejected every edit to a file starting with a UTF-8 BOM (`ast.parse` refuses
+  U+FEFF).
+- Opengrep 1.30.0 reads every string in a BOM file as an f-string, so the SQL rule fired on a
+  correct parameterised fix. The one-file re-scan now reads a BOM-free copy. No benchmark file has
+  a BOM, so no measured config moves.
+- The diff from git drops the CR of CRLF lines, so `fix` keeps the after-files by re-applying the
+  offered edits, not the diff.
+
+**Exit criteria:**
+1. **Met.**
+   - Oracle through the folder path against the scenario path: the same label and user label on
+     27 of 27 (`20261027-c1-oracle-folder-test`, `-c1-oracle-test`).
+   - `fix-local` through the folder path resolved 12 and 13; `repair-local-v1` 13 and 12, run
+     alternated on the same day (`20261027-c1-{1,2}-...`). 25 against 25 of 54, within the bar
+     of 4. No task differs by majority.
+   - "Scanner quiet, your tests still pass" was right 25 of 31 times through the folder path.
+2. **Not run.**
+   - `evaluations/tools/folder_setup.py` builds each of 1a's 10 repos and records the failure
+     class. The permission check refused to start it here, because it installs and runs those
+     repos' own build code.
+   - Command: `python evaluations/tools/folder_setup.py D:/aeropatch-repos --out
+     docs/results/folder-setup.json`. It needs Docker, takes about 10-20 minutes, and removes
+     each image after its result.
+3. **Met.** `tests/test_folder.py` covers a CRLF + BOM file:
+   - `apply` then `undo` gives byte-identical files, and nothing is written before `apply`.
+   - `apply` refuses a file changed since the fix, and `undo` refuses one changed after apply.
+4. **Met in a test:** with Docker reported down and `run_container` raising, `fix` still gives a
+   suggestion ("Scanner quiet, not tested") and starts no container. It was not run live with
+   Docker stopped.
+5. **Open:** the review test with 6 people is yours to run.
+
 ## Precision: known false-alarm shapes (point 2, 2026-10-27)
 
 `src/aeropatch/false_alarms.py` sets aside, inside `check`'s triage, findings whose flagged statement
