@@ -1,0 +1,439 @@
+<title>AeroPatch Easy-Use Plan</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one reading column. Overall progress, a stage rail, "waiting on you", then one section per stage. */
+:root {
+  --bg: #f3f5f4;
+  --surface: #ffffff;
+  --ink: #16201b;
+  --muted: #56645d;
+  --line: #d9e0dc;
+  --accent: #2446c4;
+  --accent-soft: #e5eafa;
+  --done: #1d7549;
+  --done-soft: #e0f1e7;
+  --doing: #9c5d00;
+  --doing-soft: #faeed8;
+  --wait: #b0341c;
+  --wait-soft: #fbe6e0;
+  --todo: #7b8780;
+  --todo-soft: #eaeeec;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1412; --surface: #161d1a; --ink: #e6ece8; --muted: #9ba8a1; --line: #29332f;
+    --accent: #93a9ff; --accent-soft: #1c2446;
+    --done: #5fc490; --done-soft: #13281d; --doing: #e8a64c; --doing-soft: #2b2011;
+    --wait: #f28d77; --wait-soft: #2e1813; --todo: #7f8b85; --todo-soft: #1d2421;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1412; --surface: #161d1a; --ink: #e6ece8; --muted: #9ba8a1; --line: #29332f;
+  --accent: #93a9ff; --accent-soft: #1c2446;
+  --done: #5fc490; --done-soft: #13281d; --doing: #e8a64c; --doing-soft: #2b2011;
+  --wait: #f28d77; --wait-soft: #2e1813; --todo: #7f8b85; --todo-soft: #1d2421;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 32px 64px;
+}
+.wrap { max-width: 880px; margin: 0 auto; display: grid; gap: 40px; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; line-height: 1.15; }
+h1 { font-size: clamp(2rem, 5vw, 2.75rem); font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: 1.5rem; font-weight: 700; }
+h3 { font-size: 1.25rem; font-weight: 600; }
+p { margin: 0; }
+code, .mono { font-family: var(--font-mono); font-size: 0.875em; }
+.eyebrow { font-size: 0.8rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.muted { color: var(--muted); }
+.section-head { display: grid; gap: 6px; }
+.section { display: grid; gap: 16px; }
+
+/* Header and overall progress */
+.top { display: grid; gap: 14px; }
+.lede { font-size: 1.1rem; max-width: 62ch; }
+.overall { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; display: grid; gap: 12px; }
+.overall-row { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: baseline; justify-content: space-between; }
+.big { font-family: var(--font-display); font-size: 2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.bar { height: 10px; border-radius: 999px; background: var(--todo-soft); overflow: hidden; display: flex; }
+.bar > span { display: block; height: 100%; background: var(--done); transition: width .4s ease; }
+.bar.thin { height: 6px; }
+.headline { max-width: 66ch; }
+.updated { font-size: 0.85rem; color: var(--muted); }
+
+/* Stage rail */
+.rail { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 10px; }
+.rail a { display: grid; gap: 6px; padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: inherit; text-decoration: none; min-width: 0; }
+.rail a:hover { border-color: var(--accent); }
+.rail a:focus-visible, button:focus-visible, textarea:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.rail .code { font-family: var(--font-mono); font-size: 0.8rem; color: var(--muted); }
+.rail .name { font-weight: 600; line-height: 1.25; }
+
+/* Pills */
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 0.78rem; font-weight: 600; padding: 2px 10px; border-radius: 999px; white-space: nowrap; width: fit-content; }
+.pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.s-done { color: var(--done); background: var(--done-soft); }
+.s-active, .s-doing { color: var(--doing); background: var(--doing-soft); }
+.s-blocked, .s-waiting { color: var(--wait); background: var(--wait-soft); }
+.s-ready { color: var(--accent); background: var(--accent-soft); }
+.s-later, .s-todo, .s-optional { color: var(--todo); background: var(--todo-soft); }
+
+/* Decisions */
+.decisions { display: grid; gap: 12px; }
+.decision { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--wait); border-radius: 10px; padding: 16px 18px; display: grid; gap: 10px; }
+.decision.answered { border-left-color: var(--done); }
+.decision-q { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: baseline; justify-content: space-between; }
+.decision-q h3 { font-size: 1.1rem; }
+.options { display: flex; flex-wrap: wrap; gap: 8px; }
+.opt { font: inherit; font-size: 0.92rem; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; }
+.opt:hover { border-color: var(--accent); }
+.opt[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.opt:disabled { cursor: default; opacity: 0.75; }
+.rec { font-size: 0.78rem; color: var(--muted); margin-left: 4px; }
+.note-row { display: grid; gap: 6px; }
+.note-row label { font-size: 0.85rem; color: var(--muted); }
+textarea { font: inherit; font-size: 0.92rem; width: 100%; min-height: 56px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); resize: vertical; }
+.link-btn { font: inherit; font-size: 0.85rem; background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; text-decoration: underline; justify-self: start; }
+
+/* Stage sections */
+.stage { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 22px; display: grid; gap: 18px; scroll-margin-top: 16px; }
+.stage-head { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; align-items: start; }
+.stage-code { font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; color: var(--accent); min-width: 2.2em; line-height: 1.1; }
+.stage-meta { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; font-size: 0.88rem; color: var(--muted); }
+.stage-progress { grid-column: 1 / -1; display: grid; gap: 6px; }
+.stage-progress .count { font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.stage-body { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 20px; }
+@media (max-width: 720px) { .stage-body { grid-template-columns: minmax(0, 1fr); } }
+.label { font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.task { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 7px 8px; border-radius: 8px; width: 100%; text-align: left; font: inherit; color: inherit; background: none; border: 1px solid transparent; }
+button.task { cursor: pointer; }
+button.task:hover { border-color: var(--line); background: var(--bg); }
+.task .txt { min-width: 0; overflow-wrap: anywhere; }
+.task.is-done .txt { color: var(--muted); }
+.mark { width: 18px; height: 18px; margin-top: 3px; border-radius: 50%; border: 2px solid var(--todo); display: grid; place-items: center; font-size: 11px; font-weight: 700; line-height: 1; }
+.mark.done { background: var(--done); border-color: var(--done); color: var(--surface); }
+.mark.doing { border-color: var(--doing); background: linear-gradient(90deg, var(--doing) 50%, transparent 50%); }
+.mark.waiting { border-color: var(--wait); color: var(--wait); }
+.check { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; padding: 5px 0; font-size: 0.94rem; }
+.check .mark { width: 16px; height: 16px; border-radius: 4px; }
+.what { max-width: 62ch; }
+
+/* Explainer */
+.levels { width: 100%; border-collapse: collapse; font-size: 0.94rem; }
+.levels th, .levels td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.levels th { font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.table-scroll { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.labels { display: grid; gap: 8px; }
+.labels li { display: grid; gap: 2px; padding: 10px 14px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); }
+.labels .say { font-weight: 600; }
+
+/* Log and footer */
+.log { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.log li { display: grid; grid-template-columns: 7.5em minmax(0, 1fr); gap: 12px; }
+.log time { font-family: var(--font-mono); font-size: 0.85rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.empty { padding: 18px 20px; border: 1px dashed var(--line); border-radius: 12px; color: var(--muted); }
+footer { font-size: 0.88rem; color: var(--muted); display: grid; gap: 6px; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-size: 0.9rem; max-width: calc(100% - 32px); }
+@media (prefers-reduced-motion: reduce) { .bar > span { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <p class="eyebrow">AeroPatch · making it easy for everyone</p>
+    <h1>AeroPatch Easy-Use Plan</h1>
+    <p class="lede">The goal: someone who isn't technical installs AeroPatch with one line, points it at their own Python project, and gets security problems explained in everyday words, with one safe, undoable fix at a time.</p>
+    <div class="overall" id="overall" aria-live="polite">
+      <p class="muted">Loading progress…</p>
+    </div>
+  </header>
+
+  <nav class="rail" id="rail" aria-label="Stages of the plan"></nav>
+
+  <section class="section" id="waiting" aria-labelledby="waiting-h">
+    <div class="section-head">
+      <h2 id="waiting-h">Waiting on you</h2>
+      <p class="muted">Pick an answer here. Claude reads your answers when you next ask, and confirms in chat before acting on any of them.</p>
+    </div>
+    <div class="decisions" id="decisions"></div>
+  </section>
+
+  <section class="section" aria-labelledby="stages-h">
+    <div class="section-head">
+      <h2 id="stages-h">Each stage</h2>
+      <p class="muted" id="stages-hint">Each stage lists what you get, the work, and how we'll know it's done.</p>
+    </div>
+    <div class="section" id="stages"></div>
+  </section>
+
+  <section class="section" aria-labelledby="how-h">
+    <div class="section-head">
+      <h2 id="how-h">How it will work for people</h2>
+      <p class="muted">People choose how much to install. Each level works on its own, so someone who can't install Docker still gets real help.</p>
+    </div>
+    <div class="table-scroll">
+      <table class="levels">
+        <thead><tr><th>Level</th><th>What they install</th><th>What they get</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Check</strong></td><td>One small install, about 2 minutes, no admin rights</td><td>Up to five problems, each explained: what could go wrong and when it matters</td></tr>
+          <tr><td><strong>Suggest</strong></td><td>Plus the free AI model, about 3 GB</td><td>A suggested fix for each problem; nothing of theirs is run</td></tr>
+          <tr><td><strong>Test</strong></td><td>Plus Docker Desktop, the hardest install</td><td>The fix is also tried against the project's own tests in a sealed box with no internet</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="section-head">
+      <h3>What the tool says about a fix</h3>
+      <p class="muted">It never says "fixed" or "safe". It says what it checked, and later how often that label was right ("N of M times").</p>
+    </div>
+    <ul class="labels list">
+      <li><span class="say">Scanner quiet, your tests still pass</span><span class="muted">The warning is gone and the project's own tests still pass. An attack was not tried.</span></li>
+      <li><span class="say">Scanner quiet, not tested</span><span class="muted">The warning is gone, but nothing was run: no Docker, or the project has no tests.</span></li>
+      <li><span class="say">Not fixed, warning kept</span><span class="muted">Shown with the check that failed and what to do next.</span></li>
+      <li><span class="say">Probably not a real problem</span><span class="muted">Folded away, never deleted. One click shows it.</span></li>
+    </ul>
+  </section>
+
+  <section class="section" aria-labelledby="log-h">
+    <h2 id="log-h">Latest updates</h2>
+    <ol class="log" id="log"></ol>
+  </section>
+
+  <footer>
+    <p>The full plan lives in the AeroPatch repository: <code>docs/17-easy-use-part1.md</code> to <code>part5.md</code>. The research behind it: <code>reports/AeroPatch for non technical users.md</code>.</p>
+    <p>Times are estimates. Numbers come only from measured runs.</p>
+  </footer>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+(() => {
+  const STAGE_LABEL = { done: "Done", active: "In progress", ready: "Ready to start", blocked: "Waiting on you", later: "Not started", optional: "Optional" };
+  const TASK_LABEL = { done: "Done", doing: "Doing", todo: "To do", waiting: "Waiting on you" };
+  const NEXT = { todo: "doing", doing: "done", done: "todo", waiting: "doing" };
+  const state = { stages: [], decisions: [], log: [], meta: null, loaded: { stages: false, decisions: false }, unavailable: false, canEdit: false };
+  const drafts = {};
+  const queues = {};
+  let db = null;
+
+  function el(tag, props, ...kids) {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(props || {})) {
+      if (v === undefined || v === null || v === false) continue;
+      if (k === "class") n.className = v;
+      else if (k === "text") n.textContent = v;
+      else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+      else n.setAttribute(k, v === true ? "" : String(v));
+    }
+    for (const kid of kids.flat()) {
+      if (kid === null || kid === undefined || kid === false) continue;
+      n.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
+    }
+    return n;
+  }
+  const str = (v) => (typeof v === "string" ? v : "");
+  const arr = (v) => (Array.isArray(v) ? v : []);
+  const pill = (status, map) => el("span", { class: "pill s-" + (map[status] ? status : "later"), text: map[status] || map.later || "Not started" });
+
+  let toastTimer = 0;
+  function toast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 4000);
+  }
+  function enqueue(key, fn) {
+    queues[key] = (queues[key] || Promise.resolve()).then(fn).catch((e) => {
+      const code = e && e.code;
+      if (code === "invalid_argument") { state.canEdit = false; render(); toast("Only the page's owner or editors can change this."); }
+      else toast("Couldn't save that change. Try again in a moment.");
+    });
+  }
+
+  function counts(stage) {
+    const tasks = arr(stage.tasks);
+    return { done: tasks.filter((t) => t && t.status === "done").length, total: tasks.length };
+  }
+  function bar(done, total, thin) {
+    const pct = total ? Math.round((done / total) * 100) : 0;
+    return el("div", { class: "bar" + (thin ? " thin" : ""), role: "progressbar", "aria-valuemin": 0, "aria-valuemax": 100, "aria-valuenow": pct, "aria-label": done + " of " + total + " tasks done" },
+      el("span", { style: "width:" + pct + "%" }));
+  }
+
+  function renderOverall() {
+    const box = document.getElementById("overall");
+    box.replaceChildren();
+    if (state.unavailable) {
+      box.append(el("p", { class: "muted", text: "Progress is kept with this page on claude.ai. Open it there, signed in, to see each stage." }));
+      return;
+    }
+    if (!state.loaded.stages) { box.append(el("p", { class: "muted", text: "Loading progress…" })); return; }
+    let done = 0, total = 0, bDone = 0, bTotal = 0;
+    for (const s of state.stages) {
+      const c = counts(s); done += c.done; total += c.total;
+      if (s.id !== "planning") { bDone += c.done; bTotal += c.total; }
+    }
+    const pct = total ? Math.round((done / total) * 100) : 0;
+    box.append(
+      el("div", { class: "overall-row" },
+        el("div", {}, el("span", { class: "big", text: pct + "%" }), el("span", { class: "muted", text: " of all tasks done" })),
+        el("span", { class: "muted mono", text: done + " of " + total + " tasks · building " + bDone + " of " + bTotal })),
+      bar(done, total));
+    const m = state.meta || {};
+    if (str(m.headline)) box.append(el("p", { class: "headline", text: m.headline }));
+    if (str(m.updated)) box.append(el("p", { class: "updated", text: "Last updated " + m.updated }));
+  }
+
+  function renderRail() {
+    const rail = document.getElementById("rail");
+    rail.replaceChildren();
+    for (const s of state.stages) {
+      const c = counts(s);
+      rail.append(el("a", { href: "#stage-" + s.id },
+        el("span", { class: "code", text: str(s.code) ? "Stage " + s.code : "" }),
+        el("span", { class: "name", text: str(s.name) }),
+        pill(s.status, STAGE_LABEL),
+        bar(c.done, c.total, true)));
+    }
+  }
+
+  function renderDecisions() {
+    const box = document.getElementById("decisions");
+    box.replaceChildren();
+    if (state.unavailable) { box.append(el("p", { class: "empty", text: "Decisions appear here when the page is open on claude.ai." })); return; }
+    if (!state.loaded.decisions) { box.append(el("p", { class: "empty", text: "Loading the questions for you…" })); return; }
+    if (!state.decisions.length) { box.append(el("p", { class: "empty", text: "Nothing is waiting on you right now." })); return; }
+    const open = state.decisions.filter((d) => !str(d.answer));
+    document.getElementById("waiting-h").textContent = open.length ? "Waiting on you (" + open.length + ")" : "Waiting on you";
+    for (const d of state.decisions) {
+      const answered = !!str(d.answer);
+      const opts = el("div", { class: "options", role: "group", "aria-label": str(d.question) });
+      for (const o of arr(d.options)) {
+        if (typeof o !== "string") continue;
+        opts.append(el("button", {
+          class: "opt", type: "button", "aria-pressed": d.answer === o ? "true" : "false", disabled: !state.canEdit,
+          onclick: () => { if (d.answer !== o) enqueue("decisions/" + d.id, () => db.doc("decisions/" + d.id).update({ answer: o, answeredAt: new Date().toISOString() })); }
+        }, o, d.recommended === o ? el("span", { class: "rec", text: "(suggested)" }) : null));
+      }
+      const noteId = "note-" + d.id;
+      const noteVal = drafts[d.id] !== undefined ? drafts[d.id] : str(d.note);
+      const note = state.canEdit ? el("div", { class: "note-row" },
+        el("label", { for: noteId, text: "Anything to add? (optional)" }),
+        el("textarea", { id: noteId, oninput: (e) => { drafts[d.id] = e.target.value; } }, noteVal),
+        el("button", { class: "link-btn", type: "button", onclick: () => {
+          const v = (drafts[d.id] !== undefined ? drafts[d.id] : str(d.note)).slice(0, 2000);
+          enqueue("decisions/" + d.id, () => db.doc("decisions/" + d.id).update({ note: v }).then(() => { delete drafts[d.id]; toast("Note saved"); }));
+        }, text: "Save note" })) : (str(d.note) ? el("p", { class: "muted", text: "Note: " + d.note }) : null);
+      box.append(el("article", { class: "decision" + (answered ? " answered" : "") },
+        el("div", { class: "decision-q" }, el("h3", { text: str(d.question) }), answered ? pill("done", { done: "Answered" }) : pill("waiting", TASK_LABEL)),
+        str(d.why) ? el("p", { class: "muted", text: d.why }) : null,
+        opts,
+        answered && state.canEdit ? el("button", { class: "link-btn", type: "button", text: "Clear my answer",
+          onclick: () => enqueue("decisions/" + d.id, () => db.doc("decisions/" + d.id).update({ answer: "", answeredAt: "" })) }) : null,
+        note));
+    }
+  }
+
+  function renderStages() {
+    const box = document.getElementById("stages");
+    box.replaceChildren();
+    document.getElementById("stages-hint").textContent = state.canEdit
+      ? "Each stage lists what you get, the work, and how we'll know it's done. Click a task to move it along: to do, doing, done."
+      : "Each stage lists what you get, the work, and how we'll know it's done.";
+    if (state.unavailable) { box.append(el("p", { class: "empty", text: "Stages appear here when the page is open on claude.ai." })); return; }
+    if (!state.loaded.stages) { box.append(el("p", { class: "empty", text: "Loading each stage: what it delivers, its tasks and its checks…" })); return; }
+    if (!state.stages.length) { box.append(el("p", { class: "empty", text: "No stages yet. Claude adds them when the plan is set up." })); return; }
+    for (const s of state.stages) {
+      const c = counts(s);
+      const tasks = el("ul", { class: "list" });
+      arr(s.tasks).forEach((t, i) => {
+        if (!t || typeof t !== "object") return;
+        const st = TASK_LABEL[t.status] ? t.status : "todo";
+        const mark = el("span", { class: "mark " + st, "aria-hidden": "true", text: st === "done" ? "✓" : st === "waiting" ? "!" : "" });
+        const inner = [mark, el("span", { class: "txt", text: str(t.text) }), st === "todo" ? null : pill(st, TASK_LABEL)];
+        const row = state.canEdit
+          ? el("button", { class: "task is-" + st, type: "button", title: "Status: " + TASK_LABEL[st] + ". Click to change.",
+              onclick: () => {
+                const next = arr(s.tasks).map((x) => ({ ...x }));
+                next[i].status = NEXT[st] || "todo";
+                enqueue("stages/" + s.id, () => db.doc("stages/" + s.id).update({ tasks: next }));
+              } }, inner)
+          : el("div", { class: "task is-" + st }, inner);
+        tasks.append(el("li", {}, row));
+      });
+      const checks = el("ul", { class: "list" });
+      for (const k of arr(s.checks)) {
+        if (!k || typeof k !== "object") continue;
+        const ok = k.status === "done";
+        checks.append(el("li", { class: "check" }, el("span", { class: "mark" + (ok ? " done" : ""), "aria-hidden": "true", text: ok ? "✓" : "" }), el("span", { text: str(k.text) })));
+      }
+      box.append(el("article", { class: "stage", id: "stage-" + s.id, "aria-labelledby": "h-" + s.id },
+        el("div", { class: "stage-head" },
+          el("div", { class: "stage-code", text: str(s.code) }),
+          el("div", { style: "display:grid;gap:6px;min-width:0" },
+            el("h3", { id: "h-" + s.id, text: str(s.name) }),
+            el("div", { class: "stage-meta" }, pill(s.status, STAGE_LABEL), str(s.estimate) ? el("span", { text: s.estimate }) : null)),
+          el("div", { class: "stage-progress" }, bar(c.done, c.total), el("span", { class: "count", text: c.done + " of " + c.total + " tasks done" }))),
+        str(s.what) ? el("p", { class: "what" }, el("strong", { text: "What you get: " }), s.what) : null,
+        el("div", { class: "stage-body" },
+          el("div", { style: "display:grid;gap:8px;min-width:0" }, el("span", { class: "label", text: "The work" }), tasks),
+          arr(s.checks).length ? el("div", { style: "display:grid;gap:8px;min-width:0" }, el("span", { class: "label", text: "How we'll know it's done" }), checks) : null)));
+    }
+  }
+
+  function renderLog() {
+    const box = document.getElementById("log");
+    box.replaceChildren();
+    const entries = arr(state.log).filter((e) => e && typeof e === "object").slice().reverse();
+    if (!entries.length) { box.append(el("li", { class: "empty", text: state.unavailable ? "Updates appear here when the page is open on claude.ai." : "No updates yet." })); return; }
+    for (const e of entries.slice(0, 12)) box.append(el("li", {}, el("time", { text: str(e.date) }), el("span", { text: str(e.text) })));
+  }
+
+  function render() {
+    renderOverall(); renderRail();
+    // Keep a note being typed: skip redrawing the questions while a note box has focus.
+    const a = document.activeElement;
+    if (!(a && a.tagName === "TEXTAREA" && a.closest("#decisions"))) renderDecisions();
+    renderStages(); renderLog();
+  }
+
+  function onDbError(e) {
+    if (e && (e.code === "revoked" || e.code === "not_granted" || e.code === "capability_disabled" || e.code === "capability_removed")) { state.unavailable = true; render(); }
+    else toast("Progress stopped updating. Reload the page to refresh it.");
+  }
+
+  async function start() {
+    render();
+    const cl = window.claude;
+    if (!cl || typeof cl.use !== "function") { state.unavailable = true; render(); return; }
+    db = await cl.use("db");
+    if (!db) { state.unavailable = true; render(); return; }
+    try { const u = await cl.use("user"); state.canEdit = u ? !!(await u.canEdit()) : false; } catch (_) { state.canEdit = false; }
+    db.collection("stages").orderBy("order").onSnapshot((snap) => {
+      state.stages = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      state.loaded.stages = true; render();
+    }, onDbError);
+    db.collection("decisions").orderBy("order").onSnapshot((snap) => {
+      state.decisions = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      state.loaded.decisions = true; render();
+    }, onDbError);
+    db.doc("updates/log").onSnapshot((d) => { state.log = d.exists ? arr(d.data().entries) : []; render(); }, onDbError);
+    db.doc("meta/summary").onSnapshot((d) => { state.meta = d.exists ? d.data() : null; render(); }, onDbError);
+  }
+  start();
+})();
+</script>

@@ -1,0 +1,859 @@
+{
+  "extra": "taint",
+  "rows": [
+    {
+      "cve": "CVE-2021-41127",
+      "cwe": "CWE-22",
+      "found": true,
+      "still_on_fix": true,
+      "any_in_function": true,
+      "vul_hits": [
+        {
+          "tool": "opengrep",
+          "rule": "aeropatch.python.tar-extract-unfiltered",
+          "cwe": "CWE-22",
+          "path": "rasa/model.py",
+          "line": 232
+        },
+        {
+          "tool": "bandit",
+          "rule": "B202",
+          "cwe": "CWE-22",
+          "path": "rasa/model.py",
+          "line": 232
+        },
+        {
+          "tool": "opengrep",
+          "rule": "aeropatch.python.tar-extract-unfiltered",
+          "cwe": "CWE-22",
+          "path": "rasa/nlu/persistor.py",
+          "line": 107
+        },
+        {
+          "tool": "bandit",
+          "rule": "B202",
+          "cwe": "CWE-22",
+          "path": "rasa/nlu/persistor.py",
+          "line": 107
+        },
+        {
+          "tool": "opengrep",
+          "rule": "aeropatch.python.tar-extract-unfiltered",
+          "cwe": "CWE-22",
+          "path": "rasa/utils/io.py",
+          "line": 91
+        },
+        {
+          "tool": "opengrep",
+          "rule": "aeropatch.python.tar-extract-unfiltered",
+          "cwe": "CWE-22",
+          "path": "rasa/utils/io.py",
+          "line": 96
+        },
+        {
+          "tool": "bandit",
+          "rule": "B202",
+          "cwe": "CWE-22",
+          "path": "rasa/utils/io.py",
+          "line": 91
+        },
+        {
+          "tool": "bandit",
+          "rule": "B202",
+          "cwe": "CWE-22",
+          "path": "rasa/utils/io.py",
+          "line": 96
+        }
+      ],
+      "fix_hits": [
+        {
+          "tool": "opengrep",
+          "rule": "aeropatch.python.tar-extract-unfiltered",
+          "cwe": "CWE-22",
+          "path": "rasa/model.py",
+          "line": 233
+        },
+        {
+          "tool": "bandit",
+          "rule": "B202",
+          "cwe": "CWE-22",
+          "path": "rasa/model.py",
+          "line": 233
+        },
+        {
+          "tool": "opengrep",
+          "rule": "aeropatch.python.tar-extract-unfiltered",
+          "cwe": "CWE-22",
+          "path": "rasa/nlu/persistor.py",
+          "line": 107
+        },
+        {
+          "tool": "opengrep",
+          "rule": "aeropatch.python.tar-extract-unfiltered",
+          "cwe": "CWE-22",
+          "path": "rasa/utils/io.py",
+          "line": 92
+        },
+        {
+          "tool": "opengrep",
+          "rule": "aeropatch.python.tar-extract-unfiltered",
+          "cwe": "CWE-22",
+          "path": "rasa/utils/io.py",
+          "line": 97
+        },
+        {
+          "tool": "bandit",
+          "rule": "B202",
+          "cwe": "CWE-22",
+          "path": "rasa/utils/io.py",
+          "line": 92
+        },
+        {
+          "tool": "bandit",
+          "rule": "B202",
+          "cwe": "CWE-22",
+          "path": "rasa/utils/io.py",
+          "line": 97
+        }
+      ],
+      "notes": []
+    },
+    {
+      "cve": "CVE-2024-32023",
+      "cwe": "CWE-22",
+      "found": false,
+      "still_on_fix": false,
+      "any_in_function": false,
+      "vul_hits": [],
+      "fix_hits": [],
+      "notes": []
+    },
+    {
+      "cve": "CVE-2022-35920",
+      "cwe": "CWE-22",
+      "found": false,
+      "still_on_fix": false,
+      "any_in_function": false,
+      "vul_hits": [],
+      "fix_hits": [],
+      "notes": []
+    },
+    {
+      "cve": "CVE-2023-41040",
+      "cwe": "CWE-22",
+      "found": false,
+      "still_on_fix": false,
+      "any_in_function": true,
+      "vul_hits": [
+        {
+          "tool": "bandit",
+          "rule": "B101",
+          "cwe": "CWE-703",
+          "path": "git/refs/symbolic.py",
+          "line": 181
+        }
+      ],
+      "fix_hits": [
+        {
+          "tool": "bandit",
+          "rule": "B101",
+          "cwe": "CWE-703",
+          "path": "git/refs/symbolic.py",
+          "line": 227
+        }
+      ],
+      "notes": []
+    },
+    {
+      "cve": "CVE-2021-45452",
+      "cwe": "CWE-22",
+      "found": false,
+      "still_on_fix": false,
+      "any_in_function": false,
+      "vul_hits": [],
+      "fix_hits": [],
+      "notes": [
+        "no function ['Storage._save'] in django/core/files/storage.py; whole file used"
+      ]
+    },
+    {
+      "cve": "CVE-2024-5547",
+      "cwe": "CWE-22",
+      "found": true,
+      "still_on_fix": true,
+      "any_in_function": true,
+      "vul_hits": [
+        {
+          "tool": "opengrep",
+          "rule": "aeropatch.extra.path-traversal-taint",
+          "cwe": "CWE-22",
+          "path": "src/apis/project.py",
+          "line": 41
+        },
+        {
+          "tool": "opengrep",
+          "rule": "aeropatch.extra.path-traversal-taint",
+          "cwe": "CWE-22",
+          "path": "src/apis/project.py",
+          "line": 51
+        }
+      ],
+      "fix_hits": [
+        {
+          "tool": "opengrep",
+          "rule": "aeropatch.extra.path-traversal-taint",
+          "cwe": "CWE-22",
+          "path": "devika.py",
+          "line": 123
+        },
+        {
+          "tool": "bandit",
+          "rule": "B104",
+          "cwe": "CWE-605",
+          "path": "devika.py",
+          "line": 205
+        }
+      ],
+      "notes": []
+    },
+    {
+      "cve": "CVE-2024-3573",
+      "cwe": "CWE-22",
+      "found": false,
+      "still_on_fix": false,
+      "any_in_function": false,
+      "vul_hits": [],
+      "fix_hits": [],
+      "notes": []
+    },
+    {
+      "cve": "CVE-2024-5926",
+      "cwe": "CWE-22",
+      "found": false,
+      "still_on_fix": false,
+      "any_in_function": false,
+      "vul_hits": [],
+      "fix_hits": [],
+      "notes": []
+    },
+    {
+      "cve": "CVE-2021-34363",
+      "cwe": "CWE-22",
+      "found": false,
+      "still_on_fix": false,
+      "any_in_function": false,
+      "vul_hits": [],
+      "fix_hits": [],
+      "notes": []
+    },
+    {
+      "cve": "CVE-2017-9416",
+      "cwe": "CWE-22",
+      "found": false,
+      "still_on_fix": false,
+      "any_in_function": true,
+      "vul_hits": [
+        {
+          "tool": "bandit",
+          "rule": "B110",
+          "cwe": "CWE-703",
+          "path": "odoo/tools/misc.py",
+          "line": 237
+        }
+      ],
+      "fix_hits": [
+        {
+          "tool": "bandit",
+          "rule": "B110",
+          "cwe": "CWE-703",
+          "path": "odoo/tools/misc.py",
+          "line": 246
+        }
+      ],
+      "notes": []
+    },
+    {
+      "cve": "CVE-2021-25283",
+      "cwe": "CWE-94",
+      "found": true,
+      "still_on_fix": false,
+      "any_in_function": true,
+      "vul_hits": [
+        {
+          "tool": "bandit",
+          "rule": "B701",
+          "cwe": "CWE-94",
+          "path": "salt/utils/templates.py",
+          "line": 456
+        },
+        {
+          "tool": "bandit",
+          "rule": "B701",
+          "cwe": "CWE-94",
+          "path": "salt/utils/templates.py",
+          "line": 458
+        }
+      ],
+      "fix_hits": [],
+      "notes": []
+    },
+    {
+      "cve": "CVE-2024-5751",
+      "cwe": "CWE-94",
+      "found": true,
+      "still_on_fix": true,
+      "any_in_function": true,
+      "vul_hits": [
+        {
+          "tool": "bandit",
+          "rule": "B307",
+          "cwe": "CWE-78",
+          "path": "litellm/utils.py",
+          "line": 8717
+        }
+      ],
+      "fix_hits": [
+        {
+          "tool": "bandit",
+          "rule": "B307",
+          "cwe": "CWE-78",
+          "path": "litellm/utils.py",
+          "line": 8732
+        }
+      ],
+      "notes": []
+    },
+    {
+      "cve": "CVE-2018-8097",
+      "cwe": "CWE-94",
+      "found": true,
+      "still_on_fix": false,
+      "any_in_function": true,
+      "vul_hits": [
+        {
+          "tool": "bandit",
+          "rule": "B307",
+          "cwe": "CWE-78",
+          "path": "eve/io/mongo/parser.py",
+          "line": 134
+        }
+      ],
+      "fix_hits": [
+        {
+          "tool": "bandit",
+          "rule": "B110",
+          "cwe": "CWE-703",
+          "path": "eve/io/mongo/parser.py",
+          "line": 128
+        },
+        {
+          "tool": "bandit",
+          "rule": "B110",
+          "cwe": "CWE-703",
+          "path": "eve/io/mongo/parser.py",
+          "line": 136
+        }
+      ],
+      "notes": []
+    },
+    {
+      "cve": "CVE-2018-1000070",
+      "cwe": "CWE-94",
+      "found": true,
+      "still_on_fix": false,
+      "any_in_function": true,
+      "vul_hits": [
+        {
+          "tool": "bandit",
+          "rule": "B307",
+          "cwe": "CWE-78",
+          "path": "src/messagetypes/__init__.py",
+          "line": 15
+        }
+      ],
+      "fix_hits": [],
+      "notes": []
+    },
+    {
+      "cve": "CVE-2023-38942",
+      "cwe": "CWE-94",
+      "found": true,
+      "still_on_fix": false,
+      "any_in_function": true,
+      "vul_hits": [
+        {
+          "tool": "bandit",
+          "rule": "B307",
+          "cwe": "CWE-78",
+          "path": "ui/settin.py",
+          "line": 1704
+        },
+        {
+          "tool": "bandit",
+          "rule": "B307",
+          "cwe": "CWE-78",
+          "path": "ui/settin.py",
+          "line": 1708
+        },
+        {
+          "tool": "bandit",
+          "rule": "B307",
+          "cwe": "CWE-78",
+          "path": "ui/settin.py",
+          "line": 1712
+        },
+        {
+          "tool": "bandit",
+          "rule": "B307",
+          "cwe": "CWE-78",
+          "path": "ui/settin.py",
+          "line": 1716
+        },
+        {
+          "tool": "bandit",
+          "rule": "B307",
+          "cwe": "CWE-78",
+          "path": "ui/settin.py",
+          "line": 1720
+        },
+        {
+          "tool": "bandit",
+          "rule": "B307",
+          "cwe": "CWE-78",
+          "path": "ui/settin.py",
+          "line": 1724
+        },
+        {
+          "tool": "bandit",
+          "rule": "B307",
+          "cwe": "CWE-78",
+          "path": "ui/settin.py",
+          "line": 1732
+        },
+        {
+          "tool": "bandit",
+          "rule": "B307",
+          "cwe": "CWE-78",
+          "path": "ui/settin.py",
+          "line": 1736
+        },
+        {
+          "tool": "bandit",
+          "rule": "B307",
+          "cwe": "CWE-78",
+          "path": "ui/settin.py",
+          "line": 1740
+        },
+        {
+          "tool": "bandit",
+          "rule": "B307",
+          "cwe": "CWE-78",
+          "path": "ui/settin.py",
+          "line": 1744
+        },
+        {
+          "tool": "bandit",
+          "rule": "B307",
+          "cwe": "CWE-78",
+          "path": "ui/settin.py",
+          "line": 1786
+        },
+        {
+          "tool": "bandit",
+          "rule": "B307",
+          "cwe": "CWE-78",
+          "path": "ui/settin.py",
+          "line": 1790
+        },
+        {
+          "tool": "bandit",
+          "rule": "B307",
+          "cwe": "CWE-78",
+          "path": "ui/settin.py",
+          "line": 1792
+        },
+        {
+          "tool": "bandit",
+          "rule": "B307",
+          "cwe": "CWE-78",
+          "path": "ui/settin.py",
+          "line": 1794
+        },
+        {
+          "tool": "bandit",
+          "rule": "B307",
+          "cwe": "CWE-78",
+          "path": "ui/settin.py",
+          "line": 1798
+        },
+        {
+          "tool": "bandit",
+          "rule": "B307",
+          "cwe": "CWE-78",
+          "path": "ui/settin.py",
+          "line": 1800
+        }
+      ],
+      "fix_hits": [],
+      "notes": []
+    },
+    {
+      "cve": "CVE-2023-6940",
+      "cwe": "CWE-94",
+      "found": true,
+      "still_on_fix": false,
+      "any_in_function": true,
+      "vul_hits": [
+        {
+          "tool": "opengrep",
+          "rule": "aeropatch.python.unsafe-deserialization",
+          "cwe": "CWE-502",
+          "path": "mlflow/utils/file_utils.py",
+          "line": 355
+        },
+        {
+          "tool": "opengrep",
+          "rule": "aeropatch.python.unsafe-deserialization",
+          "cwe": "CWE-502",
+          "path": "mlflow/utils/file_utils.py",
+          "line": 359
+        },
+        {
+          "tool": "bandit",
+          "rule": "B701",
+          "cwe": "CWE-94",
+          "path": "mlflow/utils/file_utils.py",
+          "line": 341
+        },
+        {
+          "tool": "bandit",
+          "rule": "B506",
+          "cwe": "CWE-20",
+          "path": "mlflow/utils/file_utils.py",
+          "line": 355
+        },
+        {
+          "tool": "bandit",
+          "rule": "B506",
+          "cwe": "CWE-20",
+          "path": "mlflow/utils/file_utils.py",
+          "line": 359
+        }
+      ],
+      "fix_hits": [
+        {
+          "tool": "opengrep",
+          "rule": "aeropatch.python.unsafe-deserialization",
+          "cwe": "CWE-502",
+          "path": "mlflow/utils/file_utils.py",
+          "line": 356
+        },
+        {
+          "tool": "opengrep",
+          "rule": "aeropatch.python.unsafe-deserialization",
+          "cwe": "CWE-502",
+          "path": "mlflow/utils/file_utils.py",
+          "line": 360
+        },
+        {
+          "tool": "bandit",
+          "rule": "B506",
+          "cwe": "CWE-20",
+          "path": "mlflow/utils/file_utils.py",
+          "line": 356
+        },
+        {
+          "tool": "bandit",
+          "rule": "B506",
+          "cwe": "CWE-20",
+          "path": "mlflow/utils/file_utils.py",
+          "line": 360
+        }
+      ],
+      "notes": []
+    },
+    {
+      "cve": "CVE-2023-38941",
+      "cwe": "CWE-94",
+      "found": true,
+      "still_on_fix": false,
+      "any_in_function": true,
+      "vul_hits": [
+        {
+          "tool": "opengrep",
+          "rule": "aeropatch.extra.code-injection-taint",
+          "cwe": "CWE-94",
+          "path": "apps/sspanel/admin_views.py",
+          "line": 210
+        },
+        {
+          "tool": "bandit",
+          "rule": "B307",
+          "cwe": "CWE-78",
+          "path": "apps/sspanel/admin_views.py",
+          "line": 210
+        }
+      ],
+      "fix_hits": [],
+      "notes": []
+    },
+    {
+      "cve": "CVE-2024-41950",
+      "cwe": "CWE-94",
+      "found": false,
+      "still_on_fix": false,
+      "any_in_function": false,
+      "vul_hits": [],
+      "fix_hits": [],
+      "notes": []
+    },
+    {
+      "cve": "CVE-2024-3098",
+      "cwe": "CWE-94",
+      "found": true,
+      "still_on_fix": true,
+      "any_in_function": true,
+      "vul_hits": [
+        {
+          "tool": "bandit",
+          "rule": "B307",
+          "cwe": "CWE-78",
+          "path": "llama-index-core/llama_index/core/exec_utils.py",
+          "line": 140
+        }
+      ],
+      "fix_hits": [
+        {
+          "tool": "bandit",
+          "rule": "B307",
+          "cwe": "CWE-78",
+          "path": "llama-index-core/llama_index/core/exec_utils.py",
+          "line": 144
+        }
+      ],
+      "notes": []
+    },
+    {
+      "cve": "CVE-2024-39877",
+      "cwe": "CWE-94",
+      "found": false,
+      "still_on_fix": false,
+      "any_in_function": false,
+      "vul_hits": [],
+      "fix_hits": [],
+      "notes": []
+    },
+    {
+      "cve": "CVE-2024-39863",
+      "cwe": "CWE-79",
+      "found": true,
+      "still_on_fix": true,
+      "any_in_function": true,
+      "vul_hits": [
+        {
+          "tool": "opengrep",
+          "rule": "aeropatch.python.html-fstring-unescaped",
+          "cwe": "CWE-79",
+          "path": "airflow/www/views.py",
+          "line": 4321
+        },
+        {
+          "tool": "bandit",
+          "rule": "B704",
+          "cwe": "CWE-79",
+          "path": "airflow/www/views.py",
+          "line": 4321
+        },
+        {
+          "tool": "bandit",
+          "rule": "B704",
+          "cwe": "CWE-79",
+          "path": "airflow/www/views.py",
+          "line": 4325
+        }
+      ],
+      "fix_hits": [
+        {
+          "tool": "opengrep",
+          "rule": "aeropatch.python.html-fstring-unescaped",
+          "cwe": "CWE-79",
+          "path": "airflow/www/views.py",
+          "line": 4330
+        },
+        {
+          "tool": "bandit",
+          "rule": "B704",
+          "cwe": "CWE-79",
+          "path": "airflow/www/views.py",
+          "line": 4330
+        },
+        {
+          "tool": "bandit",
+          "rule": "B704",
+          "cwe": "CWE-79",
+          "path": "airflow/www/views.py",
+          "line": 4334
+        }
+      ],
+      "notes": []
+    },
+    {
+      "cve": "CVE-2024-41656",
+      "cwe": "CWE-79",
+      "found": true,
+      "still_on_fix": false,
+      "any_in_function": true,
+      "vul_hits": [
+        {
+          "tool": "opengrep",
+          "rule": "aeropatch.python.html-fstring-unescaped",
+          "cwe": "CWE-79",
+          "path": "src/sentry/integrations/mixins/issues.py",
+          "line": 351
+        }
+      ],
+      "fix_hits": [],
+      "notes": []
+    },
+    {
+      "cve": "CVE-2018-15635",
+      "cwe": "CWE-79",
+      "found": false,
+      "still_on_fix": false,
+      "any_in_function": false,
+      "vul_hits": [],
+      "fix_hits": [],
+      "notes": []
+    },
+    {
+      "cve": "CVE-2023-6568",
+      "cwe": "CWE-79",
+      "found": false,
+      "still_on_fix": false,
+      "any_in_function": false,
+      "vul_hits": [],
+      "fix_hits": [],
+      "notes": []
+    },
+    {
+      "cve": "CVE-2024-41675",
+      "cwe": "CWE-79",
+      "found": false,
+      "still_on_fix": false,
+      "any_in_function": false,
+      "vul_hits": [],
+      "fix_hits": [],
+      "notes": []
+    },
+    {
+      "cve": "CVE-2018-1000559",
+      "cwe": "CWE-79",
+      "found": false,
+      "still_on_fix": false,
+      "any_in_function": false,
+      "vul_hits": [],
+      "fix_hits": [],
+      "notes": []
+    },
+    {
+      "cve": "CVE-2022-39348",
+      "cwe": "CWE-79",
+      "found": false,
+      "still_on_fix": false,
+      "any_in_function": false,
+      "vul_hits": [],
+      "fix_hits": [],
+      "notes": []
+    },
+    {
+      "cve": "CVE-2024-21520",
+      "cwe": "CWE-79",
+      "found": true,
+      "still_on_fix": true,
+      "any_in_function": true,
+      "vul_hits": [
+        {
+          "tool": "bandit",
+          "rule": "B703",
+          "cwe": "CWE-80",
+          "path": "rest_framework/templatetags/rest_framework.py",
+          "line": 325
+        },
+        {
+          "tool": "bandit",
+          "rule": "B308",
+          "cwe": "CWE-79",
+          "path": "rest_framework/templatetags/rest_framework.py",
+          "line": 325
+        }
+      ],
+      "fix_hits": [
+        {
+          "tool": "bandit",
+          "rule": "B703",
+          "cwe": "CWE-80",
+          "path": "rest_framework/templatetags/rest_framework.py",
+          "line": 325
+        },
+        {
+          "tool": "bandit",
+          "rule": "B308",
+          "cwe": "CWE-79",
+          "path": "rest_framework/templatetags/rest_framework.py",
+          "line": 325
+        }
+      ],
+      "notes": []
+    },
+    {
+      "cve": "CVE-2020-11001",
+      "cwe": "CWE-79",
+      "found": false,
+      "still_on_fix": false,
+      "any_in_function": false,
+      "vul_hits": [],
+      "fix_hits": [],
+      "notes": []
+    },
+    {
+      "cve": "CVE-2024-5711",
+      "cwe": "CWE-79",
+      "found": false,
+      "still_on_fix": false,
+      "any_in_function": true,
+      "vul_hits": [
+        {
+          "tool": "opengrep",
+          "rule": "aeropatch.extra.path-traversal-taint",
+          "cwe": "CWE-22",
+          "path": "src/apis/project.py",
+          "line": 41
+        },
+        {
+          "tool": "opengrep",
+          "rule": "aeropatch.extra.path-traversal-taint",
+          "cwe": "CWE-22",
+          "path": "src/apis/project.py",
+          "line": 51
+        }
+      ],
+      "fix_hits": [
+        {
+          "tool": "opengrep",
+          "rule": "aeropatch.extra.path-traversal-taint",
+          "cwe": "CWE-22",
+          "path": "devika.py",
+          "line": 123
+        },
+        {
+          "tool": "bandit",
+          "rule": "B104",
+          "cwe": "CWE-605",
+          "path": "devika.py",
+          "line": 205
+        }
+      ],
+      "notes": []
+    }
+  ]
+}

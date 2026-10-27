@@ -1,0 +1,65 @@
+{
+  "_note": "Fresh repos for point 2, chosen and committed on 2026-10-27 before any check ran on them. Shallow clones in D:/aeropatch-repos-fresh.",
+  "items": [
+    {
+      "repo": "stamparm/DSVW",
+      "folder": "DSVW",
+      "commit": "9ca3c9acf3defa0a6148d40e5f5cebeb5dcbb908",
+      "license": "Unlicense"
+    },
+    {
+      "repo": "Contrast-Security-OSS/vulnpy",
+      "folder": "vulnpy",
+      "commit": "b81885e58283a3449b578d20c20557aff637e5ea",
+      "license": "MIT"
+    },
+    {
+      "repo": "simonw/sqlite-utils",
+      "folder": "sqlite-utils",
+      "commit": "9c66bafa52ae23d40499c74b0db3b635bcddb876",
+      "license": "Apache-2.0"
+    },
+    {
+      "repo": "kennethreitz/records",
+      "folder": "records",
+      "commit": "ea4273695cee6da42edf1cb294d1f2a4505470fc",
+      "license": "ISC"
+    },
+    {
+      "repo": "httpie/cli",
+      "folder": "cli",
+      "commit": "5b604c37c6c67e18e7c3e9aee6c88a8c22b98345",
+      "license": "BSD-3-Clause"
+    },
+    {
+      "repo": "wagtail/bakerydemo",
+      "folder": "bakerydemo",
+      "commit": "c9b38d7a7170dba8bb84254beb7e5dc5a955e024",
+      "license": "BSD-3-Clause"
+    },
+    {
+      "repo": "Textualize/rich-cli",
+      "folder": "rich-cli",
+      "commit": "4e290258bde00ac711cbebce739d1297cbe49536",
+      "license": "MIT"
+    },
+    {
+      "repo": "miguelgrinberg/APIFairy",
+      "folder": "APIFairy",
+      "commit": "dc17443bc2f84bf0729c49fd1d4a30bcbe13cf68",
+      "license": "MIT"
+    },
+    {
+      "repo": "realpython/flask-boilerplate",
+      "folder": "flask-boilerplate",
+      "commit": "488e33624bf0236fc16358d9e8cd66590e0e89ee",
+      "license": "Apache-2.0"
+    },
+    {
+      "repo": "sloria/environs",
+      "folder": "environs",
+      "commit": "c1912ac1d152d9aacaced2116052801dc5c1ceff",
+      "license": "MIT"
+    }
+  ]
+}

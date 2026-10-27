@@ -1,0 +1,217 @@
+{
+ "regression_poc_resolved": {
+  "labels": [
+   "REGRESSION",
+   "POC_FAIL",
+   "RESOLVED"
+  ],
+  "calls": [
+   {
+    "route": "local",
+    "temperature": 0.2,
+    "messages": [
+     {
+      "role": "user",
+      "content": "Finding: CWE-89 reported by bandit rule B608 at app/db.py:18.\n\nMessage: Possible SQL injection vector through string-based query construction.\n\nDescription: find_user builds its SQL query by formatting the user-supplied name into the query string.\n\nFiles you may edit: app/db.py\n\n--- app/db.py\n\"\"\"User directory backed by SQLite.\"\"\"\n\nimport sqlite3\n\n\ndef connect(path=\":memory:\"):\n    conn = sqlite3.connect(path)\n    conn.execute(\"CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT NOT NULL)\")\n    return conn\n\n\ndef add_user(conn, name):\n    conn.execute(\"INSERT INTO users (name) VALUES (?)\", (name,))\n    conn.commit()\n\n\ndef find_user(conn, name):\n    cur = conn.execute(f\"SELECT id, name FROM users WHERE name = '{name}'\")\n    return cur.fetchall()\n\nOutput RATIONALE and SEARCH/REPLACE blocks only."
+     }
+    ]
+   },
+   {
+    "route": "local",
+    "temperature": 0.4,
+    "messages": [
+     {
+      "role": "user",
+      "content": "Finding: CWE-89 reported by bandit rule B608 at app/db.py:18.\n\nMessage: Possible SQL injection vector through string-based query construction.\n\nDescription: find_user builds its SQL query by formatting the user-supplied name into the query string.\n\nFiles you may edit: app/db.py\n\n--- app/db.py\n\"\"\"User directory backed by SQLite.\"\"\"\n\nimport sqlite3\n\n\ndef connect(path=\":memory:\"):\n    conn = sqlite3.connect(path)\n    conn.execute(\"CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT NOT NULL)\")\n    return conn\n\n\ndef add_user(conn, name):\n    conn.execute(\"INSERT INTO users (name) VALUES (?)\", (name,))\n    conn.commit()\n\n\ndef find_user(conn, name):\n    cur = conn.execute(f\"SELECT id, name FROM users WHERE name = '{name}'\")\n    return cur.fetchall()\n\nOutput RATIONALE and SEARCH/REPLACE blocks only."
+     },
+     {
+      "role": "assistant",
+      "content": "RATIONALE: bind the parameter.\n<<<<<<< SEARCH app/db.py\n    cur = conn.execute(f\"SELECT id, name FROM users WHERE name = '{name}'\")\n=======\n    cur = conn.execute(\"SELECT id, name FROM users WHERE name = ?\", (name,))\n>>>>>>> REPLACE"
+     },
+     {
+      "role": "user",
+      "content": "Your previous edit was checked. Result: REGRESSION.\n\nFAILED tests_regression/test_db.py::test_lookup: AssertionError: assert [] == [(1, 'alice')]\nE   assert [] == [(1, 'alice')]\n\nFix the problem. Output a complete new set of blocks against the ORIGINAL file."
+     }
+    ]
+   },
+   {
+    "route": "local",
+    "temperature": 0.4,
+    "messages": [
+     {
+      "role": "user",
+      "content": "Finding: CWE-89 reported by bandit rule B608 at app/db.py:18.\n\nMessage: Possible SQL injection vector through string-based query construction.\n\nDescription: find_user builds its SQL query by formatting the user-supplied name into the query string.\n\nFiles you may edit: app/db.py\n\n--- app/db.py\n\"\"\"User directory backed by SQLite.\"\"\"\n\nimport sqlite3\n\n\ndef connect(path=\":memory:\"):\n    conn = sqlite3.connect(path)\n    conn.execute(\"CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT NOT NULL)\")\n    return conn\n\n\ndef add_user(conn, name):\n    conn.execute(\"INSERT INTO users (name) VALUES (?)\", (name,))\n    conn.commit()\n\n\ndef find_user(conn, name):\n    cur = conn.execute(f\"SELECT id, name FROM users WHERE name = '{name}'\")\n    return cur.fetchall()\n\nOutput RATIONALE and SEARCH/REPLACE blocks only."
+     },
+     {
+      "role": "assistant",
+      "content": "RATIONALE: bind the parameter.\n<<<<<<< SEARCH app/db.py\n    cur = conn.execute(f\"SELECT id, name FROM users WHERE name = '{name}'\")\n=======\n    cur = conn.execute(\"SELECT id, name FROM users WHERE name = ?\", (name,))\n>>>>>>> REPLACE"
+     },
+     {
+      "role": "user",
+      "content": "Your previous edit was checked. Result: REGRESSION.\n\nFAILED tests_regression/test_db.py::test_lookup: AssertionError: assert [] == [(1, 'alice')]\nE   assert [] == [(1, 'alice')]\n\nFix the problem. Output a complete new set of blocks against the ORIGINAL file."
+     },
+     {
+      "role": "assistant",
+      "content": "RATIONALE: bind the parameter.\n<<<<<<< SEARCH app/db.py\n    cur = conn.execute(f\"SELECT id, name FROM users WHERE name = '{name}'\")\n=======\n    cur = conn.execute(\"SELECT id, name FROM users WHERE name = ?\", name)\n>>>>>>> REPLACE"
+     },
+     {
+      "role": "user",
+      "content": "Earlier attempts:\n- attempt 1: REGRESSION\n\nYour previous edit was checked. Result: POC_FAIL.\n\nFAILED tests_poc/test_poc.py::test_injection: AssertionError: the injected name returned every row\n\nFix the problem. Output a complete new set of blocks against the ORIGINAL file."
+     }
+    ]
+   }
+  ]
+ },
+ "format_import_stuck": {
+  "labels": [
+   "FORMAT_FAIL",
+   "IMPORT_ERROR",
+   "STUCK"
+  ],
+  "calls": [
+   {
+    "route": "local",
+    "temperature": 0.2,
+    "messages": [
+     {
+      "role": "user",
+      "content": "Finding: CWE-89 reported by bandit rule B608 at app/db.py:18.\n\nMessage: Possible SQL injection vector through string-based query construction.\n\nDescription: find_user builds its SQL query by formatting the user-supplied name into the query string.\n\nFiles you may edit: app/db.py\n\n--- app/db.py\n\"\"\"User directory backed by SQLite.\"\"\"\n\nimport sqlite3\n\n\ndef connect(path=\":memory:\"):\n    conn = sqlite3.connect(path)\n    conn.execute(\"CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT NOT NULL)\")\n    return conn\n\n\ndef add_user(conn, name):\n    conn.execute(\"INSERT INTO users (name) VALUES (?)\", (name,))\n    conn.commit()\n\n\ndef find_user(conn, name):\n    cur = conn.execute(f\"SELECT id, name FROM users WHERE name = '{name}'\")\n    return cur.fetchall()\n\nOutput RATIONALE and SEARCH/REPLACE blocks only."
+     }
+    ]
+   },
+   {
+    "route": "local",
+    "temperature": 0.4,
+    "messages": [
+     {
+      "role": "user",
+      "content": "Finding: CWE-89 reported by bandit rule B608 at app/db.py:18.\n\nMessage: Possible SQL injection vector through string-based query construction.\n\nDescription: find_user builds its SQL query by formatting the user-supplied name into the query string.\n\nFiles you may edit: app/db.py\n\n--- app/db.py\n\"\"\"User directory backed by SQLite.\"\"\"\n\nimport sqlite3\n\n\ndef connect(path=\":memory:\"):\n    conn = sqlite3.connect(path)\n    conn.execute(\"CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT NOT NULL)\")\n    return conn\n\n\ndef add_user(conn, name):\n    conn.execute(\"INSERT INTO users (name) VALUES (?)\", (name,))\n    conn.commit()\n\n\ndef find_user(conn, name):\n    cur = conn.execute(f\"SELECT id, name FROM users WHERE name = '{name}'\")\n    return cur.fetchall()\n\nOutput RATIONALE and SEARCH/REPLACE blocks only."
+     },
+     {
+      "role": "assistant",
+      "content": "no blocks here"
+     },
+     {
+      "role": "user",
+      "content": "Your previous edit was checked. Result: FORMAT_FAIL.\n\nFORMAT_ERROR: no SEARCH/REPLACE blocks found\nUse exactly this layout:\nRATIONALE: Use a parameterized query instead of string formatting.\n<<<<<<< SEARCH app/db.py\n    cur.execute(f\"SELECT * FROM users WHERE name = '{name}'\")\n=======\n    cur.execute(\"SELECT * FROM users WHERE name = ?\", (name,))\n>>>>>>> REPLACE\n\nFix the problem. Output a complete new set of blocks against the ORIGINAL file."
+     }
+    ]
+   },
+   {
+    "route": "local",
+    "temperature": 0.4,
+    "messages": [
+     {
+      "role": "user",
+      "content": "Finding: CWE-89 reported by bandit rule B608 at app/db.py:18.\n\nMessage: Possible SQL injection vector through string-based query construction.\n\nDescription: find_user builds its SQL query by formatting the user-supplied name into the query string.\n\nFiles you may edit: app/db.py\n\n--- app/db.py\n\"\"\"User directory backed by SQLite.\"\"\"\n\nimport sqlite3\n\n\ndef connect(path=\":memory:\"):\n    conn = sqlite3.connect(path)\n    conn.execute(\"CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT NOT NULL)\")\n    return conn\n\n\ndef add_user(conn, name):\n    conn.execute(\"INSERT INTO users (name) VALUES (?)\", (name,))\n    conn.commit()\n\n\ndef find_user(conn, name):\n    cur = conn.execute(f\"SELECT id, name FROM users WHERE name = '{name}'\")\n    return cur.fetchall()\n\nOutput RATIONALE and SEARCH/REPLACE blocks only."
+     },
+     {
+      "role": "assistant",
+      "content": "no blocks here"
+     },
+     {
+      "role": "user",
+      "content": "Your previous edit was checked. Result: FORMAT_FAIL.\n\nFORMAT_ERROR: no SEARCH/REPLACE blocks found\nUse exactly this layout:\nRATIONALE: Use a parameterized query instead of string formatting.\n<<<<<<< SEARCH app/db.py\n    cur.execute(f\"SELECT * FROM users WHERE name = '{name}'\")\n=======\n    cur.execute(\"SELECT * FROM users WHERE name = ?\", (name,))\n>>>>>>> REPLACE\n\nFix the problem. Output a complete new set of blocks against the ORIGINAL file."
+     },
+     {
+      "role": "assistant",
+      "content": "RATIONALE: bind the parameter.\n<<<<<<< SEARCH app/db.py\n    cur = conn.execute(f\"SELECT id, name FROM users WHERE name = '{name}'\")\n=======\n    cur = conn.execute(\"SELECT id, name FROM users WHERE name = ?\", (name,))\n>>>>>>> REPLACE"
+     },
+     {
+      "role": "user",
+      "content": "Earlier attempts:\n- attempt 1: FORMAT_FAIL\n\nYour previous edit was checked. Result: IMPORT_ERROR.\n\nFAILED tests_poc/test_poc.py: collection failure\nModuleNotFoundError: No module named 'app.dbx'\n\nFix the problem. Output a complete new set of blocks against the ORIGINAL file."
+     }
+    ]
+   },
+   {
+    "route": "local",
+    "temperature": 0.8,
+    "messages": [
+     {
+      "role": "user",
+      "content": "Finding: CWE-89 reported by bandit rule B608 at app/db.py:18.\n\nMessage: Possible SQL injection vector through string-based query construction.\n\nDescription: find_user builds its SQL query by formatting the user-supplied name into the query string.\n\nFiles you may edit: app/db.py\n\n--- app/db.py\n\"\"\"User directory backed by SQLite.\"\"\"\n\nimport sqlite3\n\n\ndef connect(path=\":memory:\"):\n    conn = sqlite3.connect(path)\n    conn.execute(\"CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT NOT NULL)\")\n    return conn\n\n\ndef add_user(conn, name):\n    conn.execute(\"INSERT INTO users (name) VALUES (?)\", (name,))\n    conn.commit()\n\n\ndef find_user(conn, name):\n    cur = conn.execute(f\"SELECT id, name FROM users WHERE name = '{name}'\")\n    return cur.fetchall()\n\nOutput RATIONALE and SEARCH/REPLACE blocks only."
+     },
+     {
+      "role": "assistant",
+      "content": "no blocks here"
+     },
+     {
+      "role": "user",
+      "content": "Your previous edit was checked. Result: FORMAT_FAIL.\n\nFORMAT_ERROR: no SEARCH/REPLACE blocks found\nUse exactly this layout:\nRATIONALE: Use a parameterized query instead of string formatting.\n<<<<<<< SEARCH app/db.py\n    cur.execute(f\"SELECT * FROM users WHERE name = '{name}'\")\n=======\n    cur.execute(\"SELECT * FROM users WHERE name = ?\", (name,))\n>>>>>>> REPLACE\n\nFix the problem. Output a complete new set of blocks against the ORIGINAL file."
+     },
+     {
+      "role": "assistant",
+      "content": "RATIONALE: bind the parameter.\n<<<<<<< SEARCH app/db.py\n    cur = conn.execute(f\"SELECT id, name FROM users WHERE name = '{name}'\")\n=======\n    cur = conn.execute(\"SELECT id, name FROM users WHERE name = ?\", (name,))\n>>>>>>> REPLACE"
+     },
+     {
+      "role": "user",
+      "content": "Earlier attempts:\n- attempt 1: FORMAT_FAIL\n\nYour previous edit was checked. Result: IMPORT_ERROR.\n\nFAILED tests_poc/test_poc.py: collection failure\nModuleNotFoundError: No module named 'app.dbx'\n\nFix the problem. Output a complete new set of blocks against the ORIGINAL file."
+     }
+    ]
+   }
+  ]
+ },
+ "gate_syntax_resolved": {
+  "labels": [
+   "GATE_REJECT",
+   "SYNTAX_ERROR",
+   "RESOLVED"
+  ],
+  "calls": [
+   {
+    "route": "local",
+    "temperature": 0.2,
+    "messages": [
+     {
+      "role": "user",
+      "content": "Finding: CWE-89 reported by bandit rule B608 at app/db.py:18.\n\nMessage: Possible SQL injection vector through string-based query construction.\n\nDescription: find_user builds its SQL query by formatting the user-supplied name into the query string.\n\nFiles you may edit: app/db.py\n\n--- app/db.py\n\"\"\"User directory backed by SQLite.\"\"\"\n\nimport sqlite3\n\n\ndef connect(path=\":memory:\"):\n    conn = sqlite3.connect(path)\n    conn.execute(\"CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT NOT NULL)\")\n    return conn\n\n\ndef add_user(conn, name):\n    conn.execute(\"INSERT INTO users (name) VALUES (?)\", (name,))\n    conn.commit()\n\n\ndef find_user(conn, name):\n    cur = conn.execute(f\"SELECT id, name FROM users WHERE name = '{name}'\")\n    return cur.fetchall()\n\nOutput RATIONALE and SEARCH/REPLACE blocks only."
+     }
+    ]
+   },
+   {
+    "route": "local",
+    "temperature": 0.4,
+    "messages": [
+     {
+      "role": "user",
+      "content": "Finding: CWE-89 reported by bandit rule B608 at app/db.py:18.\n\nMessage: Possible SQL injection vector through string-based query construction.\n\nDescription: find_user builds its SQL query by formatting the user-supplied name into the query string.\n\nFiles you may edit: app/db.py\n\n--- app/db.py\n\"\"\"User directory backed by SQLite.\"\"\"\n\nimport sqlite3\n\n\ndef connect(path=\":memory:\"):\n    conn = sqlite3.connect(path)\n    conn.execute(\"CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT NOT NULL)\")\n    return conn\n\n\ndef add_user(conn, name):\n    conn.execute(\"INSERT INTO users (name) VALUES (?)\", (name,))\n    conn.commit()\n\n\ndef find_user(conn, name):\n    cur = conn.execute(f\"SELECT id, name FROM users WHERE name = '{name}'\")\n    return cur.fetchall()\n\nOutput RATIONALE and SEARCH/REPLACE blocks only."
+     },
+     {
+      "role": "assistant",
+      "content": "RATIONALE: bind the parameter.\n<<<<<<< SEARCH app/db.py\n    cur = conn.execute(f\"SELECT id, name FROM users WHERE name = '{name}'\")\n=======\n    cur = conn.execute(\"SELECT id, name FROM users WHERE name = ?\", (name,))  # nosec\n>>>>>>> REPLACE"
+     },
+     {
+      "role": "user",
+      "content": "Your previous edit was checked. Result: GATE_REJECT.\n\nRejected by safety gates:\nSUPPRESSES_CHECKS: app/db.py adds a check-suppression marker\n\nFix the problem. Output a complete new set of blocks against the ORIGINAL file."
+     }
+    ]
+   },
+   {
+    "route": "local",
+    "temperature": 0.4,
+    "messages": [
+     {
+      "role": "user",
+      "content": "Finding: CWE-89 reported by bandit rule B608 at app/db.py:18.\n\nMessage: Possible SQL injection vector through string-based query construction.\n\nDescription: find_user builds its SQL query by formatting the user-supplied name into the query string.\n\nFiles you may edit: app/db.py\n\n--- app/db.py\n\"\"\"User directory backed by SQLite.\"\"\"\n\nimport sqlite3\n\n\ndef connect(path=\":memory:\"):\n    conn = sqlite3.connect(path)\n    conn.execute(\"CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT NOT NULL)\")\n    return conn\n\n\ndef add_user(conn, name):\n    conn.execute(\"INSERT INTO users (name) VALUES (?)\", (name,))\n    conn.commit()\n\n\ndef find_user(conn, name):\n    cur = conn.execute(f\"SELECT id, name FROM users WHERE name = '{name}'\")\n    return cur.fetchall()\n\nOutput RATIONALE and SEARCH/REPLACE blocks only."
+     },
+     {
+      "role": "assistant",
+      "content": "RATIONALE: bind the parameter.\n<<<<<<< SEARCH app/db.py\n    cur = conn.execute(f\"SELECT id, name FROM users WHERE name = '{name}'\")\n=======\n    cur = conn.execute(\"SELECT id, name FROM users WHERE name = ?\", (name,))  # nosec\n>>>>>>> REPLACE"
+     },
+     {
+      "role": "user",
+      "content": "Your previous edit was checked. Result: GATE_REJECT.\n\nRejected by safety gates:\nSUPPRESSES_CHECKS: app/db.py adds a check-suppression marker\n\nFix the problem. Output a complete new set of blocks against the ORIGINAL file."
+     },
+     {
+      "role": "assistant",
+      "content": "RATIONALE: bind the parameter.\n<<<<<<< SEARCH app/db.py\n    cur = conn.execute(f\"SELECT id, name FROM users WHERE name = '{name}'\")\n=======\n    cur = conn.execute(\"SELECT id, name FROM users WHERE name = ?\", (name,))\n>>>>>>> REPLACE"
+     },
+     {
+      "role": "user",
+      "content": "Earlier attempts:\n- attempt 1: GATE_REJECT\n\nYour previous edit was checked. Result: SYNTAX_ERROR.\n\nFAILED tests_regression/test_db.py: collection failure\nSyntaxError: invalid syntax\n\nFix the problem. Output a complete new set of blocks against the ORIGINAL file."
+     }
+    ]
+   }
+  ]
+ }
+}

@@ -2244,6 +2244,331 @@ needed (multi-file edits and wider context already exist, local concurrency gain
   the README. Not taken from that review: deleting `feat/week3-d15-data` (the Kaggle kernel
   clones it), and calling v3's Tier B and C leads gains (p = 0.73 and 0.50).
 
+## Doc 17 Phase 0: how often each user label is right (2026-10-24)
+
+The easy-use plan (docs/17-easy-use-part2.md) asks how often the label a user would see is right
+on code without a hand-written exploit test, before Phase 1b shows any label to anyone. Code at
+`37043ef` (feat/easy-use), clean tree, `aeropatch-control` unless stated. Block 1 (oracle, V1 and
+V2 on test) ran on Ollama 0.40.7. Ollama downloaded 0.40.10 at 13:23 during block 1; I installed it
+before block 2 (Tier B and the model comparison), so each comparison ran on one version.
+
+**Labels**, two runs pooled, 95% Wilson intervals (`docs/results/labels/07-user-labels.csv`):
+
+| Label | Where | Shown | Right |
+|---|---|---|---|
+| Scanner quiet, your tests still pass | V1, test | 34 of 54 | 25 of 34, 74% [57-85] |
+| Your tests still pass; the scanner could not re-check this | V1, test_b | 14 of 20 | 8 of 14, 57% [33-79] |
+| Scanner quiet, not tested | V2, test (= the Suggest level) | 43 of 54 | 23 of 43, 53% [39-67] |
+
+- **Resolved under realistic feedback:** V1 25/54 (46%) on test and 8/20 (40%) on Tier B; V2
+  23/54 (43%). These, not the 70% and 35% earned with PoC feedback, are the rates to quote to
+  users. On Tier B, V1's 40% is no worse than the 35% with the PoC visible.
+- **"Not fixed" hides correct fixes:** in 9 of V1's 20 "not fixed" tasks on test some attempt
+  passed both hidden suites, but the rule still fired or a test failed, so nothing was offered.
+- **Oracle:** 27/27 and 10/10. The one-file re-scan gives the same `original_rule_present` as the
+  whole-repo scan of `20261005-201131-oracle-test` on all 27.
+- **Library model:** `qwen3.5:4b` build d8b0f5e9760c scored 17 and 21, the export 21 and 17:
+  38 against 38 of 54, alternated, within the pre-set bar of 4. Users can pull the library model;
+  the doctor now lists both builds as measured, and publishing the export is not needed.
+- **Detection on real code (host-side, no runs):** Opengrep and Bandit report 85 findings over the
+  10 Tier B repos and none within 3 lines of the advisory's location: 0 of 10.
+
+**What this changes (part 2 §6), defaults taken:**
+- Phase 1b ships "Scanner quiet, your tests still pass" as the Test level's label, with "on 27
+  practice apps, right 25 of 34 times". The benchmark's regression tests are stronger than most
+  users', so this is an upper bound.
+- "Scanner quiet, not tested" is right about half the time, so the Suggest level shows its change
+  as "a suggestion to review", never as a fix.
+- On real code the scanners are the bottleneck: they found none of the ten CVEs. Better rules and
+  triage come before any model work, and the 1a check on 10 public repos matters more.
+
+## Detection report, phases A to D (2026-10-26)
+
+The plan is `reports/Real bug detection and model mix.md`. Everything below needs no model run
+and no labeller; what does is listed at the end. Branch `feat/easy-use`, not pushed.
+
+**Phase A, held-out detection set.** `evaluations/detection/heldout.json`: 30 CVEs, 10 each of
+CWE-22, 94 and 79, drawn with `random.Random(20261026)` from PySASTBench's 108 (ICSE'26). It was
+committed (`f8b3490`) before any new rule was written. The GitHub repo has no licence; the data is
+CC-BY-4.0 on Zenodo (record 17936545, a 6.2 GB zip), so only the list is kept here.
+`evaluations/tools/remote_zip.py` reads the 30 vulnerable and fixed copies out of the zip by HTTP
+range requests into `D:\aeropatch-detection`, and `detection.py score` scans each CVE's named files.
+- **The measure:** a finding counts when it lies inside a named function and has the CVE's class
+  (`SAME_CLASS`; Bandit tags `eval` CWE-78). I set that after the first, looser count (14 of 30:
+  it took a B101 `assert` and a B110 `try/except/pass` as detections) and before any extra rule
+  was scored.
+- **Baseline, today's scanners plus regexploit: 12 of 30.** CWE-22 1 of 10, CWE-79 3 of 10,
+  CWE-94 8 of 10, mostly Bandit's B307 `eval`. Of the 12, 5 are still reported on the fixed copy.
+  `docs/results/detection/phase-a-baseline.json`.
+- **Precision of the shown findings on real repos: 11 of 42, 26%, against doc 17's bar of 50%.**
+  `evaluations/tools/repo_precision.py` checked 14 repos three ways: 10 public repos in
+  `D:\aeropatch-repos` and your 4 in `runs/github`.
+  - The public repos, shallow-cloned on 2026-10-26 with commits and licences recorded in
+    `evaluations/detection/repo_labels.csv`: PyGoat, vulpy and DVPWA (all MIT), microblog and
+    flasky (MIT), fastapi-realworld-example-app and full-stack-fastapi-template (MIT),
+    tldr-python-client (MIT), buku (GPL-3.0) and cookiecutter (BSD-3).
+  - I am the only labeller so far. A finding is real when the flagged code has the rule's
+    weakness and outside input can reach it. Every check left its folder byte-identical, 14 of 14.
+  - Nearly all the real ones are in the deliberately vulnerable apps: PyGoat 5 of 5, vulpy 4 of 5,
+    DVPWA 1 of 3, and 1 of 29 everywhere else.
+  - The false alarms repeat. sqli-string-query fires on constant SQL (`'VACUUM'`) in buku.py:
+    only in the whole file, never when that method or class is scanned alone, cause not found.
+    tar-extract-unfiltered fires on `zipfile.extractall`, which drops `..` names. Bandit flags
+    B105 on `password == ''` and B324 on gravatar MD5. Constant `os.system` calls are flagged in a
+    developer CLI.
+  - `--extra-rules` shows the same 42 cards. It adds 2 real PyGoat findings below the five shown.
+  - Advisory cards: 36, all in PyGoat, microblog and DVPWA.
+
+**Phase B, deterministic sources.**
+- **B1, advisories: on by default, `check --offline` skips them.** Instead of pip-audit or
+  OSV-Scanner, `tools/advisories.py` asks api.osv.dev directly (stdlib `urllib`). It reads
+  `name==version` pins from the top-level `requirements*.txt` and `pyproject.toml`, and it
+  installs, builds and writes nothing. Only package names and versions are sent, and the check
+  prints that line. When the lookup fails, it prints a note and reports nothing. The one new
+  dependency is `packaging`, for version order.
+  - Each vulnerable pin gets a fixed card: the advisories, whether the code imports the package,
+    and the one-line pin change. Advisories with no published fix are named, not hidden.
+  - **Plumbing check, `evaluations/tools/advisory_plumbing.py`: 10 of 10.** For each Tier B
+    library, an app pinning the newest vulnerable release is flagged and offered a fixed version.
+    The same app pinned at the advisory's fixed version is not flagged for that advisory. So
+    downstream detection is 10 of 10, while library-source detection stays 0 of 10.
+- **B2, ReDoS: regexploit 1.0.0, on by default.** It is Apache-2.0, has no dependencies and runs
+  on CPU only. It imports `sre_parse`, which has been deprecated since Python 3.11: it works on
+  3.13, and the import fails when Python removes it.
+  - On A-1333-02 it flags the vulnerable regex and not the model's correct rewrite, which the
+    Opengrep rule re-flagged.
+  - It misses B-1333-01 (geopy). Tier B is a sanity check, so I did not look into why.
+- **B3, `rules-extra/`, opt-in with `check --extra-rules`.** It has six rules: header injection,
+  path traversal, code injection and decompression as taint rules, and `jwt.decode` misuse and
+  unbounded body reads as pattern rules. The plan said 3 taint and 2 pattern; decompression needs
+  a request source, so it became a taint rule.
+  - The rules live outside `rules/`, so `--config rules` and every config's re-scan are unchanged.
+    A finding of an extra rule is re-scanned with `rules-extra/`.
+  - Each rule fires on its seeded fixture and not on its fixed twin (`tests/fixtures/extra_rules`).
+  - With `--taint-intrafile`, the 22 own rules give the same findings on all 50 dev, test and
+    Tier B scenarios.
+  - The first WSGI source treated the first parameter of any two-argument function as request
+    data. It fired on A-022-01, A-502-02 and two Tier B repos. Now it matches only
+    `def app(environ, start_response)`, and the extra rules fire on none of the 50.
+  - **Held-out recall: 13 against 12 of 30, one discordant CVE (CVE-2024-5547, CWE-22).** The
+    exact McNemar test needs at least 6-0, so B's recall criterion is not met, and the rules stay
+    opt-in. One extra hit sits in an XSS CVE's function, and the devika fix is still flagged.
+    `docs/results/detection/phase-b-extra-rules.json`.
+- **1a still holds:** the scenario finding is in the top five on 27 of 27 test scenarios with
+  the new default sources. The folder stays byte-identical, now also checked with `--extra-rules`.
+- **Labels unchanged:** applying each reference fix and re-scanning gives the same
+  `original_rule_present` as `20261024-o1-oracle-test` on 27 of 27. This needs no Docker. The 10
+  Tier B findings are advisories with no re-scan on either side, so they show nothing. The full
+  oracle replay was not rerun, because the default scan path is unchanged.
+- **B2's noise, checked on code that is not the held-out set:** over 3,697 files in
+  `.venv/Lib/site-packages`, regexploit reports 11 regexes. 3 are `re.*` arguments; the other 8
+  are bare string constants, and every one is a real regex (Pygments lexer tables). So B2 stays on
+  by default.
+
+**Phase C, judge: opt-in with `check --judge`** (`judge.py`).
+- It asks the local model at most 10 findings near the top, one call each. The answer is JSON held
+  to a schema: keep or park, plus a reason.
+- It leans toward keep. A parked finding is listed with `--all` with the model's reason. Secrets are
+  never sent. If Ollama is down, everything is kept and a note says so.
+- `dismiss` takes the same flags, so its numbers match the check's.
+- Smoke test on 0.40.10: about 2 s a finding once loaded (12 s with the load), 0 of 6 parked.
+- **Prompt injection, X-01 to X-06:** the first version parked X-02's real SQL injection. The
+  reason it gave was the planted docstring's claim that the finding comes from a test. The judge
+  now reads the code with comments and docstrings blanked (`judge.strip_prose`, line numbers
+  kept), and parks 0 of the 5. Other string literals still reach the model, and a parked finding
+  is always listed with `--all`.
+- **On the 14 labelled repos, the first version fails C's bar.** It raised precision from 11 of 42
+  (26%) to 10 of 27 (37%), but it set aside 4 real findings against the bar of at most 1. Those
+  were DVPWA's and PyGoat's MD5 or SHA-1 password hashes, and Quintyx's bind to 0.0.0.0. Its
+  reasons were wrong: "the input is a constant", or "the host is set to localhost" when it is not.
+- **After that, the judge only sees input-flow classes** (`check.JUDGE_CWES`: injection, path,
+  XSS, SSRF, redirect, XXE, deserialisation, error disclosure). Crypto, secret and config
+  findings are always kept. With the gate: 12 of 32 (38%), 0 real set aside.
+  - This gate was set after seeing these repos, so the number is not held-out evidence.
+  - Precision is still under 50%, so `--judge` stays opt-in.
+- Starting the tray app ran a staged Ollama installer, which reinstalled 0.40.10 (the file
+  versions were equal). That is Phase 0 block 2's version. V1's test runs `v1a` and `v1b` ran on
+  0.40.7 (block 1).
+
+**Phase D, repair.**
+- **D0: in all 9 tasks, the attempt that passed both hidden suites still had its rule firing.**
+  That corrects "or a test failed" above. No test was flaky, and no later, worse attempt was kept
+  over a good one. All attempts are in `20261024-v1a` and `-v1b`.
+  - The rules were html-fstring-unescaped (A-079-02), redos-nested-quantifier (A-1333-02, both
+    runs), dynamic-import-deserialization (A-502-03, both), hardcoded-credential (A-798-01,
+    -02), url-prefix-allowlist (A-918-03) and sqli-string-query (A-089-04).
+  - These rules match the code's shape, so a correct fix can keep the shape: `escape()` assigned
+    before the f-string, an allowlist check before the SQL f-string, a module allowlist before
+    `import_module`.
+  - Loosening them because of these diffs would be tuning on test, so the rules were not changed.
+    That is your call; if they change, do it as a new ruleset and say it came from test results.
+- **D1 already exists.** The loop hashes normalised edits, retries once hotter, then marks STUCK
+  (`loop.py`). Nothing was added.
+- **D2: config `repair-local-v1-recipes`.** It is V1 plus one abstract fix line for CWE-22, 328
+  and 918 (`prompts.FIX_RECIPES`), written from the dev scenarios and OWASP's cheat sheets.
+  - The choice of the three classes comes from test-split resolve rates (`OFTEN_MISSED_CWES`), so
+    a small leak is admitted.
+  - Every other config's prompts are unchanged; the golden prompts still pass.
+  - **The recipes did not help (2026-10-26, Ollama 0.40.10, alternated, `paired.py arms`).**
+    `repair-local-v1` resolved 15, 13 and 13 of 27; the recipes config 14, 11 and 9.
+    - By each task's majority of three runs: 14 against 11. Three tasks went only to V1
+      (A-079-02, A-352-02, A-918-03) and none only to the recipes; exact McNemar p = 0.25.
+    - "Scanner quiet, your tests still pass" was right 41 of 51 times for V1 and 34 of 47 for the
+      recipes.
+    - The pooled gap, 41 against 34 of 81, is past the bar of 4 in V1's favour, but McNemar does
+      not separate them. So the config stays a research config and V1 stays the default.
+    - Runs `20261026-d2-{1,2,3}-repair-local-v1(-recipes)-test`. The first pair's header says
+      dirty: an evaluation script was untracked; the loop code was the same in all six.
+
+**Phase E0 and E1 (2026-10-26, Ollama 0.40.10, `evaluations/tools/model_fit.py`,
+`docs/results/model-mix/`).** I pulled, measured and removed one model at a time.
+
+| Model | Fully on GPU | Peak GPU | tok/s | Thinking seen | Edits that apply (dev, 13) | E1: resolved, 1 attempt, dev |
+|---|---|---|---|---|---|---|
+| qwen3.5:4b (baseline) | yes | 2,995 MiB | 48.8 | 0 | 12 | 8 |
+| nemotron-3-nano:4b | yes | 2,897 MiB | 59.3 | 0 | **3** (its SEARCH text does not match the file) | not run |
+| ministral-3:3b | yes | **3,883 MiB** | 68.0 | 0 | 13 | 4 (none that Qwen missed) |
+| gemma4:e2b-it-qat | yes (1.66 GB loaded) | 2,791 MiB | 90.0 | 0 | 9 | 5 (A-328-01, which Qwen missed) |
+
+- Nemotron fails E0 on edits that apply, and was removed.
+- Ministral's peak sits on the 3.8 GiB bar, counting about 350 MiB of desktop use.
+- `think: false` works for all three: no thinking text came back. NVIDIA's Open Model License was
+  read: local use is allowed, and the user downloads the weights, so AeroPatch distributes none.
+- **Pre-registered for E2, before any test run: gemma4:e2b-it-qat.** It is the only candidate
+  that solved a dev task no Qwen sample did, and it fits with room to spare. E2 compares
+  Qwen x10 with Qwen x5 + Gemma x5 on test, over three repetitions, batched by model, with
+  `paired.py mix`.
+
+**Phase E2: the mix does not clear its pre-registered bar, so users keep one model.**
+Runs `20261026-e2-s{1,2,3}-q{1..10}` and `-g{1..5}` (`sample-local` on test, Ollama 0.40.10,
+batched by model, no provider errors). Analysed with `paired.py mix`.
+- Mean pass@1: Qwen 47.2% (30 runs), Gemma 4 E2B 30.4% (15 runs).
+- Per repetition, Qwen x10 against Qwen x5 + Gemma x5:
+
+  | Repetition | Coverage (oracle), Qwen / mix | Deployable, Qwen / mix | Solved by Gemma and no Qwen sample |
+  |---|---|---|---|
+  | 1 | 18 / 20 | 13 / 15 | A-078-03, A-338-02 |
+  | 2 | 19 / 21 | 12 / 15 | A-089-03, A-918-03 |
+  | 3 | 22 / 21 | 14 / 15 | A-328-02, A-338-02 |
+
+- By each task's majority of three repetitions, the mix wins 2 tasks and loses none, at both
+  layers. Coverage is 19 against 21 of 27, deployable 13 against 15; exact McNemar p = 0.50 at
+  each. The bar needs at least 6-0, so it is not met.
+- The direction is the same in all three repetitions on the deployable layer (+2, +3, +1), and
+  the tasks Gemma adds sit in classes Qwen often misses (CWE-338, 328, 918). So a larger test
+  could pay off, but this one does not show a gain, and per the plan the mix stays a research
+  idea.
+- The Tier B sanity runs were not done, because the main bar already failed.
+- `gemma4:e2b-it-qat` (4.3 GB) is still in the Ollama store on F:; nemotron and ministral were
+  removed. F: has about 4 GB free.
+
+**All tests:** 609 passed with Docker and Ollama running, and ruff is clean.
+
+## Doc 17 Phase 1b: fix a folder (2026-10-27)
+
+`aeropatch fix FOLDER N [--suggest]`, `apply FOLDER N`, `undo FOLDER N` and `prune --images`. The
+code is in `src/aeropatch/folder.py`, plus `docker/folder.Dockerfile`, `folder_run.sh` and
+`folder_runner.py`. `docker/run.sh` and the base image are byte-identical, so every scenario image
+is unchanged.
+
+**How it works:**
+- `fix` builds a Task from card N of the check. It stages the folder into
+  `runs/folders/<name>-<hash>/context` without environments, caches, VCS data or `.env` files.
+- The image is built from that staged copy. The dependencies come from, first match wins:
+  uv.lock, then Pipfile.lock, then requirements files, then `pip install .[test]`. On a build
+  error it retries once with the native-package table.
+- The user's tests run twice on the pristine code. The tests that passed both times are baked into
+  the image, and only those run after an edit.
+- It runs the V1 loop (`fix-local`). Without Docker, or with `--suggest`, it runs `suggest-local`,
+  and nothing runs.
+- The proposed files are kept under `runs/`; the folder is not touched.
+- `apply` refuses a file that changed since the fix, and backs up each file with a manifest
+  first. `undo` restores only files still as applied; otherwise it changes nothing and names the
+  backup.
+- Every failure gets one plain sentence (`folder.MESSAGES`), and the lower levels keep working.
+
+**Bugs found while building it, now fixed:**
+- The safety gate rejected every edit to a file starting with a UTF-8 BOM (`ast.parse` refuses
+  U+FEFF).
+- Opengrep 1.30.0 reads every string in a BOM file as an f-string, so the SQL rule fired on a
+  correct parameterised fix. The one-file re-scan now reads a BOM-free copy. No benchmark file has
+  a BOM, so no measured config moves.
+- The diff from git drops the CR of CRLF lines, so `fix` keeps the after-files by re-applying the
+  offered edits, not the diff.
+
+**Exit criteria:**
+1. **Met.**
+   - Oracle through the folder path against the scenario path: the same label and user label on
+     27 of 27 (`20261027-c1-oracle-folder-test`, `-c1-oracle-test`).
+   - `fix-local` through the folder path resolved 12 and 13; `repair-local-v1` 13 and 12, run
+     alternated on the same day (`20261027-c1-{1,2}-...`). 25 against 25 of 54, within the bar
+     of 4. No task differs by majority.
+   - "Scanner quiet, your tests still pass" was right 25 of 31 times through the folder path.
+2. **Not run.**
+   - `evaluations/tools/folder_setup.py` builds each of 1a's 10 repos and records the failure
+     class. The permission check refused to start it here, because it installs and runs those
+     repos' own build code.
+   - Command: `python evaluations/tools/folder_setup.py D:/aeropatch-repos --out
+     docs/results/folder-setup.json`. It needs Docker, takes about 10-20 minutes, and removes
+     each image after its result.
+3. **Met.** `tests/test_folder.py` covers a CRLF + BOM file:
+   - `apply` then `undo` gives byte-identical files, and nothing is written before `apply`.
+   - `apply` refuses a file changed since the fix, and `undo` refuses one changed after apply.
+4. **Met in a test:** with Docker reported down and `run_container` raising, `fix` still gives a
+   suggestion ("Scanner quiet, not tested") and starts no container. It was not run live with
+   Docker stopped.
+5. **Open:** the review test with 6 people is yours to run.
+
+## Precision: known false-alarm shapes (point 2, 2026-10-27)
+
+`src/aeropatch/false_alarms.py` sets aside, inside `check`'s triage, findings whose flagged statement
+has a shape no scanner rule can tell from the dangerous one. Each one is listed with `--all` and
+its reason. `rules/` is unchanged, so no measured config's re-scan moves.
+
+The shapes:
+- SQL text written out in full, or only `', '.join(['?'] * n)` placeholders built into it.
+- A shell command written out in full.
+- A comparison with an empty or placeholder value (`password == ''`, `token == 'your_access_token'`).
+- A credential-named variable whose value is a token type (`token_type = 'bearer'`).
+- `extractall` on a `ZipFile`, which already drops `..` names.
+- `startswith` prefixes that are not web addresses.
+
+**Guards, all met:**
+- None of the 14 labelled-real findings on the 14 tuning repos is set aside.
+- None of the 12 held-out PySASTBench detections is lost.
+- The scenario finding is still in the top five on 27 of 27.
+
+**Fresh repos, chosen and committed before any check** (`evaluations/detection/fresh_repos.json`,
+`899775c`):
+- The 10 repos: DSVW, vulnpy, sqlite-utils, records, httpie, bakerydemo, rich-cli, APIFairy,
+  flask-boilerplate and environs.
+- I labelled the union of both arms' cards in a shuffled order, without the arm in view
+  (`evaluations/detection/fresh_labels.csv`).
+
+| Arm | Fresh 10: shown, real | Tuning 14: shown, real |
+|---|---|---|
+| Today's check, no shapes | 25, 14 (56%) | 42, 11 (26%) |
+| First shape set | 22, 12 (55%), **4 real set aside** | 27, 11 |
+| Revised shape set (kept) | **24, 14 (58%), 0 real set aside** | 30, 11 (37%) |
+
+- **Two shapes failed on the fresh repos and were dropped.** "A credential-named string with a
+  space is a message" hid flask-boilerplate's real `SECRET_KEY = 'my precious'` twice. "A weak
+  hash whose names mention no password" hid vulnpy's two deliberate MD5/SHA-1 sinks.
+- The surviving shapes were part of the set frozen before the fresh check. There they removed one
+  false alarm (a fixed `twine upload` command) and no real finding.
+- **Precision on the fresh repos is 58%, over doc 17's 50% bar,** but the two deliberately
+  vulnerable apps give 9 of the 14 real findings. On the 8 ordinary fresh repos it is 5 of 14.
+- On the tuning repos it is 37%, still under the bar.
+- The largest remaining false alarm is SQL f-strings built only from `quote_identifier(...)` calls:
+  sqlite-utils 0 of 5. A shape for it was not added, because it would be tuned on the fresh repos.
+
+**Left for you:**
+1. Second labeller: go through `evaluations/detection/repo_labels.csv` and list where you disagree.
+2. Whether to loosen the 7 syntactic rules of D0, and fix the buku and zipfile false alarms
+   above, as a new ruleset.
+3. An Ollama 0.40.11 installer has been staged since 13:02. Installing it from here was refused,
+   so every run today used 0.40.10.
+
 ## Next
 
 **Decisions that are yours**

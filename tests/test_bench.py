@@ -104,3 +104,20 @@ def test_two_jobs_overlap_tasks_write_in_sorted_order_and_resume(tmp_path, monke
     bench.run_benchmark({"name": "x"}, "dev", "r", ["D", "B", "A", "C"], jobs=2)
     assert sorted(state["calls"]) == ["C", "D"]
     assert [json.loads(text)["task_id"] for text in path.read_text().splitlines()[1:]] == ["A", "B", "C", "D"]
+
+
+def test_suggest_level_runs_without_docker(tmp_path, monkeypatch):
+    """Doc 17: run_tests False needs no sandbox image, so a laptop without Docker can run it."""
+    from aeropatch import bench
+    from aeropatch.contracts import RunResult
+
+    def no_docker(sid):
+        raise AssertionError("ensure_image called for a config that runs no tests")
+
+    monkeypatch.setattr(bench, "RUNS_DIR", tmp_path)
+    monkeypatch.setattr(bench.scenario, "load", lambda sid: sid)
+    monkeypatch.setattr(bench.scenario, "ensure_image", no_docker)
+    monkeypatch.setattr(bench.loop, "run", lambda task, cfg, run_dir: RunResult(
+        task_id=task, config=cfg["name"], attempts=[], resolved=False, label="NOT_RUN"))
+    path = bench.run_benchmark(load_config("suggest-local"), "dev", "s1", ["A-089-01"])
+    assert path.exists()

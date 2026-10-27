@@ -1,0 +1,16 @@
+A,B,Shared tasks,A only,B only,B - A,95% CI (paired bootstrap),McNemar p (exact)
+20261024-v1a-repair-local-v1-test,20261024-v1b-repair-local-v1-test,27,2,3,+4%,-11% to +19%,1.000
+20261024-v1a-repair-local-v1-test,20261024-v2a-repair-local-v2-test,27,1,1,+0%,-11% to +11%,1.000
+20261024-v1a-repair-local-v1-test,20261024-v2b-repair-local-v2-test,27,2,1,-4%,-15% to +7%,1.000
+20261024-v1a-repair-local-v1-test,20261024-v1a-repair-local-v1-test_b,0,0,0,-,- to -,1.000
+20261024-v1a-repair-local-v1-test,20261024-v1b-repair-local-v1-test_b,0,0,0,-,- to -,1.000
+20261024-v1b-repair-local-v1-test,20261024-v2a-repair-local-v2-test,27,4,3,-4%,-22% to +15%,1.000
+20261024-v1b-repair-local-v1-test,20261024-v2b-repair-local-v2-test,27,4,2,-7%,-26% to +11%,0.688
+20261024-v1b-repair-local-v1-test,20261024-v1a-repair-local-v1-test_b,0,0,0,-,- to -,1.000
+20261024-v1b-repair-local-v1-test,20261024-v1b-repair-local-v1-test_b,0,0,0,-,- to -,1.000
+20261024-v2a-repair-local-v2-test,20261024-v2b-repair-local-v2-test,27,2,1,-4%,-15% to +7%,1.000
+20261024-v2a-repair-local-v2-test,20261024-v1a-repair-local-v1-test_b,0,0,0,-,- to -,1.000
+20261024-v2a-repair-local-v2-test,20261024-v1b-repair-local-v1-test_b,0,0,0,-,- to -,1.000
+20261024-v2b-repair-local-v2-test,20261024-v1a-repair-local-v1-test_b,0,0,0,-,- to -,1.000
+20261024-v2b-repair-local-v2-test,20261024-v1b-repair-local-v1-test_b,0,0,0,-,- to -,1.000
+20261024-v1a-repair-local-v1-test_b,20261024-v1b-repair-local-v1-test_b,10,0,0,+0%,+0% to +0%,1.000

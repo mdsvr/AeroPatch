@@ -26,6 +26,8 @@ def generate(messages: list[dict], system: str, cfg: dict, temperature: float) -
             "num_predict": cfg["max_tokens_local"],
         },
     }
+    if cfg.get("local_format"):  # a JSON schema the answer must follow (the check's judge, Phase C)
+        body["format"] = cfg["local_format"]
     # Diagnosis configs only: the start of the answer is written for the model. Ollama continues
     # a trailing assistant message and returns the continuation alone.
     prefill = cfg.get("local_prefill", "")

@@ -120,7 +120,8 @@ def _validate_resume_header(path: Path, cfg: dict, split: str, ids: list[str]) -
 
 
 def run_benchmark(cfg: dict, split: str = "dev", run_id: str | None = None,
-                  ids: list[str] | None = None, jobs: int = 1) -> Path:
+                  ids: list[str] | None = None, jobs: int = 1, folder: bool = False) -> Path:
+    """`folder`: run each scenario through the `fix` path (doc 17 part 4 §5, criterion 1)."""
     ids = sorted(set(ids or scenario.list_ids(split)))
     run_id = run_id or f"{time.strftime('%Y%m%d-%H%M%S')}-{cfg['name']}-{split}"
     run_dir = RUNS_DIR / run_id
@@ -133,8 +134,13 @@ def run_benchmark(cfg: dict, split: str = "dev", run_id: str | None = None,
         _validate_resume_header(jsonl, cfg, split, ids)
 
     def run_one(sid: str):
+        if folder:
+            from aeropatch import folder as folder_path
+
+            return loop.run(folder_path.scenario_task(sid), cfg, run_dir)
         task = scenario.load(sid)
-        scenario.ensure_image(sid)
+        if cfg.get("run_tests", True):  # the Suggest level needs no Docker (doc 17)
+            scenario.ensure_image(sid)
         return loop.run(task, cfg, run_dir)
 
     pending = [sid for sid in ids if sid not in finished]
@@ -147,7 +153,10 @@ def run_benchmark(cfg: dict, split: str = "dev", run_id: str | None = None,
     try:
         with jsonl.open("a", encoding="utf-8") as out:
             if not jsonl.stat().st_size:
-                out.write(json.dumps(header(cfg, split, ids, jobs), default=str) + "\n")
+                rec = header(cfg, split, ids, jobs)
+                if folder:
+                    rec["folder"] = True
+                out.write(json.dumps(rec, default=str) + "\n")
             for sid, result in zip(pending, pool.map(run_one, pending)):
                 for a in result.attempts:
                     out.write(json.dumps({"type": "attempt", "task_id": sid, **a.to_dict()}, default=str) + "\n")

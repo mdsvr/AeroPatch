@@ -11,8 +11,9 @@ import json
 import time
 from pathlib import Path
 
+from aeropatch import labels
 from aeropatch.agent import edits, gates, prompts, router
-from aeropatch.contracts import Attempt, RunResult, Task
+from aeropatch.contracts import Attempt, RunResult, SandboxResult, Task
 from aeropatch.sandbox import junit, sandbox
 from aeropatch.scenario import scenario_dir
 from aeropatch.tools import scanners
@@ -28,7 +29,7 @@ ATTRIBUTION = {
     "REFUSAL": "REFUSAL", "PROVIDER_ERROR": "PROVIDER_ERROR", "BUDGET_EXHAUSTED": "BUDGET_EXHAUSTED",
     "SECRET_BLOCKED": "SECRET_BLOCKED",
     "SYNTAX_ERROR": "REGRESSION", "IMPORT_ERROR": "REGRESSION", "COLLECTION_ERROR": "REGRESSION",
-    "SANDBOX_ERROR": "SANDBOX_ERROR",
+    "SANDBOX_ERROR": "SANDBOX_ERROR", "NOT_RUN": "NOT_RUN",
 }
 
 
@@ -41,11 +42,21 @@ def _save(dirpath: Path | None, name: str, text: str) -> None:
 
 def run(task: Task, cfg: dict, run_dir: Path | None = None) -> RunResult:
     start = time.monotonic()
-    sdir = scenario_dir(task.id)
+    sdir = scenario_dir(task.id) if "oracle" in cfg["attempt_plan"] else None
     task_dir = run_dir / task.id if run_dir else None
+    # Doc 17 part 2 §2. A hidden suite still runs and stays in the record, but the model never sees
+    # it and the loop stops on the label a user would be shown (offer mode), not on RESOLVED.
+    hidden = list(cfg.get("hidden_suites") or [])
+    run_tests = cfg.get("run_tests", True)
+    rescan_feedback = cfg.get("rescan_feedback", False)
+    offer_mode = bool(hidden) or not run_tests
+    hits0 = None  # the rule's hit count on the pristine file; None keeps the any-hit re-scan
+    if rescan_feedback:
+        hits = scanners.rule_hits(task.repo_path, task.finding)
+        hits0 = None if hits is None else len(hits)
     # Week 1 uses oracle localization: the finding location is given (doc 11 §7).
     context = get_context(task.repo_path, task.finding.path, task.finding.line, task.allowed_paths)
-    messages = [{"role": "user", "content": prompts.first_user_message(task, context)}]
+    messages = [{"role": "user", "content": prompts.first_user_message(task, context, cfg.get("fix_recipes", False))}]
     attempts: list[Attempt] = []
     older: list[str] = []
     seen: set[str] = set()  # hashes of edits already tried
@@ -61,6 +72,7 @@ def run(task: Task, cfg: dict, run_dir: Path | None = None) -> RunResult:
     n = 0
     spent = 0.0
     final_diff = ""
+    stopped = False
 
     with Workspace(task.repo_path) as ws:
         originals = ws.read_many(task.allowed_paths)
@@ -140,20 +152,34 @@ def run(task: Task, cfg: dict, run_dir: Path | None = None) -> RunResult:
                         ws.write(changed)
                         att.diff = ws.diff()
                         _save(adir, "diff.patch", att.diff)
-                        att.sandbox = sandbox.run_tests(
-                            task.image, ws.src, cfg, adir / "sandbox_raw.log" if adir else None)
-                        att.sandbox.original_rule_present = scanners.original_rule_present(ws.repo, task.finding)
+                        if run_tests:
+                            att.sandbox = sandbox.run_tests(
+                                task.image, ws.src, cfg, adir / "sandbox_raw.log" if adir else None)
+                        else:  # the Suggest level: gates and re-scan only, nothing of the repo runs
+                            att.sandbox = SandboxResult(applied=True, label="NOT_RUN")
+                        att.sandbox.original_rule_present = scanners.original_rule_present(
+                            ws.repo, task.finding, hits0)
                         _save(adir, "sandbox.json", att.sandbox.to_json())
                         att.label = att.sandbox.label
-                        feedback = prompts.redact(
-                            junit.summarize(att.sandbox.failures, cfg["feedback_token_cap"] * 4))
+                        feedback = prompts.redact(junit.summarize(
+                            labels.visible_failures(att.sandbox, hidden), cfg["feedback_token_cap"] * 4))
+                        if rescan_feedback and att.sandbox.original_rule_present:
+                            f = task.finding
+                            feedback = "\n".join(filter(None, [
+                                feedback, f"The scanner still reports {f.rule_id} in {f.path}: {f.message}"]))
             attempts.append(att)
-            if att.label == "RESOLVED":
+            att.user_label = labels.user_label(att.sandbox, hidden)
+            # What the model reads: never att.label, which may carry a hidden suite's verdict.
+            shown = labels.model_label(att.sandbox, hidden, rescan_feedback) if att.sandbox else att.label
+            # A truly RESOLVED attempt whose rule still fires does not stop an offer-mode run: the
+            # hidden PoC must not decide when the loop ends.
+            if (att.user_label in labels.OFFERED) if offer_mode else (att.label == "RESOLVED"):
                 final_diff = att.diff
+                stopped = True
                 break
-            older.append(f"attempt {n}: {att.label}")
+            older.append(f"attempt {n}: {shown}")
             messages.append({"role": "assistant", "content": gen.text or "(empty)"})
-            messages.append({"role": "user", "content": prompts.repair_message(att.label, feedback, older[:-1])})
+            messages.append({"role": "user", "content": prompts.repair_message(shown, feedback, older[:-1])})
             if spent >= cfg["max_usd_per_scenario"] and i < len(cfg["attempt_plan"]) - 1:
                 attempts.append(Attempt(n=0, route="-", label="BUDGET_EXHAUSTED"))
                 break
@@ -161,11 +187,17 @@ def run(task: Task, cfg: dict, run_dir: Path | None = None) -> RunResult:
                 attempts.append(Attempt(n=0, route="-", label="BUDGET_EXHAUSTED"))
                 break
 
-    resolved = bool(attempts) and attempts[-1].label == "RESOLVED"
+    # Truth is the stopping attempt's sandbox label. Without offer mode this is the old rule:
+    # the loop stops exactly when an attempt is RESOLVED.
+    resolved = stopped and attempts[-1].label == "RESOLVED"
     last = attempts[-1].label if attempts else "NO_ATTEMPT"
+    if not resolved and last == "RESOLVED":
+        # Offer mode only: the hidden tests passed but the rule still fired, so nothing was offered.
+        last = labels.SCANNER_STILL_FLAGS
     result = RunResult(task_id=task.id, config=cfg["name"], attempts=attempts, resolved=resolved,
                        label="RESOLVED" if resolved else ATTRIBUTION.get(last, last),
-                       final_diff=final_diff, duration_s=round(time.monotonic() - start, 2))
+                       final_diff=final_diff, duration_s=round(time.monotonic() - start, 2),
+                       user_label=attempts[-1].user_label if stopped else labels.NOT_FIXED)
     if task_dir:
         _save(task_dir, "result.json", json.dumps(result.to_dict(), default=str, indent=2))
         _save(task_dir, "report.md", report_md(task, result))
@@ -177,6 +209,7 @@ def report_md(task: Task, result: RunResult) -> str:
              "**Candidate fix, requires human review.** A passing PoC test is evidence, not proof.", "",
              f"- Finding: {task.cwe} `{task.finding.rule_id}` at `{task.finding.path}:{task.finding.line}`",
              f"- Config: `{result.config}`", f"- Outcome: **{result.label}** after {len(result.attempts)} plan entries",
+             f"- What a user would be told: {result.user_label}",
              f"- Cost: ${sum(a.cost_usd for a in result.attempts):.4f}", "", "## Attempts", ""]
     for a in result.attempts:
         sb = a.sandbox

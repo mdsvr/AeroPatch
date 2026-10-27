@@ -102,12 +102,30 @@ def redact(text: str) -> str:
         for line in text.split("\n"))
 
 
-def first_user_message(task: Task, context: Context) -> str:
+# Phase D2 of reports/Real bug detection and model mix.md: an abstract fix pattern per class the local
+# model often missed (check.OFTEN_MISSED_CWES), as VulKey's CWE + action + key element. Written from
+# the dev scenarios and OWASP's cheat sheets, not from any test scenario.
+FIX_RECIPES = {
+    "CWE-22": ("join the name onto the base folder, resolve the result with os.path.realpath (for an "
+               "archive, each member's destination), and refuse it unless it is still inside the resolved "
+               "base folder."),
+    "CWE-328": ("derive the stored value with a key-derivation function (hashlib.pbkdf2_hmac or "
+                "hashlib.scrypt) and a random per-user salt from os.urandom stored beside it; compare "
+                "with hmac.compare_digest."),
+    "CWE-918": ("parse the URL, allow only http and https, resolve the host name, refuse private, loopback, "
+                "link-local and reserved addresses (the ipaddress module), and connect to the address "
+                "that was checked."),
+}
+
+
+def first_user_message(task: Task, context: Context, recipes: bool = False) -> str:
     f = task.finding
     parts = [
         f"Finding: {task.cwe} reported by {f.tool} rule {f.rule_id} at {f.path}:{f.line}.",
         f"Message: {f.message[:200]}",
     ]
+    if recipes and task.cwe in FIX_RECIPES:
+        parts.append(f"Usual fix for this kind of problem: {FIX_RECIPES[task.cwe]}")
     if task.description:
         parts.append(f"Description: {' '.join(task.description.split()[:150])}")
     parts.append(f"Files you may edit: {', '.join(task.allowed_paths)}")

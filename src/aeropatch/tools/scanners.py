@@ -9,14 +9,18 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 from aeropatch.config import ROOT, RULES_DIR
 from aeropatch.contracts import Finding
 
+EXTRA_RULES_DIR = ROOT / "rules-extra"
+EXTRA_PREFIX = "aeropatch.extra."
 SEV = {"ERROR": "high", "WARNING": "medium", "INFO": "low", "HIGH": "high", "MEDIUM": "medium", "LOW": "low"}
 
 
@@ -43,14 +47,21 @@ def _snippet(repo: Path, path: str, line: int) -> str:
         return ""
 
 
-def run_opengrep(repo: Path, rules: Path = RULES_DIR) -> list[Finding] | None:
+def run_opengrep(repo: Path, rules: Path = RULES_DIR, targets: list[str] | None = None,
+                 extra: bool = False) -> list[Finding] | None:
+    """`targets`: repo-relative files to scan instead of the whole repository. `extra`: also run
+    rules-extra/ with intra-file taint analysis. Off by default, because this scan also decides
+    `original_rule_present` for every measured config."""
     binary = opengrep_binary()
     if not binary:
         return None
     cmd = [binary, "scan", "--config", str(rules), "--json", "--quiet", "--disable-version-check"]
+    if extra:
+        cmd += ["--config", str(EXTRA_RULES_DIR), "--taint-intrafile"]
     if Path(binary).name.startswith("semgrep"):
         cmd += ["--metrics", "off"]
-    proc = subprocess.run(cmd + ["."], cwd=repo, capture_output=True, text=True, encoding="utf-8", check=False)
+    proc = subprocess.run(cmd + (targets or ["."]), cwd=repo, capture_output=True, text=True, encoding="utf-8",
+                          check=False)
     try:
         data = json.loads(proc.stdout or "{}")
     except json.JSONDecodeError:
@@ -60,8 +71,9 @@ def run_opengrep(repo: Path, rules: Path = RULES_DIR) -> list[Finding] | None:
         meta = r.get("extra", {}).get("metadata", {})
         path = Path(r["path"]).as_posix()
         line = r["start"]["line"]
-        rule_id = r["check_id"].split(".")[-1]
-        rule_id = f"aeropatch.python.{rule_id}" if not r["check_id"].startswith("aeropatch") else r["check_id"]
+        # The check id carries the rules folder's path in front ("F.AeroPatch.rules-extra.aeropatch.extra.x").
+        own = re.search(r"aeropatch\.(?:python|extra)\.[^.]+$", r["check_id"])
+        rule_id = own[0] if own else f"aeropatch.python.{r['check_id'].split('.')[-1]}"
         cwe = meta.get("cwe", "")
         cwe = cwe[0] if isinstance(cwe, list) else cwe
         out.append(Finding(
@@ -73,8 +85,11 @@ def run_opengrep(repo: Path, rules: Path = RULES_DIR) -> list[Finding] | None:
     return out
 
 
-def run_bandit(repo: Path) -> list[Finding] | None:
-    proc = subprocess.run([sys.executable, "-m", "bandit", "-q", "-r", "-f", "json", "."],
+def run_bandit(repo: Path, targets: list[str] | None = None) -> list[Finding] | None:
+    """`targets`: repo-relative files to scan instead of the whole repository."""
+    # -I: the scanned folder is the cwd, and without it a json.py there would be imported by Bandit
+    # (and leave a __pycache__ behind in a folder `check` promises not to write to).
+    proc = subprocess.run([sys.executable, "-I", "-m", "bandit", "-q", "-f", "json", *(targets or ["-r", "."])],
                           cwd=repo, capture_output=True, text=True, encoding="utf-8", check=False)
     try:
         data = json.loads(proc.stdout or "{}")
@@ -88,28 +103,59 @@ def run_bandit(repo: Path) -> list[Finding] | None:
             tool="bandit", rule_id=r["test_id"], path=path, line=r["line_number"],
             end_line=r.get("line_range", [r["line_number"]])[-1], cwe=f"CWE-{cwe}" if cwe else "",
             severity=SEV.get(r["issue_severity"], "medium"), message=r["issue_text"][:200],
+            confidence=SEV.get(r.get("issue_confidence", ""), ""),
             fingerprint=fingerprint(r["test_id"], path, _snippet(repo, path, r["line_number"])),
         ))
     return out
 
 
-def original_rule_present(repo: Path, original: Finding) -> bool | None:
-    """Re-run the scanner that produced the finding and conservatively match its rule and file."""
-    if original.tool == "opengrep":
-        findings = run_opengrep(repo)
-    elif original.tool == "bandit":
-        findings = run_bandit(repo)
+def rule_hits(repo: Path, finding: Finding) -> list[int] | None:
+    """Lines where the finding's rule fires in the finding's own file, scanning only that file.
+    None when no re-scan applies (an advisory finding, or the scanner is missing or failed)."""
+    if finding.tool == "opengrep":
+        # A finding of the extra rules is re-scanned with them; any other is re-scanned as before.
+        extra = finding.rule_id.startswith(EXTRA_PREFIX)
+        data = (repo / finding.path).read_bytes() if (repo / finding.path).is_file() else b""
+        if data.startswith(b"\xef\xbb\xbf"):
+            # Opengrep 1.30.0 reads every string in a file with a UTF-8 BOM as an f-string, so the SQL
+            # rule fired on a correct parameterised fix (2026-10-27). Scan a BOM-free copy, same lines.
+            with tempfile.TemporaryDirectory() as tmp:
+                copy = Path(tmp) / finding.path
+                copy.parent.mkdir(parents=True, exist_ok=True)
+                copy.write_bytes(data[3:])
+                findings = run_opengrep(Path(tmp), targets=[finding.path], extra=extra)
+        else:
+            findings = run_opengrep(repo, targets=[finding.path], extra=extra)
+    elif finding.tool == "bandit":
+        findings = run_bandit(repo, targets=[finding.path])
     else:
         return None
     if findings is None:
         return None
-    return any(f.rule_id == original.rule_id and f.path == original.path for f in findings)
+    return sorted(f.line for f in findings if f.rule_id == finding.rule_id and f.path == finding.path)
 
 
-def scan(repo: Path) -> dict:
-    """Returns {"findings": [...], "opengrep": bool}. Findings on the same line are both kept."""
+def original_rule_present(repo: Path, original: Finding, before: int | None = None) -> bool | None:
+    """Does the finding's rule still fire in its file? Without `before`: any hit left. With `before`
+    (the hit count on the pristine file), "still" means the count did not fall, so in a file with
+    two separate hits of one rule, fixing the finding's own hit reads as fixed (doc 17 part 2 §2).
+    The two agree on a one-hit file. On 2026-10-23, 43 scenarios had one hit, 15 had no re-scan
+    (advisories), and A-079-02 (4 hits) and A-328-02 (2) had several, so only configs with
+    `rescan_feedback` pass `before`, and every earlier config keeps the any-hit answer."""
+    hits = rule_hits(repo, original)
+    if hits is None:
+        return None
+    return len(hits) >= max(before or 0, 1)
+
+
+def scan(repo: Path, extra: bool = False) -> dict:
+    """Returns {"findings": [...], "opengrep": bool}. Findings on the same line are both kept,
+    except an extra rule's finding where one of AeroPatch's own rules already reports that CWE."""
     repo = repo.resolve()
-    og = run_opengrep(repo)
+    og = run_opengrep(repo, extra=extra)
+    if og:
+        own = {(f.path, f.line, f.cwe) for f in og if not f.rule_id.startswith(EXTRA_PREFIX)}
+        og = [f for f in og if not (f.rule_id.startswith(EXTRA_PREFIX) and (f.path, f.line, f.cwe) in own)]
     findings = (og or []) + (run_bandit(repo) or [])
     findings.sort(key=lambda f: (f.path, f.line, f.tool))
     return {"findings": findings, "opengrep": og is not None}

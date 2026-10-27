@@ -1,0 +1,519 @@
+{
+  "version": 1,
+  "generic": {
+    "headline": "AeroPatch has no plain-language note for this finding yet",
+    "what_could_happen": "The scanner flagged this line, but AeroPatch has no plain-language explanation for this rule yet. The scanner's own message is shown under details. It may be a real problem or a false alarm.",
+    "when_it_matters": "It depends on the rule. Most findings matter more when strangers can reach the app, for example on the internet, or when it handles other people's data.",
+    "the_change": "If you ask AeroPatch for a change, read it together with the scanner's message under details, and keep it only if you understand what it does.",
+    "try_yourself": [
+      "Open details and read the scanner's message and the rule name.",
+      "Search the web for the rule name to learn what it usually means.",
+      "Ask someone who knows Python to look at this line with you."
+    ],
+    "cwe": ""
+  },
+  "secret": {
+    "headline": "If this is a real password or key, others may already have it",
+    "what_could_happen": "A password, key or token seems to be written in this file. Anyone who can see the code, for example on GitHub or in a shared folder, could copy it and use your accounts, data or paid services.",
+    "when_it_matters": "Only if it is a real password or key, not a made-up example. It matters most if this code was ever shared, uploaded or put online, even briefly.",
+    "the_change": "Step 1: first change the key or password at the service that issued it, because editing the code does not undo an exposure. Step 2: move the value out of the code into an environment variable, a setting kept outside your files.",
+    "try_yourself": [
+      "Log in to the service that issued the key and look for activity you did not do.",
+      "Check whether this file was ever uploaded, for example to GitHub.",
+      "After the change, run the app and check it still connects."
+    ],
+    "cwe": ""
+  },
+  "rules": {
+    "aeropatch.python.sqli-string-query": {
+      "headline": "Someone could run their own database commands through a form or search box",
+      "what_could_happen": "Text a visitor types is glued into a database command. A crafted entry could make the database show every record, change data or delete it, including other users' passwords.",
+      "when_it_matters": "If any part of the command can come from outside: a form, a web address, an uploaded file or another program. Values you wrote yourself in the code are a smaller worry.",
+      "the_change": "The usual change passes the visitor's text to the database separately, as a parameter, so the database treats it as plain data and never as part of the command.",
+      "try_yourself": [
+        "Type a single quote ' into the search box: the app should show no error page.",
+        "Type ' OR '1'='1 into a login or search field: you should see no extra records."
+      ],
+      "cwe": "CWE-89"
+    },
+    "aeropatch.python.subprocess-shell": {
+      "headline": "Someone could run their own commands on this computer through your app",
+      "what_could_happen": "The app hands a line of text to the computer's command prompt. If any of that text comes from a user, they could add their own commands, for example to delete files or copy your data.",
+      "when_it_matters": "Only if part of the command comes from a user, a file or the web. A command made only of words you typed in the code is a much smaller worry.",
+      "the_change": "The usual change runs the program directly with a list of separate words instead of one line through the command prompt, so symbols like ; or && are not read as new commands.",
+      "try_yourself": [
+        "Find where the command's text comes from and whether a user can change it.",
+        "If a form feeds this command, type test; echo hello into it: the page should not show hello on its own line."
+      ],
+      "cwe": "CWE-78"
+    },
+    "aeropatch.python.path-traversal-open": {
+      "headline": "Someone could read any file on this computer by sending a crafted file name",
+      "what_could_happen": "The app opens a file using a name a caller supplies. A name like ../../settings.txt climbs out of the intended folder, so someone could read passwords, settings or other users' files.",
+      "when_it_matters": "Only if the file name can come from a user, for example through a web address, a form or an upload.",
+      "the_change": "The usual change works out the full path and refuses any name that ends up outside the intended folder. AeroPatch's suggested changes for this kind of problem are often wrong, so read this one with care.",
+      "try_yourself": [
+        "Where the app takes a file name, put ../ in front of it: the app should refuse instead of showing a file.",
+        "After the change, check that normal file names still open."
+      ],
+      "cwe": "CWE-22"
+    },
+    "aeropatch.python.unsafe-deserialization": {
+      "headline": "A crafted file or message could run its own code on this computer",
+      "what_could_happen": "The app rebuilds Python objects from saved data with pickle or a full YAML loader. Such data can carry instructions, so a crafted file could take over the app and anything it can reach.",
+      "when_it_matters": "Only if the data can come from someone else: an upload, a download, a network message or a file other people can edit. Files only your own program writes are a smaller worry.",
+      "the_change": "The usual change switches to a format that holds only plain data, such as JSON, or to the YAML loader that builds only text, numbers and lists, never program objects.",
+      "try_yourself": [
+        "Find out where this data comes from: your own program, or users and the internet?",
+        "After the change, load a file the app normally uses and check the app still works."
+      ],
+      "cwe": "CWE-502"
+    },
+    "aeropatch.python.ssrf-unvalidated-fetch": {
+      "headline": "Someone could make your app visit private addresses, like your router or cloud settings",
+      "what_could_happen": "The app fetches a web address a user gives it, without checking where it really points. Someone could aim it at machines inside your network or a cloud server's internal settings page, which can hand out passwords.",
+      "when_it_matters": "Only if users can give the app a web address to fetch, and the app runs on a server, a cloud machine or a network with other private machines.",
+      "the_change": "The usual change looks up where the address really leads and refuses private and local ones before fetching. AeroPatch's suggested changes for this kind of problem are often wrong, so read this one with care.",
+      "try_yourself": [
+        "Give the app http://127.0.0.1, which means this computer: it should refuse.",
+        "Give it http://169.254.169.254, a cloud settings address: it should refuse.",
+        "Check that a normal public web address still works."
+      ],
+      "cwe": "CWE-918"
+    },
+    "aeropatch.python.html-fstring-unescaped": {
+      "headline": "Someone could put their own scripts into pages your visitors see",
+      "what_could_happen": "Text from a user is placed into a web page as it is. A crafted entry could add a script that runs in other visitors' browsers, for example to steal their login or show fake forms.",
+      "when_it_matters": "If text from users, a web address or a database can reach this page, and other people view the page in a browser.",
+      "the_change": "The usual change escapes the text before it goes into the page: characters like < and > become codes the browser shows as plain text instead of running them.",
+      "try_yourself": [
+        "Type <b>hello</b> into a field that this page shows: you should see the tags, not bold text.",
+        "Check that normal names and text still show correctly."
+      ],
+      "cwe": "CWE-79"
+    },
+    "aeropatch.python.open-redirect": {
+      "headline": "A link to your site could send people on to a fake site",
+      "what_could_happen": "The app sends visitors on to any address given in the link, for example after login. Someone could share a link that starts with your site and lands on a look-alike page that collects passwords.",
+      "when_it_matters": "Only if other people can reach the app, for example on the internet, and the address to go to comes from the link or a form.",
+      "the_change": "The usual change accepts only addresses inside your own site, or from a short list you choose, and sends everything else to a default page.",
+      "try_yourself": [
+        "Add ?next=https://example.com to the page's address: you should stay on your own site.",
+        "Check that a normal redirect to one of your own pages still works."
+      ],
+      "cwe": "CWE-601"
+    },
+    "aeropatch.python.redos-nested-quantifier": {
+      "headline": "A long, crafted piece of text could freeze your app",
+      "what_could_happen": "A text pattern here (a regular expression, used to check or search text) can take an enormous time on some inputs. One crafted entry could keep the app busy for minutes, so nobody else gets served.",
+      "when_it_matters": "Only if text from users or the internet is checked against this pattern, and the app needs to keep answering other people.",
+      "the_change": "The usual change rewrites the pattern so it cannot try huge numbers of combinations, or limits how long the text may be before it is checked.",
+      "try_yourself": [
+        "Find which field or input this pattern checks.",
+        "Type about 40 copies of the same letter followed by a symbol like ! into it: the app should answer within a second."
+      ],
+      "cwe": "CWE-1333"
+    },
+    "aeropatch.python.weak-password-hash": {
+      "headline": "If your user list leaks, most passwords could be worked out quickly",
+      "what_could_happen": "Passwords are stored with a fast scrambling method. If someone copies the stored list, an ordinary computer can try millions of guesses a second and recover most passwords, which also opens other sites where people reuse them.",
+      "when_it_matters": "If the app stores passwords for real people, even a few. It matters most for passwords people may also use elsewhere.",
+      "the_change": "The usual change uses a slow method made for passwords, such as bcrypt, scrypt or PBKDF2, with a random extra value per user. Existing users' passwords may need moving over at their next login.",
+      "try_yourself": [
+        "After the change, create a new account and check you can log in.",
+        "Check that existing users can still log in, or have a way to reset their password."
+      ],
+      "cwe": "CWE-328"
+    },
+    "aeropatch.python.exception-in-response": {
+      "headline": "Error messages could show strangers how your app works inside",
+      "what_could_happen": "When something goes wrong, the app sends the raw error text back to the visitor. It can reveal file paths, database details or settings that help someone plan an attack.",
+      "when_it_matters": "Only if people other than you use the app, for example on the internet.",
+      "the_change": "The usual change shows the visitor a short general message and writes the full error to a log that only you can read.",
+      "try_yourself": [
+        "Make a request fail, for example with a missing or odd value: the page should show a short message, not code details.",
+        "Check that the full error still appears in your own log or terminal."
+      ],
+      "cwe": "CWE-209"
+    },
+    "aeropatch.python.tar-extract-unfiltered": {
+      "headline": "A crafted archive could write files anywhere on this computer",
+      "what_could_happen": "The app unpacks a .tar archive without checking where each file inside goes. A crafted archive can place files outside the target folder, for example replacing your program's own files or settings.",
+      "when_it_matters": "Only if the archive can come from someone else, for example an upload or a download.",
+      "the_change": "The usual change uses Python's built-in data filter when unpacking, which refuses entries that point outside the target folder. AeroPatch's suggested changes for this kind of problem are often wrong, so read this one with care.",
+      "try_yourself": [
+        "Find where the archive comes from: your own build, or users and the internet?",
+        "After the change, unpack a normal archive and check all its files arrive."
+      ],
+      "cwe": "CWE-22"
+    },
+    "aeropatch.python.xxe-external-entities": {
+      "headline": "A crafted XML file could make your app read files from this computer",
+      "what_could_happen": "The XML reader is set to follow links to other files and web addresses inside the document. A crafted file could make the app copy a private file, such as settings or keys, into its output.",
+      "when_it_matters": "Only if the XML can come from someone else, for example an upload, a web request or a partner's data feed.",
+      "the_change": "The usual change turns the external-link setting off again, so the reader treats the document as plain data and ignores links to other files.",
+      "try_yourself": [
+        "Find where the XML comes from: your own files, or users and other systems?",
+        "After the change, load a normal XML file and check the app reads it as before."
+      ],
+      "cwe": "CWE-611"
+    },
+    "aeropatch.python.hardcoded-credential": {
+      "headline": "If this is a real password or key, anyone with this code has it",
+      "what_could_happen": "A password, key or token seems to be written straight into the code. Anyone who sees the code, for example on GitHub, could copy it and use your accounts, data or paid services.",
+      "when_it_matters": "Only if it is a real value, not a placeholder like changeme. It matters most if this code was ever shared, uploaded or put online.",
+      "the_change": "Step 1: first change the key or password at the service that issued it, because editing the code does not undo an exposure. Step 2: move the value out of the code into an environment variable, a setting kept outside your files.",
+      "try_yourself": [
+        "Check whether this is a real password or key, or only an example or label.",
+        "Log in to the service that issued it and look for activity you did not do.",
+        "After the change, run the app and check it still connects."
+      ],
+      "cwe": "CWE-798"
+    },
+    "aeropatch.python.csrf-missing-check": {
+      "headline": "Another website could make your logged-in users act without knowing",
+      "what_could_happen": "This form action does not check a hidden token that proves the request came from your own page. A different website could secretly send the same request while a user is logged in, for example to change their email.",
+      "when_it_matters": "Only if users log in to the app in a browser and the action changes something, such as settings, orders or money.",
+      "the_change": "The usual change adds a hidden token to your own forms and rejects any request that does not send the matching token back.",
+      "try_yourself": [
+        "After the change, check that every form on your site that changes something still works.",
+        "Ask someone technical to send the request without the token: it should be refused."
+      ],
+      "cwe": "CWE-352"
+    },
+    "aeropatch.python.csrf-check-skippable": {
+      "headline": "Another website could skip your form check just by leaving out the token",
+      "what_could_happen": "The app checks the hidden form token only when the request includes one. A different website can simply leave it out, and the request goes through as if the logged-in user had sent it.",
+      "when_it_matters": "Only if users log in to the app in a browser and the action changes something, such as settings, orders or money.",
+      "the_change": "The usual change makes the token required: a request without it, or with a wrong one, is rejected.",
+      "try_yourself": [
+        "After the change, check that your own forms still work.",
+        "Ask someone technical to send the request with the token left out: it should be refused."
+      ],
+      "cwe": "CWE-352"
+    },
+    "aeropatch.python.unchecked-quantity": {
+      "headline": "Someone could order a negative or huge amount and upset your totals",
+      "what_could_happen": "A number such as a quantity or amount is taken from the request and used without checking its range. Entering -5 or a billion could give refunds, free items or broken totals.",
+      "when_it_matters": "If users can type or send this number, for example in a shop basket, a booking or a payment form.",
+      "the_change": "The usual change checks that the number is within a sensible range, such as 1 to 100, and rejects anything outside it with a clear message.",
+      "try_yourself": [
+        "Enter -1 as the quantity: the app should refuse it.",
+        "Enter 0, then a huge number such as 999999999: both should be refused.",
+        "Check that a normal amount still works."
+      ],
+      "cwe": "CWE-20"
+    },
+    "aeropatch.python.insecure-random-secret": {
+      "headline": "Someone could guess the codes or tokens your app hands out",
+      "what_could_happen": "A security code, such as a login token, reset code or one-time password, comes from Python's ordinary random numbers. Those are predictable: after seeing a few codes, someone could work out the next ones.",
+      "when_it_matters": "If these codes protect anything, such as logins, password resets or private links.",
+      "the_change": "The usual change uses Python's secrets module, which is made for unguessable codes, instead of the random module.",
+      "try_yourself": [
+        "Find what this code is used for: a game or a test, or a login, reset or private link?",
+        "After the change, request a few codes and check they still work as before."
+      ],
+      "cwe": "CWE-338"
+    },
+    "aeropatch.python.weak-integrity-digest": {
+      "headline": "Someone could swap a file for a different one with the same fingerprint",
+      "what_could_happen": "The app checks files or data with MD5 or SHA-1, old fingerprint methods. Someone can craft two different files with the same fingerprint, so a harmful file could pass the check as a good one.",
+      "when_it_matters": "Only if someone else could supply or change the data being checked, for example downloads, uploads or updates. For spotting accidental damage alone it matters much less.",
+      "the_change": "The usual change uses a newer fingerprint method, such as SHA-256. Fingerprints you already stored may need to be worked out again with the new method.",
+      "try_yourself": [
+        "Find what this check protects: accidental damage only, or files from other people?",
+        "After the change, check that a normal file still passes the check."
+      ],
+      "cwe": "CWE-327"
+    },
+    "aeropatch.python.keyed-hash-without-hmac": {
+      "headline": "Someone could forge your app's signatures without knowing the secret key",
+      "what_could_happen": "The app signs messages by scrambling the secret key and the message together in a plain way. With common methods, someone who sees one signed message can add text to it and make a valid signature without the key.",
+      "when_it_matters": "If the signature protects anything others could change, such as links, cookies, tokens or messages between programs.",
+      "the_change": "The usual change uses HMAC, a standard way to sign with a key that comes with Python, in place of the plain scrambling.",
+      "try_yourself": [
+        "Find what these signatures protect, such as login cookies, download links or messages.",
+        "After the change, check that newly signed links or cookies are accepted. Old ones may stop working."
+      ],
+      "cwe": "CWE-327"
+    },
+    "aeropatch.python.dynamic-import-deserialization": {
+      "headline": "A crafted file or message could make your app run any Python code",
+      "what_could_happen": "The app reads a module and function name from the data it is decoding, then loads and calls it. A crafted file could name something harmful, such as a function that runs commands on this computer.",
+      "when_it_matters": "Only if the data can come from someone else, for example an upload, a download or a network message.",
+      "the_change": "The usual change keeps a short list of the names the app expects and refuses any name that is not on it.",
+      "try_yourself": [
+        "Find where this data comes from: your own program, or users and the internet?",
+        "After the change, load a normal file and check every expected kind of item still works."
+      ],
+      "cwe": "CWE-502"
+    },
+    "aeropatch.python.html-escape-misses-quotes": {
+      "headline": "Someone could slip their own script into your pages using a quote mark",
+      "what_could_happen": "A home-made cleaning function turns < and > into codes but leaves quote marks alone. Text placed inside a link, image or form setting can then break out with a quote and add a script that runs in visitors' browsers.",
+      "when_it_matters": "If text from users can reach this page, especially inside a link, image or form field, and other people view the page.",
+      "the_change": "The usual change uses Python's built-in html.escape, which also turns quote marks into codes, in place of the home-made function.",
+      "try_yourself": [
+        "Type a name containing a double quote mark into a field this page shows: it should appear as typed, with the page layout unchanged.",
+        "Check that names with < or & still show correctly."
+      ],
+      "cwe": "CWE-79"
+    },
+    "aeropatch.python.url-prefix-allowlist": {
+      "headline": "Someone could get past your allowed-sites list with a look-alike web address",
+      "what_could_happen": "The app trusts a web address because its text starts with an allowed site. An address like https://example.com.evil.net passes that test but leads somewhere else, even to private machines.",
+      "when_it_matters": "Only if users can give the app a web address to fetch, download or forward, and the list of allowed sites is meant to block the rest.",
+      "the_change": "The usual change reads the address properly, takes out the real site name and compares that exactly with the allowed list. AeroPatch's suggested changes for this kind of problem are often wrong, so read this one with care.",
+      "try_yourself": [
+        "Give the app an allowed address with .evil.net added right after the site name: it should refuse.",
+        "Check that a normal allowed address still works."
+      ],
+      "cwe": "CWE-918"
+    },
+    "B104": {
+      "headline": "Your app may be open to every device on your network, not just you",
+      "what_could_happen": "The app listens on 0.0.0.0, which means every network connection on this computer. Other people on the same Wi-Fi, or on the internet if the computer is exposed, could open it.",
+      "when_it_matters": "If you run the app on a shared network, such as office, cafe or school Wi-Fi, or on a server. Inside a container this is often needed and expected.",
+      "the_change": "The usual change listens on 127.0.0.1, which means only this computer, unless you really need other devices to reach the app.",
+      "try_yourself": [
+        "While the app runs, open it from another device on the same Wi-Fi: after the change it should not load.",
+        "Check that it still opens on this computer."
+      ],
+      "cwe": "CWE-605"
+    },
+    "B105": {
+      "headline": "If this is a real password or key, anyone with this code has it",
+      "what_could_happen": "A password seems to be written straight into the code as text. Anyone who sees the code, for example on GitHub, could copy it. Bandit often flags harmless names and labels too, so check first.",
+      "when_it_matters": "Only if it is a real password or key, not a placeholder or example. It matters most if this code was ever shared, uploaded or put online.",
+      "the_change": "Step 1: first change the key or password at the service that issued it, because editing the code does not undo an exposure. Step 2: move the value out of the code into an environment variable, a setting kept outside your files.",
+      "try_yourself": [
+        "Check whether this is a real password or key, or only an example or label.",
+        "Log in to the service that issued it and look for activity you did not do.",
+        "After the change, run the app and check it still connects."
+      ],
+      "cwe": "CWE-259"
+    },
+    "B106": {
+      "headline": "If this is a real password or key, anyone with this code has it",
+      "what_could_happen": "A password seems to be typed straight into a function call in the code. Anyone who sees the code, for example on GitHub, could copy it. Bandit often flags harmless labels too, so check first.",
+      "when_it_matters": "Only if it is a real password or key, not a placeholder or example. It matters most if this code was ever shared, uploaded or put online.",
+      "the_change": "Step 1: first change the key or password at the service that issued it, because editing the code does not undo an exposure. Step 2: move the value out of the code into an environment variable, a setting kept outside your files.",
+      "try_yourself": [
+        "Check whether this is a real password or key, or only an example or label.",
+        "Log in to the service that issued it and look for activity you did not do.",
+        "After the change, run the app and check it still connects."
+      ],
+      "cwe": "CWE-259"
+    },
+    "B107": {
+      "headline": "If this is a real password or key, anyone with this code has it",
+      "what_could_happen": "A password seems to be the default value of a function, used whenever no other password is given. Anyone who sees the code could copy it. Bandit often flags harmless defaults too, so check first.",
+      "when_it_matters": "Only if it is a real password or key, not a placeholder or example. It matters most if this code was ever shared, uploaded or put online.",
+      "the_change": "Step 1: first change the key or password at the service that issued it, because editing the code does not undo an exposure. Step 2: move the value out of the code into an environment variable, a setting kept outside your files.",
+      "try_yourself": [
+        "Check whether this is a real password or key, or only an example or label.",
+        "Log in to the service that issued it and look for activity you did not do.",
+        "After the change, run the app and check it still logs in."
+      ],
+      "cwe": "CWE-259"
+    },
+    "B108": {
+      "headline": "Other users on this computer could read or swap your temporary files",
+      "what_could_happen": "The app always uses the same file name in a shared temporary folder such as /tmp. Another user or program on the same machine could read it, or put a file there first so your app uses theirs.",
+      "when_it_matters": "Only on computers or servers shared with other users or programs you do not trust. On a personal laptop it matters much less.",
+      "the_change": "The usual change uses Python's tempfile module, which picks a fresh, hard-to-guess name that only your user account can open.",
+      "try_yourself": [
+        "Check whether this app runs on a shared computer or server.",
+        "After the change, run the app and check it still creates and reads its temporary files."
+      ],
+      "cwe": "CWE-377"
+    },
+    "B201": {
+      "headline": "Anyone who reaches your app could run code on this computer",
+      "what_could_happen": "The Flask app runs with debug mode on. When an error happens, its debug page can let a visitor type and run Python code on your computer, which means control of the app and its files.",
+      "when_it_matters": "If anyone other than you can reach the app, for example on the internet or a shared Wi-Fi. On your own computer while building, debug mode is normal.",
+      "the_change": "The usual change turns debug mode off for anything others can reach, often by reading it from a setting so you can still switch it on while building.",
+      "try_yourself": [
+        "Make a page fail on purpose: you should see a short error, not a page full of code.",
+        "Check how you start the app on the server: debug should be off there."
+      ],
+      "cwe": "CWE-94"
+    },
+    "B301": {
+      "headline": "A crafted pickle file could run its own code on this computer",
+      "what_could_happen": "The app loads data with pickle, Python's own save format. A pickle file can carry instructions, so a crafted one could take over the app and anything it can reach.",
+      "when_it_matters": "Only if the file or data can come from someone else: an upload, a download, a network message or a shared folder.",
+      "the_change": "The usual change stores the data in a plain format such as JSON, which holds only text, numbers and lists, or loads pickles only from files your own program wrote.",
+      "try_yourself": [
+        "Find where this data comes from: your own program, or users and the internet?",
+        "After the change, load a file the app normally uses and check it still works."
+      ],
+      "cwe": "CWE-502"
+    },
+    "B307": {
+      "headline": "Text typed into your app could be run as Python code",
+      "what_could_happen": "eval runs a piece of text as Python code. If any of that text comes from a user, they could run their own code, for example to read files, delete data or take over the computer.",
+      "when_it_matters": "Only if the text can come from a user, a file or the internet. Text written only by you in the code is a much smaller worry.",
+      "the_change": "The usual change uses a reader that accepts only plain values, such as numbers, text and lists, or replaces eval with ordinary code.",
+      "try_yourself": [
+        "If a field feeds this, type __import__('os').getcwd() into it: the app should refuse, not show a folder name.",
+        "Check that normal input still works."
+      ],
+      "cwe": "CWE-78"
+    },
+    "B310": {
+      "headline": "A crafted web address could make your app open files on this computer",
+      "what_could_happen": "urlopen accepts more than web links: an address starting with file:// opens a file on this computer. If a user can choose the address, they could make the app read private files.",
+      "when_it_matters": "Only if the address can come from a user, a file or another website.",
+      "the_change": "The usual change checks that the address starts with http:// or https:// before opening it, and refuses anything else.",
+      "try_yourself": [
+        "If a field feeds this address, enter file:///etc/hosts, or file:///C:/Windows/win.ini on Windows: the app should refuse.",
+        "Check that a normal https:// address still works."
+      ],
+      "cwe": "CWE-22"
+    },
+    "B324": {
+      "headline": "Someone could fake data checked with this old fingerprint method",
+      "what_could_happen": "MD5 and SHA-1 are old ways to make a short fingerprint of data. If they protect passwords, signatures or file checks, someone can fake or crack them. For naming files or caches it is harmless.",
+      "when_it_matters": "Only if the fingerprint protects something: passwords, logins, signatures or files from other people. Using it to name files or spot duplicates matters much less.",
+      "the_change": "For protection, the usual change uses SHA-256, or a slow password method for passwords. For other uses, it marks the call as not used for protection, which also quiets this warning.",
+      "try_yourself": [
+        "Find what this fingerprint is used for: protection, or just naming and comparing?",
+        "After the change, check that anything stored with the old fingerprint still works, or is made again."
+      ],
+      "cwe": "CWE-327"
+    },
+    "B501": {
+      "headline": "Someone on the network could read or change what your app sends",
+      "what_could_happen": "The app turns off certificate checking (verify=False), the check that proves a website is who it says. Someone on the same network could pose as that site and read or change passwords and data.",
+      "when_it_matters": "Whenever the app talks to another server over a network you do not fully control, such as public Wi-Fi, the internet or a cloud network.",
+      "the_change": "The usual change removes verify=False so the check is on again. If the server uses its own certificate, the change points the app to that certificate file instead.",
+      "try_yourself": [
+        "After the change, run the app and check it still connects to the server.",
+        "If it fails with a certificate error, ask the server's owner for its certificate file."
+      ],
+      "cwe": "CWE-295"
+    },
+    "B506": {
+      "headline": "A crafted YAML file could run its own code on this computer",
+      "what_could_happen": "yaml.load can build any Python object the file asks for. A crafted settings or data file could use that to run commands with the app's rights.",
+      "when_it_matters": "Only if the YAML can come from someone else, for example an upload, a download or a shared folder.",
+      "the_change": "The usual change switches to the YAML loader that builds only plain text, numbers, lists and tables, never program objects.",
+      "try_yourself": [
+        "Find where this YAML comes from: your own files, or users and the internet?",
+        "After the change, load your usual YAML file and check the settings still come through."
+      ],
+      "cwe": "CWE-20"
+    },
+    "B602": {
+      "headline": "Text from a user could become extra commands on this computer",
+      "what_could_happen": "The app runs a command through the computer's command prompt (shell=True). If any part of it comes from a user, they could add their own commands, for example to delete files or copy data.",
+      "when_it_matters": "Only if part of the command comes from a user, a file or the web. A command made only of words you typed in the code is a much smaller worry.",
+      "the_change": "The usual change passes the program and its words as a list without the command prompt, so symbols like ; or && stay plain text.",
+      "try_yourself": [
+        "Find where the command's text comes from and whether a user can change it.",
+        "If a form feeds this command, type test; echo hello into it: the page should not show hello on its own line."
+      ],
+      "cwe": "CWE-78"
+    },
+    "B605": {
+      "headline": "A command line built from user text could run extra commands",
+      "what_could_happen": "os.system and similar calls hand a whole line of text to the command prompt. If part of it comes from a user, they could add their own commands, for example to delete files or copy data.",
+      "when_it_matters": "Only if part of the command comes from a user, a file or the web. A command made only of words you typed in the code is a much smaller worry.",
+      "the_change": "The usual change runs the program with a list of separate words instead of one line through the command prompt, so symbols like ; or && are not read as new commands.",
+      "try_yourself": [
+        "Find where the command's text comes from and whether a user can change it.",
+        "If a form feeds this command, type test; echo hello into it: the page should not show hello on its own line."
+      ],
+      "cwe": "CWE-78"
+    },
+    "B608": {
+      "headline": "Someone could run their own database commands through a form or search box",
+      "what_could_happen": "A database command is built by joining pieces of text. If any piece comes from a user, a crafted entry could show every record, change data or delete it. Bandit sometimes flags harmless text too.",
+      "when_it_matters": "If any part of the command can come from outside: a form, a web address, an uploaded file or another program. Values you wrote yourself in the code are a smaller worry.",
+      "the_change": "The usual change passes the user's text to the database separately, as a parameter, so the database treats it as plain data and never as part of the command.",
+      "try_yourself": [
+        "Type a single quote ' into the search box: the app should show no error page.",
+        "Type ' OR '1'='1 into a login or search field: you should see no extra records."
+      ],
+      "cwe": "CWE-89"
+    },
+    "aeropatch.extra.header-injection": {
+      "headline": "Someone could add their own lines to your app's replies by sending crafted text",
+      "what_could_happen": "Text from a request is copied into a reply header. A line break hidden in that text starts a new header or even a new page, so someone could set cookies or show their own content to other people.",
+      "when_it_matters": "If the value can come from a visitor, for example a web address parameter, and the reply goes to other people's browsers.",
+      "the_change": "The usual change removes carriage returns and line breaks from the value before it goes into the header, or refuses the request when it has them.",
+      "try_yourself": [
+        "Send the request with %0d%0aX-Test:%20yes added to the value: the reply should not contain an X-Test header.",
+        "After the change, check that normal values still appear."
+      ],
+      "cwe": "CWE-113"
+    },
+    "aeropatch.extra.path-traversal-taint": {
+      "headline": "Someone could read any file on this computer by sending a crafted file name",
+      "what_could_happen": "A file name from a web request reaches a file open. A name like ../../settings.txt climbs out of the intended folder, so someone could read passwords, settings or other users' files.",
+      "when_it_matters": "If the app is reachable by people you do not fully trust, and the folder sits on a computer with other files worth reading.",
+      "the_change": "The usual change keeps only the last part of the name, or works out the full path and refuses any name that ends up outside the intended folder.",
+      "try_yourself": [
+        "Request a file name with ../ in front of it: the app should refuse instead of showing a file.",
+        "After the change, check that normal file names still open."
+      ],
+      "cwe": "CWE-22"
+    },
+    "aeropatch.extra.code-injection-taint": {
+      "headline": "Someone could run their own Python code inside your app",
+      "what_could_happen": "Text from a web request is run as Python code. Whoever sends the request could read your files and passwords, change data, or take over the computer the app runs on.",
+      "when_it_matters": "Whenever the app can be reached by anyone other than you. This is one of the most serious kinds of problem.",
+      "the_change": "The usual change stops running the text as code. If the text should be a number or a simple value, it is read with int(), float() or ast.literal_eval instead.",
+      "try_yourself": [
+        "Find which request field reaches this line.",
+        "Send __import__('os').getcwd() in that field: the app should refuse it instead of answering with a folder name."
+      ],
+      "cwe": "CWE-94"
+    },
+    "aeropatch.extra.decompression-bomb": {
+      "headline": "A small crafted upload could use up all of your app's memory",
+      "what_could_happen": "Compressed data from a request is unpacked with no size limit. A file of a few kilobytes can unpack to gigabytes, so one request could stop the app or the whole computer.",
+      "when_it_matters": "If people you do not fully trust can send compressed data to the app, and the app needs to keep running for others.",
+      "the_change": "The usual change unpacks with a size limit, for example zlib.decompressobj().decompress(data, limit), and refuses data that would grow past it.",
+      "try_yourself": [
+        "Note the largest upload a real user sends.",
+        "After the change, send a small file that unpacks to far more than that: the app should refuse it quickly."
+      ],
+      "cwe": "CWE-409"
+    },
+    "aeropatch.extra.unbounded-body-read": {
+      "headline": "One large request could use up all of your app's memory",
+      "what_could_happen": "The app reads the whole request body at whatever length the sender claims. One request claiming gigabytes could make the app run out of memory and stop answering everyone.",
+      "when_it_matters": "If the app can be reached by people you do not fully trust and needs to keep answering others.",
+      "the_change": "The usual change sets a largest allowed body size and refuses a request that claims more before reading anything.",
+      "try_yourself": [
+        "Decide the largest body a real user ever sends.",
+        "After the change, send a request with a much larger Content-Length: the app should refuse it at once."
+      ],
+      "cwe": "CWE-400"
+    },
+    "aeropatch.extra.jwt-decode-unverified": {
+      "headline": "Someone could sign in as any user with a home-made login token",
+      "what_could_happen": "A login token is read without checking its signature, or the token itself chooses how it is checked. Someone could write a token naming any user, including an administrator, and the app would accept it.",
+      "when_it_matters": "If these tokens decide who a person is or what they may do in your app.",
+      "the_change": "The usual change always checks the signature and names the one algorithm your app uses, for example jwt.decode(token, key, algorithms=[\"HS256\"]).",
+      "try_yourself": [
+        "Change one character in the last part of a real token and send it: the app should refuse it.",
+        "After the change, check that normal sign-in still works."
+      ],
+      "cwe": "CWE-347"
+    },
+    "regexploit.redos": {
+      "headline": "A long, crafted piece of text could freeze your app",
+      "what_could_happen": "A text pattern here (a regular expression, used to check or search text) can take an enormous time on some inputs. One crafted entry could keep the app busy for minutes, so nobody else gets served.",
+      "when_it_matters": "Only if text from users or the internet is checked against this pattern, and the app needs to keep answering other people.",
+      "the_change": "The usual change rewrites the pattern so it cannot try huge numbers of combinations, or limits how long the text may be before it is checked.",
+      "try_yourself": [
+        "Find which field or input this pattern checks.",
+        "Type about 40 copies of the same letter followed by a symbol like ! into it: the app should answer within a second."
+      ],
+      "cwe": "CWE-1333"
+    }
+  }
+}

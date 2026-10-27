@@ -93,13 +93,15 @@ def check(originals: dict[str, str], changed: dict[str, str], allowed_paths: lis
             flag("SUPPRESSES_CHECKS", f"{path} adds a check-suppression marker")
         if not path.endswith(".py"):
             continue
+        # A UTF-8 BOM reaches here as U+FEFF, which ast.parse rejects on a str; Python itself accepts
+        # the file. No benchmark file has one; Windows editors still write them (doc 17 part 4 §4).
         try:
-            new_tree = ast.parse(after)
+            new_tree = ast.parse(after.removeprefix("﻿"))
         except SyntaxError as e:
             flag("SYNTAX_ERROR", f"{path}:{e.lineno}: {e.msg}")
             continue
         try:
-            old_tree = ast.parse(before)
+            old_tree = ast.parse(before.removeprefix("﻿"))
         except SyntaxError:
             continue
         gone = _symbols(old_tree) - _symbols(new_tree)

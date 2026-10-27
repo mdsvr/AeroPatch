@@ -1,0 +1,158 @@
+{
+  "model": "ministral-3:3b",
+  "size": 3168041696,
+  "size_vram": 3168041696,
+  "fully_on_gpu": true,
+  "peak_gpu_mib": 3883,
+  "first_load_s": 22.7,
+  "median_tok_s": 68.0,
+  "thinking_seen": 0,
+  "parses": 13,
+  "applies": 13,
+  "n": 13,
+  "rows": [
+    {
+      "id": "A-022-01",
+      "error": "",
+      "load_s": 22.7,
+      "tok_s": 68.3,
+      "out_tokens": 73,
+      "thinking_chars": 0,
+      "think_tag": false,
+      "parses": true,
+      "applies": true
+    },
+    {
+      "id": "A-022-02",
+      "error": "",
+      "load_s": 0.01,
+      "tok_s": 67.4,
+      "out_tokens": 168,
+      "thinking_chars": 0,
+      "think_tag": false,
+      "parses": true,
+      "applies": true
+    },
+    {
+      "id": "A-078-01",
+      "error": "",
+      "load_s": 0.01,
+      "tok_s": 68.4,
+      "out_tokens": 89,
+      "thinking_chars": 0,
+      "think_tag": false,
+      "parses": true,
+      "applies": true
+    },
+    {
+      "id": "A-078-02",
+      "error": "",
+      "load_s": 0.01,
+      "tok_s": 67.8,
+      "out_tokens": 107,
+      "thinking_chars": 0,
+      "think_tag": false,
+      "parses": true,
+      "applies": true
+    },
+    {
+      "id": "A-079-01",
+      "error": "",
+      "load_s": 0.01,
+      "tok_s": 68.5,
+      "out_tokens": 103,
+      "thinking_chars": 0,
+      "think_tag": false,
+      "parses": true,
+      "applies": true
+    },
+    {
+      "id": "A-089-01",
+      "error": "",
+      "load_s": 0.01,
+      "tok_s": 68.7,
+      "out_tokens": 57,
+      "thinking_chars": 0,
+      "think_tag": false,
+      "parses": true,
+      "applies": true
+    },
+    {
+      "id": "A-089-02",
+      "error": "",
+      "load_s": 0.01,
+      "tok_s": 67.2,
+      "out_tokens": 58,
+      "thinking_chars": 0,
+      "think_tag": false,
+      "parses": true,
+      "applies": true
+    },
+    {
+      "id": "A-1333-01",
+      "error": "",
+      "load_s": 0.01,
+      "tok_s": 68.8,
+      "out_tokens": 56,
+      "thinking_chars": 0,
+      "think_tag": false,
+      "parses": true,
+      "applies": true
+    },
+    {
+      "id": "A-209-01",
+      "error": "",
+      "load_s": 0.01,
+      "tok_s": 68.3,
+      "out_tokens": 63,
+      "thinking_chars": 0,
+      "think_tag": false,
+      "parses": true,
+      "applies": true
+    },
+    {
+      "id": "A-328-01",
+      "error": "",
+      "load_s": 0.0,
+      "tok_s": 68.0,
+      "out_tokens": 131,
+      "thinking_chars": 0,
+      "think_tag": false,
+      "parses": true,
+      "applies": true
+    },
+    {
+      "id": "A-502-01",
+      "error": "",
+      "load_s": 0.0,
+      "tok_s": 67.5,
+      "out_tokens": 144,
+      "thinking_chars": 0,
+      "think_tag": false,
+      "parses": true,
+      "applies": true
+    },
+    {
+      "id": "A-601-01",
+      "error": "",
+      "load_s": 0.0,
+      "tok_s": 67.9,
+      "out_tokens": 156,
+      "thinking_chars": 0,
+      "think_tag": false,
+      "parses": true,
+      "applies": true
+    },
+    {
+      "id": "A-918-01",
+      "error": "",
+      "load_s": 0.01,
+      "tok_s": 67.8,
+      "out_tokens": 80,
+      "thinking_chars": 0,
+      "think_tag": false,
+      "parses": true,
+      "applies": true
+    }
+  ]
+}

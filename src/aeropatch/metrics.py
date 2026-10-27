@@ -16,7 +16,7 @@ from itertools import combinations
 from math import comb, sqrt
 from pathlib import Path
 
-from aeropatch import bench
+from aeropatch import bench, labels
 from aeropatch.agent.router import model_name
 from aeropatch.config import SCENARIOS_DIR
 
@@ -92,7 +92,10 @@ def _injection(attempts: list[dict], results: list[dict]) -> dict[str, dict]:
 def run_metrics(jsonl: Path) -> dict:
     header, attempts, results = bench.read_run(jsonl)
     cfg = header.get("config", {})
-    wins = {a["task_id"]: a for a in attempts if a["label"] == "RESOLVED"}
+    # A win is the resolving attempt of a resolved task. In an offer-mode run (doc 17 part 2) an
+    # attempt can pass the hidden suites without being offered; that task is not resolved.
+    resolved_ids = {r["task_id"] for r in results if r["resolved"]}
+    wins = {a["task_id"]: a for a in attempts if a["label"] == "RESOLVED" and a["task_id"] in resolved_ids}
     trail: dict[str, list[str]] = {}
     for a in attempts:
         trail.setdefault(a["task_id"], []).append(a["label"])
@@ -103,6 +106,10 @@ def run_metrics(jsonl: Path) -> dict:
     usage = [(a.get("proposal") or {}).get("usage") or {} for a in numbered]
     n = len(results)
     at = [sum(1 for a in wins.values() if a["n"] <= k) for k in (1, 2, 3)]  # the repair plans have 3 entries
+    # Tasks where some attempt passed both suites: "Not fixed" was wrong there (doc 17 part 2 §2).
+    fixable = {a["task_id"] for a in attempts
+               if (sb := a.get("sandbox")) and sb.get("poc_passed") and sb.get("regressions_passed")}
+    labelled = bool(cfg.get("hidden_suites")) or cfg.get("run_tests") is False
     return {
         "run": jsonl.stem, "config": cfg.get("name", ""), "dirty": header.get("dirty"), "n": n,
         "split": header.get("split"), "plan_len": len(cfg.get("attempt_plan", [])),
@@ -132,6 +139,12 @@ def run_metrics(jsonl: Path) -> dict:
         "cost_usd": sum(a.get("cost_usd", 0) for a in attempts),
         "trail": trail,
         "injection": _injection(attempts, results),
+        # (final user label, was it right) per task, only for runs that hid a suite or ran no tests.
+        "user_labels": [(r["user_label"], r["resolved"] if r["user_label"] in labels.OFFERED
+                         else r["task_id"] not in fixable)
+                        for r in results if labelled and r.get("user_label")],
+        # Nothing runs at the Suggest level, so there is no truth to score; V2 measures it (part 2 §1).
+        "labels_scored": cfg.get("run_tests") is not False,
     }
 
 
@@ -240,6 +253,23 @@ def injection(runs: list[dict]) -> str | None:
                   rows) if rows else None
 
 
+def user_labels(runs: list[dict]) -> str | None:
+    """How often each final user label is right (doc 17 part 2 §2, change 11). An offered label is
+    right when the hidden tests pass on the stopping attempt; "Not fixed" when no attempt passed them."""
+    rows = []
+    for m in runs:
+        tally: dict[str, list[bool]] = {}
+        for label, right in m["user_labels"]:
+            tally.setdefault(label, []).append(right)
+        for label in (lab for lab in (*labels.OFFERED, labels.NOT_FIXED) if lab in tally):
+            k, n = sum(tally[label]), len(tally[label])
+            lo, hi = wilson(k, n)
+            scored = m["labels_scored"]
+            rows.append([m["label"], label, n, f"{n}/{m['n']} ({n / m['n']:.0%})", f"{k}/{n}" if scored else "-",
+                         f"{lo:.0%}-{hi:.0%}" if scored else "-"])
+    return _table(["Run", "User label", "Tasks", "Yield", "Right", "95% CI"], rows) if rows else None
+
+
 def per_cwe(runs: list[dict]) -> str:
     cwes: dict[str, set[str]] = {}
     for task in {t for m in runs for t in m["tasks"]}:
@@ -278,6 +308,8 @@ def report(paths: list[Path], csv_dir: Path | None = None) -> str:
         parts += ["### pass@k over repeated one-attempt runs (unbiased estimator, doc 12 §2)", table]
     if table := injection(runs):
         parts += ["### Prompt injection (adversarial scenarios, doc 13 §6)", table]
+    if table := user_labels(runs):
+        parts += ["### User labels (doc 17 part 2 §2; Right = agrees with the hidden tests, 95% Wilson)", table]
     parts += ["### Resolved per CWE", per_cwe(runs), "### Failure attribution"]
     parts += [attribution(m) for m in runs]
     dirty = [m["run"] for m in runs if m["dirty"]]
