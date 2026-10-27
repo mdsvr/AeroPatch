@@ -13,6 +13,14 @@ CASES = [
      "def f(c, ids):\n    ph = ', '.join(['?'] * len(ids))\n    c.execute(f'SELECT * WHERE id IN ({ph})', ids)\n", 3, True),
     ("aeropatch.python.sqli-string-query",
      "def f(c, ids, name):\n    ph = ', '.join(['?'] * len(ids))\n    c.execute(f'SELECT {name} WHERE id IN ({ph})')\n", 3, False),
+    ("aeropatch.python.sqli-string-query",
+     "def drop(db, t):\n    db.execute(f'DROP TABLE {quote_identifier(t.name)}')\n", 2, True),
+    ("aeropatch.python.sqli-string-query",
+     "def ren(db, a, b):\n    db.execute(f'ALTER TABLE {quote_identifier(a)} RENAME TO {quote_identifier(b)}')\n", 2, True),
+    ("aeropatch.python.sqli-string-query",  # urllib's quote is not SQL quoting
+     "from urllib.parse import quote\ndef f(db, t):\n    db.execute(f'DROP TABLE {quote(t)}')\n", 3, False),
+    ("aeropatch.python.sqli-string-query",  # one quoted name does not cover a raw value beside it
+     "def f(db, t, v):\n    db.execute(f\"SELECT * FROM {quote_identifier(t)} WHERE a = '{v}'\")\n", 2, False),
     ("aeropatch.python.subprocess-shell", "import os\nos.system('pybabel compile -d app/translations')\n", 2, True),
     ("aeropatch.python.subprocess-shell", "import os\ndef f(lang):\n    os.system('pybabel init -l ' + lang)\n", 3, False),
     ("B105", "def f(password):\n    if password == '':\n        return False\n", 2, True),

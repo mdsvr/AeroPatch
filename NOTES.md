@@ -2550,7 +2550,9 @@ Apache-2.0 and fit the GPU with room to spare. On AeroPatch's own task, neither 
   1,024-token budget.
 - Runs `20261027-{e1-granite,rl-granite,rl-minicpm5,rl-qwen}-*-dev`; E0 files in
   `docs/results/model-mix/`.
-- Both models are still in the Ollama store on F: (3.8 GB). F: has 2.1 GB free.
+- Both models, and gemma4:e2b-it-qat, were removed from the Ollama store afterwards (2026-10-27), which
+  left F: with 9.7 GB free. Installing the staged Ollama 0.40.11 from here was refused again; use
+  the tray icon's "Restart to update".
 
 ## Precision: known false-alarm shapes (point 2, 2026-10-27)
 
@@ -2593,7 +2595,18 @@ The shapes:
   vulnerable apps give 9 of the 14 real findings. On the 8 ordinary fresh repos it is 5 of 14.
 - On the tuning repos it is 37%, still under the bar.
 - The largest remaining false alarm is SQL f-strings built only from `quote_identifier(...)` calls:
-  sqlite-utils 0 of 5. A shape for it was not added, because it would be tuned on the fresh repos.
+  sqlite-utils 0 of 5.
+- **Added on 2026-10-27, at your request:** a shape for SQL f-strings built only from
+  identifier-quoting calls (`IDENTIFIER_QUOTERS`; urllib's `quote` is not one of them).
+  - It was written after seeing sqlite-utils, so the fresh repos are no evidence for it.
+  - The guards still hold on all 24 repos: no labelled-real finding is set aside, no held-out CVE
+    is lost, and the top five holds on 27 of 27.
+  - **It did not change precision: 24 shown, 14 real (58%) on the fresh repos, and 37% on the
+    tuning repos.** The five quoted-name cards were removed, but sqlite-utils' next five SQL
+    findings took their places: a random `secrets.token_hex` table name, and `quote_identifier`
+    passed through `.format()`. All were labelled false.
+  - So sqlite-utils needs either data-flow knowledge or more shapes, and each further shape would
+    be tuned on that repo. The next step is a new set of fresh repos to measure on.
 
 **Left for you:**
 1. Second labeller: go through `evaluations/detection/repo_labels.csv` and list where you disagree.
