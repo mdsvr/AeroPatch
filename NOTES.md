@@ -2530,6 +2530,30 @@ is unchanged.
    Docker stopped.
 5. **Open:** the review test with 6 people is yours to run.
 
+## Two newer small models screened (2026-10-27, Ollama 0.40.10)
+
+MiniCPM5-2B (OpenBMB, Sep 2026, `openbmb/minicpm5-2b`) and Granite 4.2 3B (IBM, Aug 2026,
+`granite4.2:3b`) both report about 69 on LiveCodeBench v6, against Qwen3.5-4B's 56. Both are
+Apache-2.0 and fit the GPU with room to spare. On AeroPatch's own task, neither comes close:
+
+| Model | Fully on GPU, peak | tok/s | Edits that parse / apply (dev, 13) | Resolved, 1 attempt | Resolved, `repair-local` (3) |
+|---|---|---|---|---|---|
+| qwen3.5:4b | yes, 2,995 MiB | 49 | 13 / 12 | 8 (2026-10-26) | **9** |
+| granite4.2:3b | yes, 2,841 MiB | 65 | 7 / 6 | 3 | 4 |
+| minicpm5-2b | yes, 1,921 MiB | 94 | **0 / 0** | not run | 4 |
+
+- **The losses are format failures, not wrong fixes.** MiniCPM5 writes the right change, but puts
+  REPLACE before SEARCH inside markdown fences. With `repair-local`'s format feedback it gets 4.
+  Granite fails the format on 7 of 13 even with that feedback.
+- Neither solves a dev task Qwen misses, so as a second model they add nothing.
+- Their vendor scores are almost certainly with thinking on; AeroPatch runs with it off and a
+  1,024-token budget.
+- Runs `20261027-{e1-granite,rl-granite,rl-minicpm5,rl-qwen}-*-dev`; E0 files in
+  `docs/results/model-mix/`.
+- Both models, and gemma4:e2b-it-qat, were removed from the Ollama store afterwards (2026-10-27), which
+  left F: with 9.7 GB free. Installing the staged Ollama 0.40.11 from here was refused again; use
+  the tray icon's "Restart to update".
+
 ## Precision: known false-alarm shapes (point 2, 2026-10-27)
 
 `src/aeropatch/false_alarms.py` sets aside, inside `check`'s triage, findings whose flagged statement
@@ -2571,7 +2595,18 @@ The shapes:
   vulnerable apps give 9 of the 14 real findings. On the 8 ordinary fresh repos it is 5 of 14.
 - On the tuning repos it is 37%, still under the bar.
 - The largest remaining false alarm is SQL f-strings built only from `quote_identifier(...)` calls:
-  sqlite-utils 0 of 5. A shape for it was not added, because it would be tuned on the fresh repos.
+  sqlite-utils 0 of 5.
+- **Added on 2026-10-27, at your request:** a shape for SQL f-strings built only from
+  identifier-quoting calls (`IDENTIFIER_QUOTERS`; urllib's `quote` is not one of them).
+  - It was written after seeing sqlite-utils, so the fresh repos are no evidence for it.
+  - The guards still hold on all 24 repos: no labelled-real finding is set aside, no held-out CVE
+    is lost, and the top five holds on 27 of 27.
+  - **It did not change precision: 24 shown, 14 real (58%) on the fresh repos, and 37% on the
+    tuning repos.** The five quoted-name cards were removed, but sqlite-utils' next five SQL
+    findings took their places: a random `secrets.token_hex` table name, and `quote_identifier`
+    passed through `.format()`. All were labelled false.
+  - So sqlite-utils needs either data-flow knowledge or more shapes, and each further shape would
+    be tuned on that repo. The next step is a new set of fresh repos to measure on.
 
 **Left for you:**
 1. Second labeller: go through `evaluations/detection/repo_labels.csv` and list where you disagree.

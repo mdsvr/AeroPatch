@@ -70,3 +70,27 @@ vulnpy,b81885e58283,default+filters-revised,2,finding,opengrep,aeropatch.python.
 vulnpy,b81885e58283,default+filters-revised,3,finding,opengrep,aeropatch.python.unsafe-deserialization,CWE-502,src/vulnpy/trigger/deserialization.py,8,return pickle.load(user_input),,real,
 vulnpy,b81885e58283,default+filters-revised,4,finding,bandit,B324,CWE-327,src/vulnpy/trigger/hash.py,19,h = hashlib.md5(),,real,
 vulnpy,b81885e58283,default+filters-revised,5,finding,bandit,B324,CWE-327,src/vulnpy/trigger/hash.py,24,h = hashlib.sha1(),,real,
+bakerydemo,c9b38d7a7170,default+identifiers,1,secret,opengrep,aeropatch.python.hardcoded-credential,CWE-798,bakerydemo/settings/base.py,25,,,real,
+bakerydemo,c9b38d7a7170,default+identifiers,2,secret,opengrep,aeropatch.python.hardcoded-credential,CWE-798,bakerydemo/settings/base.py,262,,,real,
+cli,5b604c37c6c6,default+identifiers,1,finding,bandit,B501,CWE-295,httpie/internal/update_warnings.py,44,"response = requests.get(PACKAGE_INDEX_LINK, verify=False)",,real,
+cli,5b604c37c6c6,default+identifiers,2,secret,bandit,B105,CWE-259,httpie/sessions.py,280,,,false,
+cli,5b604c37c6c6,default+identifiers,3,secret,bandit,B105,CWE-259,httpie/sessions.py,144,,,false,
+DSVW,9ca3c9acf3de,default+identifiers,1,finding,opengrep,aeropatch.python.unsafe-deserialization,CWE-502,dsvw.py,27,"content = str(pickle.loads(urllib.parse.unquote_to_bytes(re.search(r""(?:\A|[?&])object=([^&]+)"", query).group(1))))",,real,
+DSVW,9ca3c9acf3de,default+identifiers,2,finding,opengrep,aeropatch.python.sqli-string-query,CWE-89,dsvw.py,22,"cursor.execute(""SELECT id, username, name, surname FROM users WHERE id="" + params[""id""])",,real,
+DSVW,9ca3c9acf3de,default+identifiers,3,finding,opengrep,aeropatch.python.subprocess-shell,CWE-78,dsvw.py,31,"content = subprocess.run(""nslookup "" + params[""domain""], shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE, text=True, errors=",,real,
+DSVW,9ca3c9acf3de,default+identifiers,4,finding,opengrep,aeropatch.python.sqli-string-query,CWE-89,dsvw.py,42,"cursor.execute(""INSERT INTO comments VALUES(NULL, '%s', '%s')"" % (params[""comment""], time.ctime()))",,real,
+DSVW,9ca3c9acf3de,default+identifiers,5,finding,bandit,B314,CWE-20,dsvw.py,13,"global connection; http.server.HTTPServer.allow_reuse_address = True; connection = sqlite3.connect("":memory:"", isolation_level=None, check_same_thread=False); c",,false,
+flask-boilerplate,488e33624bf0,default+identifiers,1,secret,opengrep,aeropatch.python.hardcoded-credential,CWE-798,_updated/config/development/__init__.py,4,,,real,
+flask-boilerplate,488e33624bf0,default+identifiers,2,secret,opengrep,aeropatch.python.hardcoded-credential,CWE-798,config.py,11,,,real,
+records,ea4273695cee,default+identifiers,1,finding,opengrep,aeropatch.python.subprocess-shell,CWE-78,setup.py,41,"os.system(""{} setup.py sdist bdist_wheel --universal"".format(sys.executable))",,false,
+rich-cli,4e290258bde0,default+identifiers,1,finding,bandit,B307,CWE-78,src/rich_cli/__main__.py,597,inspect_data = eval(resource),,false,
+sqlite-utils,9c66bafa52ae,default+identifiers,1,finding,opengrep,aeropatch.python.sqli-string-query,CWE-89,sqlite_utils/db.py,1160,"self.conn.execute(f""create table {table_name} (name text) strict"")",,false,
+sqlite-utils,9c66bafa52ae,default+identifiers,2,finding,opengrep,aeropatch.python.sqli-string-query,CWE-89,sqlite_utils/db.py,1161,"self.conn.execute(f""drop table {table_name}"")",,false,table name is a random token or passes through quote_identifier via .format()
+sqlite-utils,9c66bafa52ae,default+identifiers,3,finding,opengrep,aeropatch.python.sqli-string-query,CWE-89,sqlite_utils/db.py,3897,self.db.execute(,,false,table name is a random token or passes through quote_identifier via .format()
+sqlite-utils,9c66bafa52ae,default+identifiers,4,finding,opengrep,aeropatch.python.sqli-string-query,CWE-89,sqlite_utils/db.py,1174,self.conn.execute(,,false,table name is a random token or passes through quote_identifier via .format()
+sqlite-utils,9c66bafa52ae,default+identifiers,5,finding,opengrep,aeropatch.python.sqli-string-query,CWE-89,sqlite_utils/db.py,1177,self.conn.execute(,,false,table name is a random token or passes through quote_identifier via .format()
+vulnpy,b81885e58283,default+identifiers,1,finding,opengrep,aeropatch.python.unsafe-deserialization,CWE-502,src/vulnpy/trigger/deserialization.py,12,"return pickle.loads(user_input.encode(""utf-8""))",,real,
+vulnpy,b81885e58283,default+identifiers,2,finding,opengrep,aeropatch.python.subprocess-shell,CWE-78,src/vulnpy/trigger/cmdi.py,6,return os.system(command),,real,
+vulnpy,b81885e58283,default+identifiers,3,finding,opengrep,aeropatch.python.unsafe-deserialization,CWE-502,src/vulnpy/trigger/deserialization.py,8,return pickle.load(user_input),,real,
+vulnpy,b81885e58283,default+identifiers,4,finding,bandit,B324,CWE-327,src/vulnpy/trigger/hash.py,19,h = hashlib.md5(),,real,
+vulnpy,b81885e58283,default+identifiers,5,finding,bandit,B324,CWE-327,src/vulnpy/trigger/hash.py,24,h = hashlib.sha1(),,real,

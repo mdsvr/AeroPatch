@@ -78,20 +78,36 @@ def _fixed_first_arg(calls: list[ast.Call]) -> bool:
 QMARKS = re.compile(r"""^\s*['"],\s*['"]\.join\(\s*\[\s*['"]\?['"]\s*\]\s*\*""")
 
 
+# Functions that quote an SQL identifier (a table or column name), so a value passed through one
+# cannot end the name and start new SQL. Added 2026-10-27 from sqlite-utils, where every one of
+# its 5 shown SQL findings was an f-string of quote_identifier(...) calls: the fresh repos are
+# spent as evidence for this shape. Plain `quote` is left out: urllib's quote is not SQL quoting.
+IDENTIFIER_QUOTERS = {"quote_identifier", "quote_ident", "quote_name", "escape_identifier", "quote_column",
+                      "quote_table"}
+
+
 def _only_placeholders(arg, src: _File, line: int) -> bool:
-    """An f-string whose every {name} was set, in the same function, to ', '.join(['?'] * n)."""
+    """An f-string whose every {...} is a name set, in the same function, to ', '.join(['?'] * n),
+    or a call to an SQL identifier-quoting function."""
     if not isinstance(arg, ast.JoinedStr):
         return False
     values = [v.value for v in arg.values if isinstance(v, ast.FormattedValue)]
-    if not values or not all(isinstance(v, ast.Name) for v in values):
+    if not values:
         return False
-    names = [v.id for v in values]
     fn = [n for n in ast.walk(src.tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
           and n.lineno <= line <= n.end_lineno]
     scope = fn[-1] if fn else src.tree
     bound = {t.id: ast.get_source_segment(src.text, n.value) or "" for n in ast.walk(scope)
              if isinstance(n, ast.Assign) for t in n.targets if isinstance(t, ast.Name)}
-    return all(QMARKS.match(bound.get(name, "")) for name in names)
+
+    def safe(v) -> bool:
+        if isinstance(v, ast.Name):
+            return bool(QMARKS.match(bound.get(v.id, "")))
+        if isinstance(v, ast.Call):
+            f = v.func
+            return (f.attr if isinstance(f, ast.Attribute) else getattr(f, "id", "")) in IDENTIFIER_QUOTERS
+        return False
+    return all(safe(v) for v in values)
 
 
 def _zip_names(tree: ast.AST) -> set[str]:
@@ -128,7 +144,8 @@ def reason(folder: Path, f: Finding, cache: dict) -> str | None:
         if _fixed_first_arg(calls):
             return "the SQL text is written out in full; no outside value is built into it"
         if calls and all(c.args and _only_placeholders(c.args[0], src, f.line) for c in calls):
-            return "only '?' placeholders are built into the SQL text; the values are passed separately"
+            return ("only '?' placeholders or quoted table and column names are built into the SQL text; "
+                    "the values are passed separately")
 
     if f.rule_id in SHELL_RULES:
         calls = _calls_on(stmt, f.line, {"system", "popen", "run", "call", "check_call", "check_output", "Popen"})
