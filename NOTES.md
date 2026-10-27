@@ -2504,13 +2504,24 @@ is unchanged.
      alternated on the same day (`20261027-c1-{1,2}-...`). 25 against 25 of 54, within the bar
      of 4. No task differs by majority.
    - "Scanner quiet, your tests still pass" was right 25 of 31 times through the folder path.
-2. **Not run.**
-   - `evaluations/tools/folder_setup.py` builds each of 1a's 10 repos and records the failure
-     class. The permission check refused to start it here, because it installs and runs those
-     repos' own build code.
-   - Command: `python evaluations/tools/folder_setup.py D:/aeropatch-repos --out
-     docs/results/folder-setup.json`. It needs Docker, takes about 10-20 minutes, and removes
-     each image after its result.
+2. **Run on 2026-10-27 at your request: 2 of 10 build and collect tests that pass twice**
+   (`docs/results/folder-setup.json`).
+   - Built and collected: cookiecutter (367 tests, none flaky) and tldr-python-client (30).
+   - Old pins that Python 3.12 cannot install (`OLD_PACKAGES`): DVPWA and flasky, whose pins
+     import `imp`.
+   - C extensions too old to compile on 3.12 (`BUILD_FAILED`): microblog (multidict) and
+     fastapi-realworld (asyncpg), even with gcc added.
+   - A hash mismatch from its `uv export` (`BUILD_FAILED`): full-stack-fastapi-template.
+   - `NO_TESTS`: PyGoat and vulpy have no pytest tests.
+   - `MISSING_TEST_PACKAGES`: buku's tests need `hypothesis` and `flask`, listed only in
+     `tox.ini` and an extra. The plan deliberately does not guess packages from imports.
+   - Three harness gaps found by the first pass were fixed before the final pass:
+     - `uv export` kept a local `-e ./backend` line.
+     - A missing gcc was not in the retry table.
+     - With a lock file the project itself was not installed, which cookiecutter's conftest
+       needed. Now the project is installed with its `test`/`tests`/`testing`/`dev` extras.
+   - Baseline logs are now kept as `baseline-1.log` and `baseline-2.log`.
+   - Every failure still leaves `check` and the Suggest level working.
 3. **Met.** `tests/test_folder.py` covers a CRLF + BOM file:
    - `apply` then `undo` gives byte-identical files, and nothing is written before `apply`.
    - `apply` refuses a file changed since the fix, and `undo` refuses one changed after apply.

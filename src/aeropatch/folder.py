@@ -32,14 +32,20 @@ MAX_STAGED_BYTES = 400 * 1024 * 1024
 TEST_GLOBS = ("tests/**/*.py", "test/**/*.py", "**/test_*.py", "**/*_test.py", "**/conftest.py")
 # Build-log text -> apt packages for one retry (doc 17 part 4 §2 step 4; grows from the failure log).
 NATIVE = {"pg_config": "libpq-dev gcc", "mysql_config": "default-libmysqlclient-dev gcc pkg-config",
-          "libxml/xmlversion.h": "libxml2-dev libxslt1-dev"}
+          "libxml/xmlversion.h": "libxml2-dev libxslt1-dev",
+          # From criterion 2's failure log (2026-10-27): old pins with no wheel for 3.12 compile C.
+          "No such file or directory: 'gcc'": "gcc"}
 MESSAGES = {
     "PYTHON_VERSION": "This project needs Python {detail}. AeroPatch's test sandbox has 3.12, so it can only scan "
                       "and suggest.",
     "NATIVE_PACKAGE": "A package needs extra system software AeroPatch could not install ({detail}). Scanning "
                       "still works.",
     "DEPENDENCY_CONFLICT": "Your requirements contradict each other, so they cannot all be installed.",
+    "OLD_PACKAGES": "Some pinned packages are older than Python 3.12 allows (they use a module 3.12 removed). "
+                    "Scanning still works.",
     "PRIVATE_INDEX": "Some packages come from a private server; AeroPatch does not send passwords into the sandbox.",
+    "MISSING_TEST_PACKAGES": "Your tests need packages your project files do not list ({detail}), so AeroPatch "
+                             "cannot run them. Adding them to a requirements file fixes this.",
     "NO_TESTS": "No tests found, so AeroPatch can check the warning but not your app's behaviour.",
     "NO_PASSING_TESTS": "None of your tests passed before any change, so AeroPatch cannot tell whether a change "
                         "breaks something.",
@@ -129,20 +135,29 @@ LOCAL_LINE = re.compile(r"^\s*(-e\b|--editable\b|\.\.?(/|$)|file:)")
 def dependency_plan(repo: Path, deps: Path) -> dict:
     """Doc 17 part 4 §2 step 3, first match wins. Writes deps/all.txt (and the files it includes);
     returns {"source": ..., "editable": bool}. Local and editable lines are dropped: the project
-    is not in the image yet at that layer."""
+    is not in the image yet at that layer. A project file means the project itself is installed
+    after the copy, with its usual test extras: on 2026-10-27 cookiecutter's conftest needed its
+    package metadata, and buku's tests needed `hypothesis` from its `tests` extra."""
+    plan = _dependency_files(repo, deps)
+    project = (repo / "pyproject.toml").is_file() or (repo / "setup.py").is_file()
+    return {**plan, "editable": project}
+
+
+def _dependency_files(repo: Path, deps: Path) -> dict:
     deps.mkdir(parents=True, exist_ok=True)
     if (repo / "uv.lock").is_file():
         out = subprocess.run(["uv", "export", "--frozen", "--no-emit-project", "--format", "requirements-txt"],
                              cwd=repo, capture_output=True, text=True, encoding="utf-8", check=False)
-        if out.returncode == 0:
-            (deps / "all.txt").write_text(out.stdout, encoding="utf-8")
+        if out.returncode == 0:  # workspace members come out as `-e ./member`: not in the image yet
+            kept = [line for line in out.stdout.splitlines() if not LOCAL_LINE.match(line)]
+            (deps / "all.txt").write_text("\n".join(kept) + "\n", encoding="utf-8")
             return {"source": "uv.lock", "editable": False}
     if (repo / "Pipfile.lock").is_file():
         data = json.loads((repo / "Pipfile.lock").read_text(encoding="utf-8"))
         lines = [f"{name}{meta['version']}" for section in ("default", "develop")
                  for name, meta in data.get(section, {}).items() if isinstance(meta, dict) and meta.get("version")]
         (deps / "all.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
-        return {"source": "Pipfile.lock", "editable": False}
+        return {"source": "Pipfile.lock"}
     files = sorted(repo.glob("requirements*.txt")) + sorted((repo / "requirements").glob("*.txt"))
     if files:
         for f in files:  # keep relative paths, so `-r other.txt` inside them still resolves
@@ -153,17 +168,19 @@ def dependency_plan(repo: Path, deps: Path) -> dict:
             (deps / rel).write_text("\n".join(kept) + "\n", encoding="utf-8")
         top = [f for f in files if f.parent == repo] or files
         (deps / "all.txt").write_text("".join(f"-r {f.relative_to(repo).as_posix()}\n" for f in top), encoding="utf-8")
-        return {"source": ", ".join(f.relative_to(repo).as_posix() for f in files), "editable": False}
+        return {"source": ", ".join(f.relative_to(repo).as_posix() for f in files)}
     (deps / "all.txt").write_text("", encoding="utf-8")
     if (repo / "pyproject.toml").is_file() or (repo / "setup.py").is_file():
-        return {"source": "pip install .[test]", "editable": True}
-    return {"source": "none", "editable": False}
+        return {"source": "the project's own metadata"}
+    return {"source": "none"}
 
 
 # --------------------------------------------------------------------------- image
 
 
 def _classify_build(log: str) -> FolderError:
+    if re.search(r"No module named '(imp|distutils|asynchat|asyncore|smtpd)'", log):
+        return FolderError("OLD_PACKAGES")
     if "ResolutionImpossible" in log or "conflicting dependencies" in log:
         return FolderError("DEPENDENCY_CONFLICT")
     if re.search(r"\b(401|403)\b", log) and re.search(r"index-url|Unauthorized|Forbidden", log, re.IGNORECASE):
@@ -214,6 +231,9 @@ def _baseline_failure(logs: str) -> FolderError | None:
         return FolderError("NEEDS_SERVICE")
     if re.search(r"KeyError: '[A-Z_]+'|ImproperlyConfigured", log):
         return FolderError("NEEDS_SETTINGS")
+    missing = sorted(set(re.findall(r"ModuleNotFoundError: No module named '([\w.]+)'", log)))
+    if missing:  # buku's tests need hypothesis and flask, listed only in tox.ini (2026-10-27)
+        return FolderError("MISSING_TEST_PACKAGES", ", ".join(m.split(".")[0] for m in missing[:5]))
     if rc == "5":
         return FolderError("NO_TESTS")
     return None
@@ -248,9 +268,10 @@ def prepare(folder: Path, extra: dict[str, Path] | None = None, rebuild: bool = 
     _build(ctx, tag, base / "build.log", args)
 
     runs = []
-    for _ in range(2):  # doc 17 part 4 §3: baseline twice, before any edit
+    for i in range(2):  # doc 17 part 4 §3: baseline twice, before any edit
         with Workspace(repo) as ws:
             _, logs, timed_out, _ = sandbox.run_container(tag, None, ws.src)
+        (base / f"baseline-{i + 1}.log").write_text(logs, encoding="utf-8")
         if timed_out:
             raise FolderError("TOO_SLOW")
         runs.append(logs)

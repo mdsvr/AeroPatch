@@ -18,7 +18,7 @@ COPY repo /opt/scenario/repo
 ARG EDITABLE=""
 RUN --mount=type=secret,id=ca,required=false \
     if [ -n "$EDITABLE" ]; then cd /tmp && cp -r /opt/scenario/repo /tmp/build && \
-        (pip install "/tmp/build[test]" || pip install /tmp/build) && rm -rf /tmp/build; fi
+        (pip install "/tmp/build[test,tests,testing,dev]" || pip install /tmp/build) && rm -rf /tmp/build; fi
 COPY extra/ /opt/scenario/
 COPY folder_run.sh folder_runner.py /opt/folder/
 RUN chmod -R a-w /opt/scenario && chmod 555 /opt/folder/folder_run.sh /opt/folder/folder_runner.py

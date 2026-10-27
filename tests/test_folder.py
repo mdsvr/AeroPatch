@@ -94,7 +94,8 @@ def test_stage_leaves_out_environments_caches_and_env_files(tmp_path, proj):
      "requirements-dev.txt, requirements.txt", False),
     ({"requirements/base.txt": "flask\n"}, "requirements/base.txt", False),
     ({"Pipfile.lock": '{"default": {"flask": {"version": "==3.0.0"}}, "develop": {}}'}, "Pipfile.lock", False),
-    ({"pyproject.toml": "[project]\nname='x'\n"}, "pip install .[test]", True),
+    ({"pyproject.toml": "[project]\nname='x'\n"}, "the project's own metadata", True),
+    ({"pyproject.toml": "[project]\nname='x'\n", "requirements.txt": "flask==3.0\n"}, "requirements.txt", True),
     ({}, "none", False),
 ])
 def test_dependency_plan(tmp_path, files, source, editable):
@@ -105,7 +106,7 @@ def test_dependency_plan(tmp_path, files, source, editable):
     repo.mkdir(exist_ok=True)
     plan = folder.dependency_plan(repo, tmp_path / "deps")
     assert plan == {"source": source, "editable": editable}
-    if "requirements.txt" in files:
+    if "requirements-dev.txt" in files:
         assert (tmp_path / "deps" / "requirements.txt").read_text().split() == ["flask==3.0"]  # local lines dropped
         assert (tmp_path / "deps" / "all.txt").read_text().split("\n")[:2] == ["-r requirements-dev.txt",
                                                                                "-r requirements.txt"]
@@ -133,6 +134,8 @@ def test_python_version_check(tmp_path, name, text, excluded):
     ("ERROR: ResolutionImpossible: ...", "DEPENDENCY_CONFLICT"),
     ("--index-url https://pkgs.corp/simple ... 401 Unauthorized", "PRIVATE_INDEX"),
     ("Error: pg_config executable not found.", "NATIVE_PACKAGE"),
+    ("ModuleNotFoundError: No module named 'imp'", "OLD_PACKAGES"),
+    ("error: [Errno 2] No such file or directory: 'gcc'", "NATIVE_PACKAGE"),
     ("something else broke", "BUILD_FAILED"),
 ])
 def test_build_failures_are_named(log, kind):
@@ -143,6 +146,7 @@ def test_build_failures_are_named(log, kind):
     ("5", "no tests ran", "NO_TESTS"), ("124", "", "TOO_SLOW"),
     ("1", "psycopg2.OperationalError: could not connect to server: Connection refused ... port 5432", "NEEDS_SERVICE"),
     ("1", "KeyError: 'DATABASE_URL'", "NEEDS_SETTINGS"),
+    ("2", "E   ModuleNotFoundError: No module named 'hypothesis'", "MISSING_TEST_PACKAGES"),
 ])
 def test_baseline_failures_are_named(rc, log, kind):
     logs = f"===AEROPATCH-RC-regression===\n{rc}\n===AEROPATCH-LOG-regression===\n{log}\n===AEROPATCH-END===\n"

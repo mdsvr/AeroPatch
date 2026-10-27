@@ -1,0 +1,67 @@
+[
+  {
+    "repo": "buku",
+    "result": "MISSING_TEST_PACKAGES",
+    "message": "Your tests need packages your project files do not list (flask, hypothesis), so AeroPatch cannot run them. Adding them to a requirements file fixes this.",
+    "seconds": 24,
+    "reclassified": "from NO_PASSING_TESTS after the run, from its saved baseline log"
+  },
+  {
+    "repo": "cookiecutter",
+    "result": "built and collected",
+    "tests_passing_twice": 367,
+    "flaky": 0,
+    "note": "dependencies from uv.lock; 367 tests passed twice",
+    "seconds": 77
+  },
+  {
+    "repo": "dvpwa",
+    "result": "OLD_PACKAGES",
+    "message": "Some pinned packages are older than Python 3.12 allows (they use a module 3.12 removed). Scanning still works.",
+    "seconds": 13
+  },
+  {
+    "repo": "fastapi-realworld-example-app",
+    "result": "BUILD_FAILED",
+    "message": "AeroPatch could not install this project's dependencies in its sandbox. Scanning still works.",
+    "seconds": 107
+  },
+  {
+    "repo": "flasky",
+    "result": "OLD_PACKAGES",
+    "message": "Some pinned packages are older than Python 3.12 allows (they use a module 3.12 removed). Scanning still works.",
+    "seconds": 13
+  },
+  {
+    "repo": "full-stack-fastapi-template",
+    "result": "BUILD_FAILED",
+    "message": "AeroPatch could not install this project's dependencies in its sandbox. Scanning still works.",
+    "seconds": 53
+  },
+  {
+    "repo": "microblog",
+    "result": "BUILD_FAILED",
+    "message": "AeroPatch could not install this project's dependencies in its sandbox. Scanning still works.",
+    "seconds": 42
+  },
+  {
+    "repo": "pygoat",
+    "result": "NO_TESTS",
+    "message": "No tests found, so AeroPatch can check the warning but not your app's behaviour.",
+    "seconds": 33
+  },
+  {
+    "repo": "tldr-python-client",
+    "result": "built and collected",
+    "tests_passing_twice": 30,
+    "flaky": 0,
+    "note": "dependencies from requirements.txt; 30 tests passed twice",
+    "seconds": 19
+  },
+  {
+    "repo": "vulpy",
+    "result": "NO_TESTS",
+    "message": "No tests found, so AeroPatch can check the warning but not your app's behaviour.",
+    "seconds": 15
+  }
+]
