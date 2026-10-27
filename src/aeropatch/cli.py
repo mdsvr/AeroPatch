@@ -76,7 +76,7 @@ def cmd_remediate(args) -> int:
 
 def cmd_bench(args) -> int:
     cfg = load_config(args.config, local_model=args.local_model, frontier_model=args.frontier_model)
-    path = bench.run_benchmark(cfg, args.split, args.run_id, args.ids or None, args.jobs)
+    path = bench.run_benchmark(cfg, args.split, args.run_id, args.ids or None, args.jobs, folder=args.folder)
     print(metrics.report([path]))
     return 0
 
@@ -143,6 +143,67 @@ def cmd_prune(args) -> int:
     from aeropatch.sandbox import sandbox
 
     print(f"removed {sandbox.prune_leftovers()} leftover containers")
+    if args.images:
+        from aeropatch import folder
+
+        print(f"removed {folder.prune_images()} folder images")
+    return 0
+
+
+def cmd_fix(args) -> int:
+    from aeropatch import folder as fp
+    from aeropatch.models.base import LocalServerDown
+
+    folder = _folder(args.folder)
+    if folder is None:
+        return 2
+    try:
+        rec = fp.fix(folder, args.n, level="suggest" if args.suggest else "auto", extra_rules=args.extra_rules)
+    except (IndexError, ValueError, fp.FolderError) as e:
+        print(f"Could not fix problem {args.n}: {e}", file=sys.stderr)
+        return 2
+    except LocalServerDown:
+        print("The local model is not running. `aeropatch doctor` shows how to start it.", file=sys.stderr)
+        return 2
+    print(f"{rec['n']}. {rec['headline']}")
+    for note in rec["notes"]:
+        print(f"   {note}")
+    print(f"   Result: {rec['label']}")
+    if rec["diff"]:
+        print("\n" + rec["diff"])
+        print(f"Nothing in your folder has changed yet. To make this change: aeropatch apply {args.folder} "
+              f"{rec['n']}")
+    return 0
+
+
+def cmd_apply(args) -> int:
+    from aeropatch import folder as fp
+
+    folder = _folder(args.folder)
+    if folder is None:
+        return 2
+    try:
+        backup = fp.apply(folder, args.n)
+    except (FileNotFoundError, ValueError) as e:
+        print(f"Could not apply fix {args.n}: {e}", file=sys.stderr)
+        return 2
+    print(f"Applied fix {args.n}. The original files are kept in {backup}; `aeropatch undo {args.folder} {args.n}` "
+          "puts them back.")
+    return 0
+
+
+def cmd_undo(args) -> int:
+    from aeropatch import folder as fp
+
+    folder = _folder(args.folder)
+    if folder is None:
+        return 2
+    try:
+        fp.undo(folder, args.n)
+    except (FileNotFoundError, ValueError) as e:
+        print(f"Could not undo fix {args.n}: {e}", file=sys.stderr)
+        return 2
+    print(f"Undid fix {args.n}: the files are as they were before it.")
     return 0
 
 
@@ -187,6 +248,8 @@ def main(argv: list[str] | None = None) -> int:
             s.add_argument("--ids", nargs="*")
             s.add_argument("--jobs", type=int, default=1, choices=(1, 2),
                            help="tasks run at once; local generation stays one at a time (doc 11 §8)")
+            s.add_argument("--folder", action="store_true",
+                           help="run each scenario through the `fix` path: folder image, baseline, hidden PoC")
         s.add_argument("--local-model", default=None)
         s.add_argument("--frontier-model", default=None)
         s.set_defaults(fn=fn)
@@ -222,7 +285,21 @@ def main(argv: list[str] | None = None) -> int:
     s.set_defaults(fn=cmd_dismiss)
 
     sub.add_parser("mcp", help="serve the tools over MCP on stdio (doc 06)").set_defaults(fn=cmd_mcp)
-    sub.add_parser("prune", help="remove leftover sandbox containers").set_defaults(fn=cmd_prune)
+    s = sub.add_parser("prune", help="remove leftover sandbox containers")
+    s.add_argument("--images", action="store_true", help="also remove folder images (each about 1-1.5 GB)")
+    s.set_defaults(fn=cmd_prune)
+    s = sub.add_parser("fix", help="propose a change for one problem of the last check; your folder is not touched")
+    s.add_argument("folder")
+    s.add_argument("n", type=int, help="the problem's number in the check")
+    s.add_argument("--suggest", action="store_true", help="do not run your tests (no Docker needed)")
+    s.add_argument("--extra-rules", action="store_true", help="the check ran with --extra-rules")
+    s.set_defaults(fn=cmd_fix)
+    for name, fn, hlp in (("apply", cmd_apply, "make the proposed change in your folder, keeping a backup"),
+                          ("undo", cmd_undo, "put back the files an apply changed")):
+        s = sub.add_parser(name, help=hlp)
+        s.add_argument("folder")
+        s.add_argument("n", type=int, help="the problem's number")
+        s.set_defaults(fn=fn)
 
     args = p.parse_args(argv)
     return args.fn(args)

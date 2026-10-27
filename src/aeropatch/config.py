@@ -121,6 +121,9 @@ CONFIGS: dict[str, dict] = {
     # first message for CWE-22, 328 and 918 (prompts.FIX_RECIPES). Compared with repair-local-v1 on test.
     "repair-local-v1-recipes": {"attempt_plan": ["local", "local", "local"], "hidden_suites": ["poc"],
                                 "rescan_feedback": True, "fix_recipes": True},
+    # Doc 17 part 4 §1: the product config of `fix` at the Test level. It is V1's loop, so V1's
+    # label precision is what users get; the folder path is checked against V1 on the benchmark.
+    "fix-local": {"attempt_plan": ["local", "local", "local"], "hidden_suites": ["poc"], "rescan_feedback": True},
     # The Suggest level: V2's loop with no sandbox, so a user without Docker gets V2's numbers.
     "suggest-local": {"attempt_plan": ["local", "local", "local"], "hidden_suites": ["poc", "regression"],
                       "rescan_feedback": True, "run_tests": False},

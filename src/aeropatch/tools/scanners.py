@@ -13,6 +13,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 from aeropatch.config import ROOT, RULES_DIR
@@ -113,7 +114,18 @@ def rule_hits(repo: Path, finding: Finding) -> list[int] | None:
     None when no re-scan applies (an advisory finding, or the scanner is missing or failed)."""
     if finding.tool == "opengrep":
         # A finding of the extra rules is re-scanned with them; any other is re-scanned as before.
-        findings = run_opengrep(repo, targets=[finding.path], extra=finding.rule_id.startswith(EXTRA_PREFIX))
+        extra = finding.rule_id.startswith(EXTRA_PREFIX)
+        data = (repo / finding.path).read_bytes() if (repo / finding.path).is_file() else b""
+        if data.startswith(b"\xef\xbb\xbf"):
+            # Opengrep 1.30.0 reads every string in a file with a UTF-8 BOM as an f-string, so the SQL
+            # rule fired on a correct parameterised fix (2026-10-27). Scan a BOM-free copy, same lines.
+            with tempfile.TemporaryDirectory() as tmp:
+                copy = Path(tmp) / finding.path
+                copy.parent.mkdir(parents=True, exist_ok=True)
+                copy.write_bytes(data[3:])
+                findings = run_opengrep(Path(tmp), targets=[finding.path], extra=extra)
+        else:
+            findings = run_opengrep(repo, targets=[finding.path], extra=extra)
     elif finding.tool == "bandit":
         findings = run_bandit(repo, targets=[finding.path])
     else:
