@@ -1,0 +1,41 @@
+{
+  "_note": "Shown to participants. Expected answers are in answer_key.json, which the app never reads.",
+  "cards": [
+    {
+      "id": "card1",
+      "title": "Card 1 of 4: Login query built from user input",
+      "warning": "AeroPatch found a risk that someone could type into the username box and change the database query. This is called SQL injection.",
+      "before": "def check_login(conn, username, password):\n    pw_hash = hash_password(password)\n    c = conn.cursor()\n    c.execute(\"SELECT id FROM users WHERE username = '{}' AND password_hash = '{}'\".format(username, pw_hash))\n    return c.fetchone()",
+      "after": "def check_login(conn, username, password):\n    pw_hash = hash_password(password)\n    c = conn.cursor()\n    c.execute(\"SELECT id FROM users WHERE username = ? AND password_hash = ?\", (username, pw_hash))\n    return c.fetchone()",
+      "scanner_after": "No warning on this line after the change.",
+      "note": "The username and password are now sent to the database separately from the query. Valid logins work as before."
+    },
+    {
+      "id": "card2",
+      "title": "Card 2 of 4: Login query built from user input",
+      "warning": "AeroPatch found a risk that someone could type into the username box and change the database query. This is called SQL injection.",
+      "before": "def check_login(conn, username, password):\n    # users can log in with a username or an email address\n    pw_hash = hash_password(password)\n    c = conn.cursor()\n    c.execute(\"SELECT id FROM users WHERE username = '{}' AND password_hash = '{}'\".format(username, pw_hash))\n    return c.fetchone()",
+      "after": "def check_login(conn, username, password):\n    # users can log in with a username or an email address\n    pw_hash = hash_password(password)\n    username = username.split(\"@\")[0]\n    c = conn.cursor()\n    c.execute(\"SELECT id FROM users WHERE username = ? AND password_hash = ?\", (username, pw_hash))\n    return c.fetchone()",
+      "scanner_after": "No warning on this line after the change.",
+      "note": "The change applies the same parameter fix as card 1, plus one extra line."
+    },
+    {
+      "id": "card3",
+      "title": "Card 3 of 4: Command built from an option value",
+      "warning": "AeroPatch found a command that is run through the system shell with a value built into it. If that value came from a user, they could add their own commands.",
+      "before": "def run_report(options):\n    return subprocess.run(build_command(options), shell=True)",
+      "after": null,
+      "scanner_after": "Not fixed. The warning stays.",
+      "note": "AeroPatch could not tell whether options can come from a user, so it did not change this code."
+    },
+    {
+      "id": "card4",
+      "title": "Card 4 of 4: Secret in the code",
+      "warning": "AeroPatch found what looks like a password or key written directly in the code.",
+      "before": "# config.py\nSECRET_KEY = \"change-me-to-a-long-random-value\"",
+      "after": null,
+      "scanner_after": "If this is a real password or key, anyone who can read this code can use it. Replace it with a value read from an environment variable, and change the old value, because it is already in the code history. If it is only a placeholder, you can ignore this warning.",
+      "note": null
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "_note": "Facilitator only. Never served by app.py. card2 is the plausible-but-wrong fix: the scanner is silent, but the change breaks login by email address.",
+  "card1": {"expected": "apply", "why": "parameterised query; behaviour unchanged"},
+  "card2": {"expected": "reject", "why": "the split on @ breaks login by email address; the scanner being silent proves nothing"},
+  "card3": {"expected": "reject", "why": "warning kept; no change should be applied without knowing the source of options"},
+  "card4": {"expected": "change", "why": "a real key must leave the code and be rotated"},
+  "risk_sentence": {
+    "about": "card1",
+    "counts_as_restated": "names a concrete risk in plain words, such as: someone can type into the login box and read or change the database, or log in as another user. Vague answers such as 'it is insecure' or 'it could break' do not count."
+  }
+}
