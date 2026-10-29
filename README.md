@@ -9,6 +9,9 @@ on a contamination-controlled benchmark.
 
 Status: **complete (2026-10-16)**: four weeks, final runs, security checklist and
 [write-up](docs/writeup.md) done ([plan](docs/14-timeline-part5.md), [NOTES.md](NOTES.md)).
+Since then ([doc 17](docs/17-easy-use-part1.md)): it checks and fixes **your own Python project**, from
+the terminal or from a **local page** (`uv run aeropatch ui`, 2026-10-29) that shows every step
+live. See [Use it on your own project](#use-it-on-your-own-project).
 Outputs are **candidate fixes that need human review**.
 
 ## Results
@@ -121,6 +124,127 @@ visible, 43% on test with none. Opengrep and Bandit find none of the 10 real CVE
 of 10 within 3 lines of the advisory). The library `qwen3.5:4b` build d8b0f5e9760c ties the export
 (38 against 38 of 54). Runs in [runs/INDEX.md](runs/INDEX.md), details in `NOTES.md`.
 
+## Use it on your own project
+
+```powershell
+uv sync
+uv run aeropatch ui        # opens the local page in your browser
+```
+
+The page runs on your computer only. Paste a folder path or a public GitHub link, or press
+**Choose folder**, then **Check**. A strip at the top says which of the three levels are ready:
+**Check** needs nothing else, **Suggest** needs Ollama with `qwen3.5:4b`, and **Test** needs Docker.
+
+![The check: a status strip for the three levels, the folder, and each step of the check](docs/images/ui-check.png)
+
+Tick the problems the local model should fix and press **Fix selected**. The live view shows each try
+as it happens:
+
+- what the model was given;
+- its thinking, if you turn on **Show thinking**;
+- its answer as it is written;
+- the 8 safety gates;
+- each of your tests as it finishes in the sandbox;
+- the re-scan;
+- the exact feedback it gets before the next try.
+
+Click any earlier try to look at it again.
+
+![Live view: the local model thinking about a path traversal fix, try 2 of 3](docs/images/ui-live-thinking.png)
+
+| A try that broke 3 of your 5 tests, and the feedback the model got | The Models section |
+|---|---|
+| ![Try 1: gates passed, three tests failed, the feedback for try 2](docs/images/ui-try-feedback.jpg) | ![Models: local servers, Claude Code, and paid APIs with a key field](docs/images/ui-models.jpg) |
+
+If the local model gives up, the problem can go to **another model**. You see exactly what would be
+sent first, with the secrets check and an estimated cost. Your choices are:
+
+- Claude through your Claude Code subscription;
+- another local model;
+- any OpenAI-compatible API, or Anthropic's API;
+- any AI chat: copy the request in, then paste its answer back.
+
+Every answer goes through the same gates, sandbox and re-scan. **Apply** backs up the files first,
+and **Undo** restores them byte for byte. A GitHub link gets a `.patch` file instead.
+
+![Hand-off: the choices, the exact text, the secrets check and the cost](docs/images/ui-handoff.png)
+
+### How it fits together
+
+![Architecture: browser, local server, job queue, check, fix loop, local models, sandbox; only four dashed arrows leave the laptop](docs/images/ui-architecture.svg)
+
+Only the dashed arrows leave the laptop:
+
+- a GitHub link is downloaded;
+- package versions go to osv.dev, while that box is ticked;
+- a hand-off goes out only after you have seen the preview and ticked the box to send it;
+- you copy a request into another AI tool yourself.
+
+The first fix in a project also builds its sandbox once, which downloads the project's packages.
+After that, your tests run with the network off, your code read-only, no special rights, 2 GB of
+memory, 2 CPUs, 256 processes and 5 minutes.
+
+One fix, step by step:
+
+```mermaid
+flowchart LR
+    A["What it reads<br/>the code around the finding"] --> B["Model writes<br/>a plan and SEARCH/REPLACE edits"]
+    B --> C{"8 safety gates"}
+    C -- "a gate fails" --> F["Feedback for<br/>the next try"]
+    C -- "all pass" --> D["Sandbox:<br/>your tests, network off"]
+    D --> E{"Tests pass and<br/>the scanner is quiet?"}
+    E -- "no" --> F
+    E -- "yes" --> G["Offered to you:<br/>Apply · Skip · .patch"]
+    F -- "up to 3 tries" --> B
+    F -- "the local model gave up" --> H["Hand-off after a preview:<br/>Claude Code, an API, any AI chat"]
+    H --> C
+```
+
+### What a real run looked like (2026-10-29)
+
+The demo used two benchmark scenarios laid out like a user's folder, each with its own tests. Each
+also has a hidden attack test that the page never shows; it was read afterwards to check the result.
+
+| Run | What happened |
+|---|---|
+| Check | A folder took 2.9 s. A GitHub link ([vulpy](https://github.com/fportantier/vulpy)) was downloaded in 2.1 s: 57 Python files, 5 problems. |
+| Local fix, SQL injection (A-089-03) | Try 1 passed the gates but broke 3 of 5 tests: the query had the wrong number of parameters. With that feedback, try 2 passed every check and was offered. |
+| Apply, then Undo | The file changed. Undo restored the same SHA-256 as before. |
+| Local fix, path traversal (A-022-03), thinking on | 3 tries. Each passed 8 of 8 gates and 6 of 6 tests, and the scanner still flagged the line each time. Nothing was offered. |
+| Hand-off to Claude Opus 5.5 via Claude Code | 7,212 characters sent after the preview, and the secrets check passed. It answered in 13 s with tarfile's `data` filter: 8 of 8 gates, 6 of 6 tests, scanner quiet. The hidden attack test passed 3 of 3. |
+
+![After the hand-off: three local tries, then Claude's fix, offered with Apply, Skip and .patch](docs/images/ui-handoff-fixed.png)
+
+### Models
+
+Every first try uses the free local model. For a hand-off, the **Models** section sets up the rest.
+Almost every provider now serves the OpenAI-compatible chat API, so one client covers them all.
+
+| Where | Models | Cost |
+|---|---|---|
+| On this computer | Ollama (any model you have pulled), LM Studio, llama.cpp server, vLLM, Jan | Free |
+| Your Claude plan | Claude through Claude Code (`claude -p`) | In your plan, no API key |
+| Paid APIs, your key | Anthropic, OpenAI, Google Gemini, Mistral, DeepSeek, xAI, Groq, Together AI, OpenRouter, Hugging Face | Per token, billed by the provider |
+| Anything else | Any server with an OpenAI-compatible `/chat/completions` (https, or localhost) | Yours |
+| By hand | Any AI chat: copy the request, paste the answer back | Free |
+
+Keys are saved only in `.env`, which git ignores, and are sent only to their own provider's address.
+The page shows only a key's last 4 characters. Ollama's cloud models (`name:cloud`) run on Ollama's
+servers, so they are left out of the local list.
+
+The hit rates above ("right 25 of 34 times") were measured for the local model. A hand-off's label
+is not measured.
+
+The terminal does the same without the page:
+
+| Command | What it does |
+|---|---|
+| `aeropatch doctor` | Says which levels are ready, and how to fix what is missing |
+| `aeropatch check <folder>` | Read-only check: up to five problems, explained |
+| `aeropatch fix <folder> <n>` | Makes a fix for problem n. Your folder is not touched. |
+| `aeropatch apply <folder> <n>` / `undo` | Writes the fix after a backup, or puts the exact old files back |
+| `aeropatch dismiss <folder> <n> --reason ...` | Hides a problem from later checks |
+
 ## Model
 
 - **Weights**: `Qwen/Qwen3.5-4B` (Apache-2.0), unchanged. Exported through the same merge and GGUF
@@ -197,8 +321,12 @@ generation stays one at a time).
 `uv run` does not load `.env` automatically: use `uv run --env-file .env ...` to pass
 `ANTHROPIC_API_KEY`. `OLLAMA_HOST` in that file overrides the local model endpoint.
 
+For your own project rather than the benchmark, start with `uv run aeropatch ui`
+([Use it on your own project](#use-it-on-your-own-project)). The plan for that page, with a mock of
+every screen, is [docs/17-ui-page-plan.html](docs/17-ui-page-plan.html).
+
 Other commands: `aeropatch scan <repo>`, `aeropatch context <repo> <path> <line>`,
-`aeropatch build-base`, `aeropatch prune`. Nothing in the CLI commits, pushes or opens pull
+`aeropatch build-base`, `aeropatch prune`. Nothing in AeroPatch commits, pushes or opens pull
 requests.
 
 MCP: `uv run aeropatch mcp` serves `scan`, `get_context`, `validate` and `remediate` over stdio
@@ -291,13 +419,21 @@ LoRA on Qwen3.5-4B (r 16, alpha 16, 16-bit base, not QLoRA) with Unsloth on one 
   Desktop. Speed and memory numbers are for that machine.
 - **Fine-tuning did not help**: 541 examples written by others lost, and 144 of the model's own
   verified fixes tied. A larger dataset was not tried.
+- **On your own code, finding the bug is the bottleneck**: the scanners find none of the 10 real
+  CVEs. A fix is only as good as the warning it starts from. The re-scan can also keep flagging a
+  fix it does not recognise, or go quiet after one that is wrong, so read every change.
+- **The local page's labels were measured for the local model.** A hand-off to another model
+  shows the same label, and how often that label is right has not been measured.
 
 ## Layout
 
 | Path | What |
 |---|---|
 | `src/aeropatch/agent/` | `loop.py` state machine, `edits.py`, `gates.py`, `prompts.py`, `router.py` |
-| `src/aeropatch/models/` | Ollama client, Claude API client, Claude Code (`claude -p`) client, oracle (reference-fix replay) |
+| `src/aeropatch/models/` | Ollama client (streams when watched), Claude API client, Claude Code (`claude -p`) client, OpenAI-compatible client for every other provider, oracle (reference-fix replay) |
+| `src/aeropatch/ui.py`, `ui.html` | the local page: a stdlib server on 127.0.0.1 with a per-launch token, and one offline page (no CDN) |
+| `src/aeropatch/providers.py` | the Models section: the provider table, keys in `.env`, status, model lists, hand-off routes |
+| `src/aeropatch/check.py`, `folder.py`, `doctor.py` | your own folder: the check and its plain-language cards, fix/apply/undo with a per-project sandbox, the setup check |
 | `src/aeropatch/sandbox/` | hardened Docker runner, JUnit parser |
 | `src/aeropatch/tools/` | tree-sitter context, scanners, scratch workspaces, path validation |
 | `src/aeropatch/scenario.py` | scenario loader and the 4-check validator |
@@ -336,6 +472,13 @@ pull request. See [docs/13-security-threat-model.md](docs/13-security-threat-mod
 Prompts are scanned for secret patterns before they leave the process; a hit blocks the request
 (the adversarial scenario X-06 shows it). API keys stay in the orchestrator and never reach a
 sandbox (tested). Only scenario code is sent to the frontier model.
+
+On the local page, your code stays on your computer unless you hand a problem to another model.
+That sends only what the preview shows, after you tick the box. A secret anywhere in the text
+blocks the hand-off. The page listens on 127.0.0.1 only, and every request needs the key that
+AeroPatch makes at each launch. Requests that name another host or come from another website are
+refused. Keys you add are written to `.env` and sent only to their own provider's address.
+Downloaded repos go to `runs/ui-clones/`, and their code is read, never run outside the sandbox.
 
 ## Licence
 

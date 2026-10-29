@@ -127,6 +127,21 @@ CONFIGS: dict[str, dict] = {
     # The Suggest level: V2's loop with no sandbox, so a user without Docker gets V2's numbers.
     "suggest-local": {"attempt_plan": ["local", "local", "local"], "hidden_suites": ["poc", "regression"],
                       "rescan_feedback": True, "run_tests": False},
+    # The `ui` page (docs/17-ui-page-plan.html). "Show thinking": the same loops with the model's
+    # thinking on, and repair-local-think's budget, since the thinking shares it with the answer.
+    # Their label hit rates were not measured (thinking on fixed 41 vs 38 of 54 on test).
+    "fix-local-think": {"attempt_plan": ["local", "local", "local"], "hidden_suites": ["poc"],
+                        "rescan_feedback": True, "local_think": True, "max_tokens_local": 4096,
+                        "scenario_wallclock_s": 1800},
+    "suggest-local-think": {"attempt_plan": ["local", "local", "local"], "hidden_suites": ["poc", "regression"],
+                            "rescan_feedback": True, "run_tests": False, "local_think": True,
+                            "max_tokens_local": 4096, "scenario_wallclock_s": 1800},
+    # A hand-off after the local model gave up: one try by the model the user picks (the page sets
+    # attempt_plan and the model), continuing the local tries' conversation.
+    "handoff-test": {"mode": "frontier", "attempt_plan": ["claude-code"], "hidden_suites": ["poc"],
+                     "rescan_feedback": True},
+    "handoff-suggest": {"mode": "frontier", "attempt_plan": ["claude-code"], "hidden_suites": ["poc", "regression"],
+                        "rescan_feedback": True, "run_tests": False},
 }
 
 # USD per 1M tokens: input, output, cache read (doc 04 §2; platform.claude.com pricing page,

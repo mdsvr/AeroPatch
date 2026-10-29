@@ -343,11 +343,15 @@ def folder_task(repo: Path, finding: Finding, description: str, image: str = "",
 # --------------------------------------------------------------------------- fix, apply, undo
 
 
-def fix(folder: Path, n: int, level: str = "auto", extra_rules: bool = False, cfg_name: str = "") -> dict:
+def fix(folder: Path, n: int, level: str = "auto", extra_rules: bool = False, cfg_name: str = "",
+        on_event=None, think: bool = False, route: dict | None = None, history: list[dict] | None = None) -> dict:
     """Make a fix for shown card n of the check and keep it under runs/; the folder is not touched.
-    level: "test" (needs Docker), "suggest" (no tests run) or "auto" (test when it can)."""
-    from aeropatch.agent import loop
+    level: "test" (needs Docker), "suggest" (no tests run) or "auto" (test when it can).
+    For the `ui` page: `on_event` gets each step (loop.run), `think` picks the "-think" configs, and
+    `route` (providers.route_cfg) sends one try to another model, continuing `history`."""
+    from aeropatch.agent import loop, router
 
+    emit = on_event or (lambda _kind, _data: None)
     folder = Path(folder).resolve()
     res = check.check_folder(folder, offline=True, extra_rules=extra_rules)
     if not 1 <= n <= len(res.shown):
@@ -362,25 +366,33 @@ def fix(folder: Path, n: int, level: str = "auto", extra_rules: bool = False, cf
     base = run_dir(folder)
     notes, image = [], ""
     if level in ("auto", "test"):
+        emit("prepare", {"state": "start", "text": "Getting the test sandbox ready. The first time for a project "
+                         "this builds it and runs your tests twice, which can take several minutes."})
         try:
             prep = prepare(folder)
             image = prep.image
             notes.append(prep.note)
+            emit("prepare", {"state": "done", "text": f"Sandbox ready: {prep.note}."})
         except FolderError as e:
             if level == "test":
                 raise
             notes.append(str(e))
+            emit("prepare", {"state": "suggest", "text": f"{e} So this is a suggestion: nothing of your project runs."})
     if not image:
         repo = stage(folder, base / "context" / "repo")
     else:
         repo = base / "context" / "repo"
-    cfg = config.load_config(cfg_name or ("fix-local" if image else "suggest-local"))
+    if route:
+        cfg = config.load_config("handoff-test" if image else "handoff-suggest", **route)
+    else:
+        cfg = config.load_config(cfg_name or ("fix-local" if image else "suggest-local") + ("-think" if think else ""))
     task = folder_task(repo, card.finding, card.what_could_happen, image)
     out = base / "fixes" / str(n)
     if out.exists():
         shutil.rmtree(out)
-    result = loop.run(task, cfg, out / "run")
+    result = loop.run(task, cfg, out / "run", on_event=on_event, history=history)
     record = {"n": n, "finding": card.finding.to_dict(), "headline": card.headline, "config": cfg["name"],
+              "model": router.model_name(cfg["attempt_plan"][0], cfg),
               "level": "test" if image else "suggest", "label": result.user_label, "diff": result.final_diff,
               "notes": notes, "files": {}, "time": datetime.now(UTC).isoformat()}
     offered = result.attempts[-1].proposal.edits if result.final_diff and result.attempts[-1].proposal else []

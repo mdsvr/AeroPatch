@@ -124,6 +124,12 @@ def cmd_check(args) -> int:
     return 0
 
 
+def cmd_ui(args) -> int:
+    from aeropatch import ui
+
+    return ui.main(port=args.port, open_browser=not args.no_browser)
+
+
 def cmd_dismiss(args) -> int:
     from aeropatch import check
 
@@ -276,6 +282,10 @@ def main(argv: list[str] | None = None) -> int:
     for flags, kw in check_options:
         s.add_argument(*flags, **kw)
     s.set_defaults(fn=cmd_check)
+    s = sub.add_parser("ui", help="open a local page: check a folder or a public git link, step by step (doc 17)")
+    s.add_argument("--port", type=int, default=0, help="port on 127.0.0.1 (default: any free port)")
+    s.add_argument("--no-browser", action="store_true", help="print the link instead of opening the browser")
+    s.set_defaults(fn=cmd_ui)
     s = sub.add_parser("dismiss", help="hide one problem from later checks, with a reason")
     s.add_argument("folder")
     s.add_argument("n", type=int, help="the problem's number in the last check")

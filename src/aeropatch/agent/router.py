@@ -5,7 +5,7 @@ from __future__ import annotations
 import threading
 from pathlib import Path
 
-from aeropatch.models import claude_code_client, fallback_client, local_client, oracle_client
+from aeropatch.models import claude_code_client, fallback_client, local_client, openai_client, oracle_client
 from aeropatch.models.base import Generation
 
 # One generation at a time on the local GPU, also when bench runs two tasks at once (doc 11 §8).
@@ -13,14 +13,19 @@ _LOCAL_LOCK = threading.Lock()
 
 
 def generate(route: str, messages: list[dict], system: str, cfg: dict, temperature: float,
-             scenario_dir: Path | None = None) -> Generation:
+             scenario_dir: Path | None = None, on_token=None) -> Generation:
+    """`on_token`: optional; routes that can stream hand it the answer as it is written."""
     if route == "local":
         with _LOCAL_LOCK:
-            return local_client.generate(messages, system, cfg, temperature)
+            return local_client.generate(messages, system, cfg, temperature, on_token)
     if route == "frontier":
         return fallback_client.generate(messages, system, cfg, temperature)
     if route == "claude-code":
         return claude_code_client.generate(messages, system, cfg, temperature)
+    if route == "openai":  # any OpenAI-compatible server, local or hosted (the `ui` Models section)
+        return openai_client.generate(messages, system, cfg, temperature, on_token)
+    if route == "pasted":  # an answer the user pasted from another AI tool, checked like any other
+        return Generation(text=cfg["pasted_text"], model="pasted answer")
     if route == "oracle":
         return oracle_client.generate(scenario_dir)
     raise ValueError(f"unknown route {route!r}")
@@ -28,4 +33,5 @@ def generate(route: str, messages: list[dict], system: str, cfg: dict, temperatu
 
 def model_name(route: str, cfg: dict) -> str:
     return {"local": cfg["local_model"], "frontier": cfg["frontier_model"],
-            "claude-code": cfg["frontier_model"]}.get(route, route)
+            "claude-code": cfg["frontier_model"], "openai": cfg.get("api_model", ""),
+            "pasted": "pasted answer"}.get(route, route)

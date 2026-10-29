@@ -103,11 +103,45 @@ def hardened_kwargs(cfg: dict | None = None) -> dict:
     }
 
 
-def run_container(image: str, command: list[str] | str | None = None, src_dir: Path | None = None,
-                  timeout_s: float | None = None, cfg: dict | None = None) -> tuple[int | None, str, bool, float]:
-    """Run one hardened container. Returns (exit_code, logs, timed_out, duration_s).
+def _wait_watching(container, timeout_s: float, on_test) -> int | None:
+    """Wait for the container, and once a second hand each new line of the folder runner's
+    /tmp/outcomes.txt ("<outcome>\\t<nodeid>") to on_test. Only the first suite is reported: a
+    hidden PoC suite (a benchmark scenario's image) rewrites the file, and then watching stops.
+    Raises ReadTimeout like wait() does."""
+    deadline = time.monotonic() + timeout_s
+    seen: list[str] = []
+    watching = True
+    while True:
+        try:
+            return container.wait(timeout=1).get("StatusCode")
+        except (requests.exceptions.ReadTimeout, requests.exceptions.ConnectionError):
+            if time.monotonic() >= deadline:
+                raise
+        if not watching:
+            continue
+        try:
+            res = container.exec_run(["cat", "/tmp/outcomes.txt"], user="10001:10001")
+        except docker.errors.APIError:  # the container just exited
+            continue
+        if res.exit_code != 0:  # no test has finished yet
+            continue
+        lines = (res.output or b"").decode("utf-8", "replace").splitlines()
+        if lines[:len(seen)] != seen:  # rewritten: the next suite started
+            watching = False
+            continue
+        for line in lines[len(seen):]:
+            outcome, _, name = line.partition("\t")
+            if name:
+                on_test(outcome, name)
+        seen = lines
 
-    The container is always removed, even if the harness crashes mid-run.
+
+def run_container(image: str, command: list[str] | str | None = None, src_dir: Path | None = None,
+                  timeout_s: float | None = None, cfg: dict | None = None,
+                  on_test=None) -> tuple[int | None, str, bool, float]:
+    """Run one hardened container. Returns (exit_code, logs, timed_out, duration_s).
+    `on_test(outcome, test_id)` is told of each test as it finishes (folder images only; the
+    `ui` page shows them live). The container is always removed, even if the harness crashes mid-run.
     """
     cfg = {**DEFAULTS, **(cfg or {})}
     timeout_s = timeout_s or cfg["sandbox_timeout_s"]
@@ -120,7 +154,8 @@ def run_container(image: str, command: list[str] | str | None = None, src_dir: P
     try:
         container = client.containers.run(image, command, volumes=volumes, **hardened_kwargs(cfg))
         try:
-            code = container.wait(timeout=timeout_s).get("StatusCode")
+            code = (_wait_watching(container, timeout_s, on_test) if on_test else
+                    container.wait(timeout=timeout_s).get("StatusCode"))
         except (requests.exceptions.ReadTimeout, requests.exceptions.ConnectionError):
             timed_out = True
             container.kill()
@@ -161,9 +196,20 @@ def split_sections(logs: str) -> dict[str, str]:
 
 
 def run_tests(image: str, src_dir: Path, cfg: dict | None = None,
-              raw_log: Path | None = None) -> SandboxResult:
+              raw_log: Path | None = None, on_test=None) -> SandboxResult:
     """Run PoC + regression tests (+ lint and re-scan of changed files) on a prepared workspace."""
-    _, logs, timed_out, duration = run_container(image, None, src_dir, cfg=cfg)
+    reported: set[str] = set()
+
+    def watch(outcome: str, name: str) -> None:
+        reported.add(name)
+        on_test(outcome, name)
+
+    _, logs, timed_out, duration = run_container(image, None, src_dir, cfg=cfg, on_test=watch if on_test else None)
+    if on_test:  # tests that ended after the last look: a run of a second or two is too quick to watch
+        for line in split_sections(logs).get("OUTCOMES", "").splitlines():
+            outcome, _, name = line.partition("\t")
+            if name and name not in reported:
+                on_test(outcome, name)
     if raw_log:
         raw_log.parent.mkdir(parents=True, exist_ok=True)
         raw_log.write_text(logs, encoding="utf-8")  # real code and model output are not cp1252

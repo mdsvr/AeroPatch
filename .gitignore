@@ -12,3 +12,4 @@ runs/*
 *.gguf
 training/synthetic/
 training/data/
+ogcode.json

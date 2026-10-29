@@ -2615,6 +2615,47 @@ The shapes:
 3. An Ollama 0.40.11 installer has been staged since 13:02. Installing it from here was refused,
    so every run today used 0.40.10.
 
+## Doc 17 Phase 2: the local page (2026-10-29, Ollama 0.40.12)
+
+`uv run aeropatch ui` is built to the plan approved on 2026-10-29
+([docs/17-ui-page-plan.html](docs/17-ui-page-plan.html)), in four parts:
+1. A status strip, Choose folder, and the check with live steps.
+2. Tick problems, fix them, and watch each try live.
+3. Hand-off and the Models section.
+4. Apply, Undo, and a .patch for links.
+
+**What changed underneath. None of it changes a measured config:**
+- `loop.run` takes an optional `on_event` and an optional `history`, to continue a hand-off.
+- `local_client` streams only when it is watched.
+- `sandbox.run_tests` reports each test as it finishes, from the folder runner's outcomes file. It
+  stops when a hidden PoC suite rewrites that file.
+- New configs: `fix-local-think` and `suggest-local-think`, with repair-local-think's budget, and
+  `handoff-test` and `handoff-suggest`.
+- New routes: `openai` (any OpenAI-compatible server, `models/openai_client.py`) and `pasted`.
+
+**Tests:** 689 pass (679 without Docker, 10 with). `tests/test_ui.py` has 28 of them.
+
+**A real run on the laptop** (qwen3.5:4b and Docker):
+- **A-089-03 (SQL injection) as a folder.** Try 1 passed the gates and broke 3 of 5 tests. Try 2 was
+  offered. Apply changed the file, and Undo restored SHA-256 329b91… exactly.
+- **A-022-03 (path traversal), thinking on.** Three local tries each passed 8 of 8 gates and 6 of 6
+  tests, and the re-scan (Bandit B202) still flagged each one.
+- **Hand-off of A-022-03 to claude-opus-5-5 via Claude Code.** 7,212 characters, secrets check
+  passed, answered in 13 s with `filter="data"`. 8 of 8 gates, 6 of 6 tests, scanner quiet.
+  `sandbox.json` records the hidden PoC passing 3 of 3.
+- **The OpenAI-compatible client against Ollama's own `/v1`:** answered both streamed and not.
+  There was no paid key to try.
+
+**Found by the real run and fixed:**
+- The user's Ollama lists hosted `:cloud` models, which were shown as "stays on this computer".
+  They are now left out, and the server refuses them on the local route.
+- The `-think` configs lacked the 4,096-token budget, so thinking could use up the answer's room.
+- A 1.5 s test run was too quick for the per-test feed, which now also reads the final outcomes.
+
+**Not measured:** how often a label is right after a hand-off. A hand-off also replaces the local
+tries' saved record in `fixes/<n>/`; the page keeps them in memory. Screenshots and the
+architecture image are in `docs/images/`.
+
 ## Next
 
 **Decisions that are yours**
