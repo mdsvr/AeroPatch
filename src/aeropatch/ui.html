@@ -1,0 +1,860 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>AeroPatch</title>
+<style>
+/* The check report's palette (check.py CSS), so the page and the saved report match. No web fonts:
+   the page works offline. Blue marks anything that leaves this computer. */
+:root {
+  --bg: #f6f6f4; --card: #ffffff; --fg: #1f2328; --muted: #59636e; --line: #d0d7de;
+  --accent: #9a3412; --on-accent: #ffffff; --accent-soft: #fbeee6; --code: #eff1f3; --note: #fff4d6;
+  --ok: #1a7f37; --ok-soft: #dff3e4; --warn: #9c5d00; --warn-soft: #faeed8; --bad: #cf222e; --bad-soft: #fde4e4;
+  --add: #e3f5e8; --del: #fbe7e7; --cloud: #2446c4; --cloud-soft: #e5eafa;
+  --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121417; --card: #1b1f24; --fg: #e6e8eb; --muted: #9da7b3; --line: #30363d;
+    --accent: #fdba74; --on-accent: #1b1f24; --accent-soft: #3a2414; --code: #0d1117; --note: #33290f;
+    --ok: #3fb950; --ok-soft: #12261a; --warn: #e8a64c; --warn-soft: #2b2011; --bad: #f85149; --bad-soft: #2d1416;
+    --add: #12261a; --del: #2d1416; --cloud: #93a9ff; --cloud-soft: #1c2446;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 1040px; margin: 0 auto; padding: 20px 16px 56px; display: grid; gap: 16px; }
+h1, h2, h3, h4 { margin: 0; line-height: 1.3; text-wrap: balance; }
+h2 { font-size: 1.2rem; } h3 { font-size: 1.05rem; } h4 { font-size: 0.95rem; }
+h5 { margin: 0; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+p { margin: 0; }
+a { color: var(--accent); }
+.top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
+.wordmark { font-weight: 700; font-size: 1.35rem; letter-spacing: -0.01em; }
+.wordmark span { color: var(--accent); }
+.muted { color: var(--muted); }
+.small { font-size: 0.85rem; }
+.levels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.level { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: 8px; padding: 8px 12px; display: grid; gap: 2px; align-content: start; min-width: 0; }
+.level b { font-size: 0.95rem; }
+.level span { font-size: 0.84rem; color: var(--muted); overflow-wrap: anywhere; }
+.level.ok { border-left-color: var(--ok); } .level.warn { border-left-color: var(--warn); } .level.bad { border-left-color: var(--bad); }
+.fix { white-space: pre-wrap; font-size: 0.82rem; color: var(--fg); background: var(--code); border-radius: 6px; padding: 6px 8px; margin-top: 4px; }
+@media (max-width: 680px) { .levels { grid-template-columns: 1fr; } }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: grid; gap: 10px; min-width: 0; }
+details.panel > summary { cursor: pointer; font-weight: 600; }
+label.big { font-weight: 600; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+input[type=text], input[type=password], textarea, select { padding: 9px 12px; border: 1px solid var(--line); border-radius: 6px;
+  background: var(--bg); color: var(--fg); font: 14px/1.4 var(--mono); min-width: 0; }
+input[type=text].wide { flex: 1 1 280px; }
+textarea { width: 100%; min-height: 120px; resize: vertical; }
+.btn { padding: 9px 16px; border: 0; border-radius: 6px; background: var(--accent); color: var(--on-accent); font: 600 14px system-ui, sans-serif; cursor: pointer; text-decoration: none; display: inline-block; }
+.btn.ghost { background: transparent; color: var(--fg); border: 1px solid var(--line); }
+.btn.cloud { background: var(--cloud); color: var(--card); }
+.btn.small { padding: 5px 10px; font-size: 13px; }
+.btn:disabled { opacity: 0.5; cursor: default; }
+.kind { font-size: 0.88rem; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.tag { font-size: 0.74rem; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+.tag.ok { background: var(--ok-soft); color: var(--ok); } .tag.bad { background: var(--bad-soft); color: var(--bad); }
+.tag.cloud { background: var(--cloud-soft); color: var(--cloud); } .tag.off { background: var(--code); color: var(--muted); }
+.kind.bad .tag { background: var(--bad-soft); color: var(--bad); }
+.tick { display: flex; gap: 8px; align-items: flex-start; font-size: 0.9rem; color: var(--muted); }
+.tick input { margin-top: 4px; }
+.status { font-weight: 600; }
+.status.ok { color: var(--ok); } .status.bad { color: var(--bad); }
+.rail { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.rail li { display: grid; gap: 3px; align-content: start; font-size: 0.84rem; }
+.rail .bar { height: 6px; border-radius: 3px; background: var(--line); }
+.rail .name { font-weight: 600; }
+.rail .state { color: var(--muted); font-size: 0.78rem; }
+.rail li.done .bar { background: var(--ok); }
+.rail li.doing .bar { background: var(--accent); animation: pulse 1s ease-in-out infinite alternate; }
+.rail li.fail .bar { background: var(--bad); }
+.rail li.skipped .bar { background: repeating-linear-gradient(90deg, var(--line) 0 6px, transparent 6px 10px); }
+@keyframes pulse { from { opacity: 0.45; } to { opacity: 1; } }
+@media (max-width: 680px) { .rail { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 12px; } }
+.log { margin: 0; padding: 10px 12px; list-style: none; background: var(--code); border-radius: 6px; font: 12.5px/1.65 var(--mono); max-height: 260px; overflow: auto; }
+.log li { display: grid; grid-template-columns: 4.4em 1fr; gap: 8px; }
+.log .t { color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
+.log li.err { color: var(--bad); }
+details > summary { cursor: pointer; color: var(--muted); font-size: 0.9rem; }
+.summary { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.summary b { font-variant-numeric: tabular-nums; }
+.note { background: var(--note); padding: 8px 12px; border-radius: 6px; font-size: 0.92rem; }
+.picker { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; background: var(--code); border-radius: 8px; padding: 10px 12px; }
+.picker p { font-size: 0.92rem; max-width: 56ch; }
+.cards { display: grid; gap: 12px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 12px; min-width: 0; }
+.card.picked { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.card .sel input { width: 18px; height: 18px; accent-color: var(--accent); margin-top: 3px; }
+.card .body { display: grid; gap: 8px; min-width: 0; }
+.card.advisory { border-style: dashed; }
+.card h3 .n { color: var(--accent); margin-right: 0.35em; }
+.why-not { font-size: 0.85rem; color: var(--muted); background: var(--code); border-radius: 6px; padding: 6px 10px; }
+.where { font-family: var(--mono); font-size: 0.82rem; color: var(--muted); overflow-wrap: anywhere; }
+dl { margin: 0; display: grid; gap: 4px; }
+dt { font-weight: 600; font-size: 0.9rem; }
+dd { margin: 0 0 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
+ul { margin: 0; padding-left: 1.2em; }
+pre { margin: 0; padding: 8px 10px; background: var(--code); border-radius: 6px; font: 12.5px/1.5 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.aside { font: 12.5px/1.7 var(--mono); color: var(--muted); }
+
+/* Live view */
+.live { border-color: var(--accent); }
+.live-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: baseline; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: 500 0.82rem system-ui, sans-serif; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); cursor: pointer; }
+.chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.chip .s { color: var(--muted); }
+.pipe { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.pipe li { display: grid; gap: 4px; justify-items: center; text-align: center; position: relative; padding: 0 4px; }
+.pipe li::before { content: ""; position: absolute; top: 15px; left: -50%; width: 100%; height: 2px; background: var(--line); }
+.pipe li:first-child::before { display: none; }
+.pipe li.done::before, .pipe li.doing::before, .pipe li.fail::before { background: var(--ok); }
+.pipe .dot { width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--line); background: var(--card); display: grid; place-items: center; font: 700 13px var(--mono); color: var(--muted); position: relative; }
+.pipe li.done .dot { border-color: var(--ok); background: var(--ok); color: var(--card); }
+.pipe li.doing .dot { border-color: var(--accent); color: var(--accent); animation: ring 1.1s ease-in-out infinite alternate; }
+.pipe li.fail .dot { border-color: var(--bad); background: var(--bad); color: var(--card); }
+.pipe li.skipped .dot { border-style: dashed; }
+@keyframes ring { from { box-shadow: 0 0 0 0 var(--accent-soft); } to { box-shadow: 0 0 0 6px var(--accent-soft); } }
+.pipe .pn { font-weight: 600; font-size: 0.82rem; line-height: 1.25; }
+.pipe .pm { font-size: 0.75rem; color: var(--muted); line-height: 1.3; overflow-wrap: anywhere; }
+@media (max-width: 680px) { .pipe { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 14px; } .pipe li:nth-child(4)::before { display: none; } }
+@media (prefers-reduced-motion: reduce) { .rail li.doing .bar, .pipe li.doing .dot { animation: none; } }
+.tries { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.try { font: 500 0.82rem system-ui, sans-serif; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.try[aria-pressed="true"] { border-color: var(--fg); }
+.try .m { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+.try.ok .m { background: var(--ok); } .try.fail .m { background: var(--bad); } .try.run .m { background: var(--accent); }
+.try.cloudy { border-style: dashed; border-color: var(--cloud); }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
+.pane { border: 1px solid var(--line); border-radius: 8px; padding: 12px; display: grid; gap: 8px; align-content: start; min-width: 0; background: var(--bg); }
+.pane-head { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+.who { font-weight: 600; } .who.cloud { color: var(--cloud); }
+.stat { font: 12px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.think { font-size: 0.86rem; color: var(--muted); font-style: italic; border-left: 3px solid var(--line); padding-left: 10px; white-space: pre-wrap; max-height: 200px; overflow: auto; }
+.code { margin: 0; padding: 8px 0; background: var(--code); border-radius: 6px; font: 12.5px/1.6 var(--mono); overflow: auto; max-height: 360px; min-height: 3em; }
+.code span { display: block; padding: 0 10px; white-space: pre; }
+.code .add { background: var(--add); } .code .del { background: var(--del); } .code .meta { color: var(--muted); }
+.prompt { max-height: 300px; overflow: auto; font-size: 12px; }
+.limits { display: flex; flex-wrap: wrap; gap: 5px; }
+.limits span { font-size: 0.74rem; padding: 2px 8px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.limits span.key { border-color: var(--ok); color: var(--ok); }
+.tests { margin: 0; padding: 8px 10px; list-style: none; background: var(--code); border-radius: 6px; font: 12px/1.65 var(--mono); max-height: 240px; overflow: auto; }
+.tests li { white-space: pre-wrap; overflow-wrap: anywhere; }
+.tests .passed { color: var(--ok); } .tests .failed { color: var(--bad); } .tests .skipped { color: var(--muted); }
+.gates { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; font-size: 0.86rem; }
+.gates li { display: grid; grid-template-columns: 1.3em 1fr; gap: 6px; color: var(--muted); }
+.gates li.ok { color: var(--fg); } .gates li.ok .i { color: var(--ok); }
+.gates li.no { color: var(--bad); font-weight: 600; }
+.gates .i { font-weight: 700; text-align: center; }
+.feedback { background: var(--note); max-height: 260px; overflow: auto; }
+.result { border-radius: 8px; padding: 12px 14px; display: grid; gap: 8px; }
+.result.ok { background: var(--ok-soft); } .result.fail { background: var(--bad-soft); }
+.result .label { font-weight: 700; font-size: 1rem; }
+.result.ok .label { color: var(--ok); } .result.fail .label { color: var(--bad); }
+
+/* Hand-off and models */
+.handoff { border-color: var(--cloud); border-style: dashed; }
+.routes { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+.route { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; display: grid; gap: 4px; cursor: pointer; background: var(--bg); align-content: start; }
+.route:has(input:checked) { border-color: var(--cloud); box-shadow: inset 0 0 0 1px var(--cloud); background: var(--cloud-soft); }
+.route .rt { display: flex; gap: 8px; align-items: center; font-weight: 600; }
+.route .rd { font-size: 0.84rem; color: var(--muted); }
+.facts { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.85rem; }
+.preview { max-height: 260px; overflow: auto; font-size: 12px; }
+.groups { display: grid; gap: 14px; }
+.prov { display: grid; grid-template-columns: minmax(150px, 1fr) minmax(0, 3fr); gap: 6px 14px; padding: 10px 0; border-top: 1px solid var(--line); }
+.prov:first-of-type { border-top: 0; }
+.prov .pname { display: grid; gap: 2px; align-content: start; justify-items: start; }
+.prov .pact { display: grid; gap: 6px; min-width: 0; }
+@media (max-width: 680px) { .prov { grid-template-columns: 1fr; } }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <div class="wordmark">Aero<span>Patch</span></div>
+    <p class="muted small">Running on this computer only. Close the AeroPatch window to stop it.</p>
+  </div>
+
+  <div class="levels" id="levels" aria-label="What is ready" aria-live="polite">
+    <div class="level"><b>Check</b><span>Looking at what is installed…</span></div>
+    <div class="level"><b>Suggest</b><span>Looking at what is installed…</span></div>
+    <div class="level"><b>Test</b><span>Looking at what is installed…</span></div>
+  </div>
+  <details id="warnings" hidden><summary id="warnings-sum"></summary><ul id="warnings-list" class="small"></ul></details>
+
+  <details class="panel" id="models">
+    <summary>Models: who can take over a problem the local model could not fix</summary>
+    <p class="small muted">Every first try uses the free local model. The models set up here appear in the hand-off panel. Keys are saved only in AeroPatch's <code>.env</code> file on this computer and are sent only to their own provider. Blue means the text leaves this computer.</p>
+    <div class="groups" id="model-groups"><p class="muted small">Looking at each provider…</p></div>
+  </details>
+
+  <form class="panel" id="form">
+    <label class="big" for="source">What should AeroPatch check?</label>
+    <div class="row">
+      <input type="text" class="wide" id="source" required autocomplete="off" spellcheck="false"
+             placeholder="F:\projects\my-app   or   https://github.com/owner/repo">
+      <button class="btn ghost" id="choose" type="button">Choose folder…</button>
+      <button class="btn" id="go" type="submit">Check</button>
+    </div>
+    <p class="kind" id="kind" aria-live="polite"></p>
+    <label class="tick"><input type="checkbox" id="lookup" checked>
+      <span>Also look up the package versions at osv.dev for known problems. This sends package names and versions, never your code.</span></label>
+  </form>
+
+  <section class="panel" id="progress" hidden aria-labelledby="progress-h">
+    <h2 id="progress-h" class="status" role="status">Starting…</h2>
+    <ol class="rail" id="rail" aria-label="Steps"></ol>
+    <details id="log-box" open>
+      <summary id="log-sum">Everything that happened</summary>
+      <ol class="log" id="log"></ol>
+    </details>
+  </section>
+
+  <section class="panel" id="results" hidden aria-labelledby="results-h">
+    <h2 id="results-h">Results</h2>
+    <div class="summary" id="summary"></div>
+    <div id="notes"></div>
+    <div class="picker" id="picker">
+      <p>Tick the problems the local model should try to fix. It works on one at a time. Nothing in your folder changes until you press Apply.</p>
+      <div class="row">
+        <label class="tick"><input type="checkbox" id="think"><span>Show thinking (slower)</span></label>
+        <button class="btn" id="fix" type="button" disabled>Fix selected</button>
+      </div>
+      <p class="small" id="fix-hint" hidden></p>
+    </div>
+    <div class="cards" id="cards"></div>
+    <div id="aside"></div>
+    <p class="small muted">The same results are saved as a report: <a id="report-link" target="_blank" rel="noopener">open it in a new tab</a>.</p>
+  </section>
+
+  <section class="panel live" id="live" hidden aria-labelledby="live-h">
+    <div class="live-head">
+      <h2 id="live-h">Live view</h2>
+      <div class="chips" id="queue" aria-label="Problems being fixed"></div>
+    </div>
+    <p class="note" id="prepare" hidden></p>
+    <ol class="pipe" id="pipe" aria-label="Where this try is"></ol>
+    <div class="tries" id="tries"></div>
+    <div class="grid2">
+      <div class="pane">
+        <div class="pane-head"><span class="who" id="who">The model</span><span class="stat" id="speed"></span></div>
+        <details><summary id="given-sum">What it was given</summary><pre class="prompt" id="given"></pre></details>
+        <div id="think-box" hidden><h5>Thinking</h5><p class="think" id="thinking"></p></div>
+        <h5>Its plan</h5>
+        <p id="plan">—</p>
+        <h5 id="edit-h">Its answer, as it is written</h5>
+        <pre class="code" id="edit"></pre>
+      </div>
+      <div class="pane">
+        <div class="pane-head"><span class="who">Sandbox</span><span class="stat" id="sb-stat"></span></div>
+        <div class="limits"><span class="key">Network off</span><span class="key">Your code read-only</span><span>Normal user, no special rights</span><span>2 GB memory</span><span>2 CPUs</span><span>256 processes</span><span>5-minute limit</span></div>
+        <h5>Your tests, as they run</h5>
+        <ol class="tests" id="tests"></ol>
+        <h5>Re-scan</h5>
+        <p id="rescan">—</p>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="pane">
+        <h5>8 safety gates, before anything runs</h5>
+        <ol class="gates" id="gates"></ol>
+      </div>
+      <div class="pane">
+        <h5>What the model is told before its next try</h5>
+        <pre class="feedback" id="next">Shown when a try fails.</pre>
+      </div>
+    </div>
+    <div id="outcome"></div>
+  </section>
+
+  <section class="panel handoff" id="handoff" hidden aria-labelledby="ho-h">
+    <h2 id="ho-h">Hand this problem to another model</h2>
+    <p id="ho-why"></p>
+    <div class="routes" id="routes" role="radiogroup" aria-label="Who should try next"></div>
+    <p class="small muted">More choices: open “Models” at the top and add a key or start a local server.</p>
+    <h5 id="pv-h">Exactly what would be sent</h5>
+    <pre class="preview" id="preview">…</pre>
+    <div class="facts" id="facts"></div>
+    <label class="tick" id="consent-row" hidden><input type="checkbox" id="consent"><span id="consent-text"></span></label>
+    <div id="paste-box" hidden>
+      <label class="big" for="answer">Paste the other tool's answer here</label>
+      <textarea id="answer" spellcheck="false" placeholder="RATIONALE: …&#10;&lt;&lt;&lt;&lt;&lt;&lt;&lt; SEARCH path/to/file.py&#10;…&#10;=======&#10;…&#10;&gt;&gt;&gt;&gt;&gt;&gt;&gt; REPLACE"></textarea>
+    </div>
+    <div class="row">
+      <button class="btn cloud" id="send" type="button">Send</button>
+      <button class="btn ghost" id="copy-req" type="button" hidden>Copy request</button>
+      <span class="small" id="send-msg"></span>
+    </div>
+  </section>
+</main>
+
+<script>
+const token = new URLSearchParams(location.search).get("t") || "";
+const $ = id => document.getElementById(id);
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+// Every piece of repo or model text goes in with textContent, never innerHTML: it is untrusted.
+
+async function api(path, body) {
+  const opts = {headers: {"X-Token": token}};
+  if (body !== undefined) Object.assign(opts, {method: "POST", body: JSON.stringify(body), headers: {"X-Token": token, "Content-Type": "application/json"}});
+  const res = await fetch(path, opts);
+  if (res.status === 403) throw new Error("This page is out of date. Open the link AeroPatch printed in its window.");
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "AeroPatch did not answer. Is its window still open?");
+  return data;
+}
+const q = obj => Object.entries(obj).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
+
+/* ================= Status strip ================= */
+let doctor = null;
+async function loadDoctor() {
+  try {
+    doctor = await api("/api/doctor");
+    $("levels").replaceChildren(...doctor.levels.map(l => {
+      const box = el("div", "level " + l.state);
+      box.append(el("b", null, `${l.name}: ${l.state === "bad" ? "not ready" : "ready"}`), el("span", null, l.says));
+      if (l.fix) box.append(el("span", "fix", l.fix));
+      return box;
+    }));
+    if (doctor.warnings.length) {
+      $("warnings").hidden = false;
+      $("warnings-sum").textContent = `${doctor.warnings.length} more thing${doctor.warnings.length > 1 ? "s" : ""} to look at`;
+      $("warnings-list").replaceChildren(...doctor.warnings.map(w => el("li", null, `${w.area}: ${w.says} ${w.fix}`)));
+    }
+    updateFixButton();
+  } catch (e) { $("levels").replaceChildren(el("div", "level bad", e.message)); }
+}
+const levelReady = name => !doctor || doctor.levels.some(l => l.name === name && l.state !== "bad");
+
+/* ================= Check ================= */
+const LINK_OK = /^https:\/\/[A-Za-z0-9.-]+(:\d{1,5})?(\/[A-Za-z0-9._~-]+)+\/?$/;
+function showKind() {
+  const s = $("source").value.trim().replace(/^"|"$/g, "");
+  let k;
+  if (!s) k = {ok: false, tag: "Empty", text: "Paste a folder path, press Choose folder, or paste a link like https://github.com/owner/repo."};
+  else if (/^(https?:|git@|ssh:|ext::|file:)/i.test(s)) {
+    k = LINK_OK.test(s)
+      ? {ok: true, tag: "GitHub link", text: "AeroPatch downloads a copy into its runs folder first. Only public repos work."}
+      : {ok: false, tag: "Not supported", text: "Only public https links work, like https://github.com/owner/repo."};
+  } else k = {ok: true, tag: "Folder", text: "Checked where it is. Nothing in it changes until you press Apply."};
+  $("kind").className = "kind" + (k.ok || !s ? "" : " bad");
+  $("kind").replaceChildren(el("span", "tag", k.tag), el("span", null, k.text));
+  return k.ok;
+}
+$("choose").addEventListener("click", async () => {
+  const b = $("choose");
+  b.disabled = true; b.textContent = "Look for the dialog…";
+  try { const r = await api("/api/choose-folder", {}); if (r.folder) { $("source").value = r.folder; showKind(); } }
+  catch (e) { $("kind").className = "kind bad"; $("kind").replaceChildren(el("span", "tag", "Folder dialog"), el("span", null, e.message)); }
+  finally { b.disabled = false; b.textContent = "Choose folder…"; }
+});
+
+const STEPS = [["code", "Get the code"], ["files", "List files"], ["scan", "Scan"], ["sort", "Sort"], ["lookup", "Look up packages"], ["report", "Report"]];
+const LABEL = {done: "Done", doing: "Working…", skipped: "Skipped", todo: "Waiting", fail: "Stopped"};
+let states = [], lookupOn = true, checked = null;
+function renderRail() {
+  $("rail").replaceChildren(...STEPS.map(([, name], i) => {
+    const li = el("li", states[i]);
+    li.append(el("span", "bar"), el("span", "name", name), el("span", "state", LABEL[states[i]]));
+    return li;
+  }));
+}
+function advance(step) {
+  const k = STEPS.findIndex(([key]) => key === step);
+  if (k < 0) return;
+  for (let i = 0; i < k; i++) states[i] = (STEPS[i][0] === "lookup" && !lookupOn) ? "skipped" : "done";
+  states[k] = "doing";
+}
+function addLog(e) {
+  const li = el("li", e.step === "error" ? "err" : null);
+  li.append(el("span", "t", e.t.toFixed(1) + "s"), el("span", null, e.text));
+  $("log").append(li); $("log").scrollTop = $("log").scrollHeight;
+}
+function part(b, rest) { const s = el("span"); s.append(el("b", null, b), document.createTextNode(rest)); return s; }
+function dlist(fields) { const dl = el("dl"); for (const [k, v] of fields) if (v) dl.append(el("dt", null, k), el("dd", null, v)); return dl; }
+
+const picked = new Set();
+function renderResults(r, jobId) {
+  checked = r; picked.clear();
+  $("summary").replaceChildren(part(String(r.cards.length), r.cards.length === 1 ? " problem to look at" : " problems to look at"),
+    part(String(r.parked.length), " set aside"), part(String(r.dismissed.length), " dismissed earlier"),
+    ...(r.advisories.length ? [part(String(r.advisories.length), " package" + (r.advisories.length > 1 ? "s" : "") + " with known problems")] : []));
+  $("notes").replaceChildren(...[r.no_opengrep, ...r.notes].filter(Boolean).map(n => el("p", "note", n)));
+  const cards = r.advisories.map(a => {
+    const c = el("article", "card advisory");
+    const b = el("div", "body");
+    b.append(el("h3", null, a.headline), el("p", "where", a.where), dlist(a.fields),
+             el("p", "why-not", "Fixed by changing the version you pin. AeroPatch never edits dependency files, so no model is asked."));
+    c.append(el("span"), b); return c;
+  });
+  for (const x of r.cards) {
+    const c = el("article", "card");
+    const sel = el("span", "sel");
+    if (x.kind !== "secret") {
+      const cb = el("input"); cb.type = "checkbox"; cb.id = "pick-" + x.n; cb.setAttribute("aria-label", "Fix problem " + x.n);
+      cb.addEventListener("change", () => { cb.checked ? picked.add(x.n) : picked.delete(x.n); c.classList.toggle("picked", cb.checked); updateFixButton(); });
+      sel.append(cb);
+    }
+    const b = el("div", "body");
+    const h = el("h3"); h.append(el("span", "n", x.n + "."), document.createTextNode(x.headline));
+    b.append(h, el("p", "where", `${x.path}:${x.line}`), dlist(x.fields));
+    if (x.message) b.append(el("p", null, "The scanner says: " + x.message));
+    if (x.try_yourself.length) { const ul = el("ul"); x.try_yourself.forEach(t => ul.append(el("li", null, t))); b.append(el("p", null, "Try it yourself:"), ul); }
+    if (x.note) b.append(el("p", "note", x.note));
+    if (x.kind === "secret") b.append(el("p", "why-not", "Not given to a model: first change the key where it was issued, because editing the code does not undo an exposure."));
+    const det = el("details");
+    det.append(el("summary", null, "Details"), dlist([["Rule", x.rule], ["CWE", x.cwe || "none given"], ["Also found by", x.also.join(", ")]]));
+    if (x.code) det.append(el("pre", null, x.code));
+    else if (x.kind === "secret") det.append(el("p", "small muted", "Code hidden, because it may contain the password or key."));
+    b.append(det);
+    c.append(sel, b); cards.push(c);
+  }
+  if (!cards.length) cards.push(el("p", null, "No problems to show."));
+  $("cards").replaceChildren(...cards);
+  $("picker").hidden = !r.cards.some(x => x.kind !== "secret");
+  const asides = [["Set aside", r.parked], ["Dismissed earlier", r.dismissed]].filter(([, items]) => items.length).map(([title, items]) => {
+    const d = el("details"); d.append(el("summary", null, `${title}: ${items.length}`));
+    const ul = el("ul", "aside"); items.forEach(i => ul.append(el("li", null, `${i.path}:${i.line}  ${i.rule}: ${i.message} (${i.reason})`)));
+    d.append(ul); return d;
+  });
+  $("aside").replaceChildren(...asides);
+  $("report-link").href = `/api/report/${jobId}?t=${encodeURIComponent(token)}`;
+  $("results").hidden = false;
+  updateFixButton();
+}
+function updateFixButton() {
+  const n = picked.size;
+  $("fix").textContent = n ? `Fix selected (${n})` : "Fix selected";
+  $("fix").disabled = !n || busy;
+  const hint = $("fix-hint");
+  hint.hidden = levelReady("Suggest");
+  hint.textContent = "The local model is not running, so fixes cannot start. The Suggest box at the top says how to start it.";
+  if (!hint.hidden) $("fix").disabled = true;
+}
+
+let busy = false;
+async function pollCheck(id, since) {
+  let r;
+  try { r = await api(`/api/job/${id}?since=${since}`); }
+  catch (e) { $("progress-h").textContent = e.message; $("progress-h").className = "status bad"; setBusy(false); return; }
+  for (const e of r.events) { addLog(e); advance(e.step); }
+  $("log-sum").textContent = `Everything that happened (${r.next} lines)`;
+  if (r.status === "running") { renderRail(); return setTimeout(() => pollCheck(id, r.next), 1000); }
+  setBusy(false);
+  checkEnded(r, id);
+}
+function checkEnded(r, id) {
+  if (r.status === "done") {
+    states = STEPS.map(([key]) => key === "lookup" && !lookupOn ? "skipped" : "done");
+    const last = r.events.length ? r.events[r.events.length - 1].t : 0;
+    $("progress-h").textContent = `Finished in ${last.toFixed(1)} s.`;
+    $("progress-h").className = "status ok";
+    $("log-box").open = false;
+    renderResults(r.result, id);
+  } else {
+    const i = states.indexOf("doing");
+    if (i >= 0) states[i] = "fail";
+    $("progress-h").textContent = "The check stopped. The last line below says why.";
+    $("progress-h").className = "status bad";
+  }
+  renderRail();
+}
+function setBusy(b) { busy = b; $("go").disabled = b; updateFixButton(); }
+
+$("source").addEventListener("input", showKind);
+$("form").addEventListener("submit", async ev => {
+  ev.preventDefault();
+  if (!showKind() || busy) return;
+  setBusy(true);
+  lookupOn = $("lookup").checked;
+  states = STEPS.map(() => "todo"); renderRail();
+  $("log").replaceChildren();
+  ["results", "live", "handoff"].forEach(id => { $(id).hidden = true; });
+  resetFix();
+  $("progress").hidden = false; $("log-box").open = true;
+  $("progress-h").className = "status";
+  $("progress-h").textContent = "Checking… this can take a minute on a big project.";
+  try { const r = await api("/api/check", {source: $("source").value, lookup: lookupOn}); pollCheck(r.id, 0); }
+  catch (e) { $("progress-h").textContent = e.message; $("progress-h").className = "status bad"; setBusy(false); }
+});
+
+/* ================= Fixing, with the live view ================= */
+const GATES = [["NO_CHANGE", "Changes something"], ["TOO_LARGE", "Small: up to 3 files and 60 lines"],
+  ["FORBIDDEN_PATH", "Leaves tests, config, CI and dependency files alone"], ["OUT_OF_SCOPE", "Touches only the files it was shown"],
+  ["SUPPRESSES_CHECKS", "Adds no “ignore this warning” comments"], ["SYNTAX_ERROR", "Still valid Python"],
+  ["DELETES_SYMBOL", "Deletes no functions or classes"], ["RISKY_IMPORT", "Adds no risky imports or calls"]];
+const PIPE = ["What it reads", "Model writes", "Safety gates", "Sandbox tests", "Re-scan", "Result"];
+const STOP = {FORMAT_FAIL: "answer was not in the edit format", SEARCH_NOT_FOUND: "edit did not match the file",
+  SEARCH_AMBIGUOUS: "edit matched more than one place", UNKNOWN_FILE: "edit named a file it was not shown",
+  EMPTY_SEARCH: "edit had nothing to replace", STUCK: "repeated an earlier edit", REFUSAL: "the model refused",
+  PROVIDER_ERROR: "the model did not answer", SECRET_BLOCKED: "blocked: the text looks like it holds a secret",
+  BUDGET_EXHAUSTED: "time or spending limit reached", GATE_REJECT: "a safety gate stopped it"};
+const CLOUD_ROUTES = new Set(["claude-code", "frontier", "openai", "pasted"]);
+let fx = {};
+function resetFix() { fx = {problems: {}, order: [], sel: 0, view: -1, job: null}; }
+resetFix();
+function problem(n) { return fx.problems[n] || (fx.problems[n] = {n, status: "waiting", tries: [], prepare: "", done: null, error: ""}); }
+
+function onFixEvent(e) {
+  const p = problem(e.n);
+  const t = p.tries[p.tries.length - 1];
+  switch (e.kind) {
+    case "problem":
+      if (e.state === "start") { p.status = e.handoff ? "handing off" : "working"; p.done = null; p.error = ""; fx.sel = e.n; fx.view = -1; }
+      else if (e.state === "done") { p.done = e; p.status = e.offered ? "ready to review" : "not fixed"; p.applied = ""; }
+      else { p.error = e.text; p.status = "stopped"; }
+      break;
+    case "prepare": p.prepare = e.state === "done" ? "" : e.text; p.prepNote = e.text; break;
+    case "try": p.tries.push({route: e.route, model: e.model, prompt: e.prompt, text: "", thinking: ""}); break;
+    case "token": if (t) t.text += e.text; break;
+    case "thinking": if (t) t.thinking += e.text; break;
+    case "answer": if (t) { t.answer = e; if (!t.text) t.text = e.text; } break;
+    case "retry": if (t) { t.retry = e.message; t.text = ""; t.thinking = ""; t.answer = null; } break;
+    case "stop": if (t) t.stop = e; break;
+    case "gates": if (t) t.gates = e; break;
+    case "diff": if (t) t.diff = e.diff; break;
+    case "sandbox": if (t) t.sandbox = Object.assign(t.sandbox || {tests: []}, {state: e.state, total: e.total, failures: e.failures, duration_s: e.duration_s}); break;
+    case "test": if (t) { t.sandbox = t.sandbox || {tests: [], state: "start"}; t.sandbox.tests.push(e); } break;
+    case "rescan": if (t) t.rescan = e.still; break;
+    case "result": if (t) t.result = e; break;
+    case "next": if (t) t.next = e.text; break;
+  }
+}
+
+function stages(t) {
+  const st = Array(6).fill("todo"), m = Array(6).fill("");
+  if (!t) return {st, m};
+  st[0] = "done"; m[0] = `about ${Math.round(t.prompt.length / 4).toLocaleString()} tokens`;
+  const stoppedEarly = t.stop && !t.gates && !t.sandbox;
+  if (t.answer) { st[1] = "done"; const u = t.answer.usage || {}; m[1] = u.decode_tok_s ? `${u.decode_tok_s} tok/s · ${t.answer.latency_s} s` : `${t.answer.latency_s} s`; }
+  else if (t.stop) { st[1] = "fail"; m[1] = STOP[t.stop.label] || t.stop.label; }
+  else { st[1] = "doing"; m[1] = t.text ? `${Math.round(t.text.length / 4)} tokens so far` : (t.thinking ? "thinking…" : "starting…"); }
+  if (t.gates) { const bad = GATES.filter(([c]) => t.gates.violations.includes(c)).length; st[2] = t.gates.ok ? "done" : "fail"; m[2] = `${8 - bad} of 8 passed`; }
+  else if (t.answer && stoppedEarly) { st[2] = "fail"; m[2] = STOP[t.stop.label] || t.stop.label; }
+  else if (t.answer && !t.stop) st[2] = "doing";
+  const sb = t.sandbox;
+  if (sb) {
+    const failed = (sb.failures || []).length, ran = sb.tests.length;
+    if (sb.state === "start") { st[3] = "doing"; m[3] = `${ran} test${ran === 1 ? "" : "s"} done`; }
+    else if (sb.state === "skipped") { st[3] = "skipped"; m[3] = "not run: suggest only"; }
+    else { st[3] = failed || sb.timed_out ? "fail" : "done"; m[3] = sb.total ? `${sb.total - failed} of ${sb.total} passed` : (failed ? `${failed} failed` : "no tests ran"); }
+  }
+  if (t.rescan !== undefined) { st[4] = t.rescan === true ? "fail" : t.rescan === false ? "done" : "skipped"; m[4] = t.rescan === true ? "still flagged" : t.rescan === false ? "warning gone" : "could not re-check"; }
+  else if (sb && sb.state !== "start") st[4] = "doing";
+  if (t.result) { st[5] = t.result.offered ? "done" : "fail"; m[5] = t.result.offered ? "offered to you" : "not offered"; }
+  else if (t.stop && !t.result && st[1] !== "doing") { st[5] = "fail"; m[5] = "not offered"; }
+  return {st, m};
+}
+
+function triesState(t) { return t.result ? (t.result.offered ? "ok" : "fail") : (t.stop ? "fail" : "run"); }
+function renderLive() {
+  $("live").hidden = !fx.order.length;
+  if (!fx.order.length) return;
+  $("queue").replaceChildren(...fx.order.map(n => {
+    const p = problem(n);
+    const b = el("button", "chip"); b.type = "button"; b.setAttribute("aria-pressed", String(n === fx.sel));
+    b.append(document.createTextNode(`Problem ${n} `), el("span", "s", "· " + p.status));
+    b.addEventListener("click", () => { fx.sel = n; fx.view = -1; renderLive(); renderHandoff(); });
+    return b;
+  }));
+  const p = problem(fx.sel);
+  $("live-h").textContent = `Live view · problem ${fx.sel}`;
+  $("prepare").hidden = !p.prepare; $("prepare").textContent = p.prepare;
+  const idx = fx.view < 0 ? p.tries.length - 1 : fx.view;
+  const t = p.tries[idx];
+  const {st, m} = stages(t);
+  $("pipe").replaceChildren(...PIPE.map((name, i) => {
+    const li = el("li", st[i]);
+    li.append(el("span", "dot", st[i] === "done" ? "✓" : st[i] === "fail" ? "✕" : String(i + 1)),
+              el("span", "pn", i === 1 && t ? `${CLOUD_ROUTES.has(t.route) ? "Other model" : "Local model"} writes` : name), el("span", "pm", m[i]));
+    return li;
+  }));
+  $("tries").replaceChildren(el("span", "small muted", p.tries.length ? "Tries:" : "Tries show up here."), ...p.tries.map((x, i) => {
+    const b = el("button", `try ${triesState(x)}${CLOUD_ROUTES.has(x.route) ? " cloudy" : ""}`); b.type = "button";
+    b.setAttribute("aria-pressed", String(i === idx));
+    b.append(el("span", "m"), document.createTextNode(`${i + 1} · ${x.model}`));
+    b.addEventListener("click", () => { fx.view = i; renderLive(); });
+    return b;
+  }));
+  // the model
+  $("who").textContent = t ? `${t.model}${CLOUD_ROUTES.has(t.route) ? (t.route === "pasted" ? " (from another tool)" : " (outside this computer)") : " (on this computer)"}` : "The model";
+  $("who").className = "who" + (t && CLOUD_ROUTES.has(t.route) ? " cloud" : "");
+  $("speed").textContent = t ? m[1] : "";
+  $("given-sum").textContent = t ? `What it was given (about ${Math.round(t.prompt.length / 4).toLocaleString()} tokens: the instructions, the code around the problem${p.tries.length > 1 && idx > 0 ? ", and what happened in earlier tries" : ""})` : "What it was given";
+  $("given").textContent = t ? t.prompt : "";
+  $("think-box").hidden = !(t && t.thinking); $("thinking").textContent = t ? t.thinking : "";
+  $("plan").textContent = t && t.answer && t.answer.rationale ? t.answer.rationale : (t && t.text ? "…" : "—");
+  const showDiff = t && t.diff;
+  $("edit-h").textContent = showDiff ? "Its edit, as applied to a copy" : "Its answer, as it is written";
+  const lines = (showDiff ? t.diff : (t ? t.text : "")) || "—";
+  $("edit").replaceChildren(...lines.split("\n").map(l => el("span", showDiff && l.startsWith("+") && !l.startsWith("+++") ? "add" : showDiff && l.startsWith("-") && !l.startsWith("---") ? "del" : showDiff && /^(@@|diff|index|\+\+\+|---)/.test(l) ? "meta" : "", l)));
+  if (t && t.retry) $("plan").textContent = t.retry + " " + $("plan").textContent;
+  // the sandbox
+  const sb = t && t.sandbox;
+  $("sb-stat").textContent = sb ? (sb.state === "start" ? "running…" : sb.state === "skipped" ? "not used" : `${sb.duration_s} s`) : "";
+  let items;
+  if (sb && sb.state === "skipped") items = [el("li", "skipped", "Not run: Docker is not ready, so this is a suggestion only.")];
+  else if (sb && sb.tests.length) items = sb.tests.map(x => el("li", x.outcome, `${x.outcome.toUpperCase().padEnd(7)} ${x.name}`));
+  else if (sb && sb.state === "start") items = [el("li", null, "Starting the sandbox…")];
+  else if (sb) items = [el("li", null, sb.total ? `${sb.total} tests ran.` : (sb.failures || []).length ? "No test results were reported." : "No tests ran.")];
+  else items = [el("li", null, t && (t.stop || (t.gates && !t.gates.ok)) ? "Not run: this try stopped before the sandbox." : "Waiting…")];
+  if (sb && sb.failures && sb.failures.length && sb.state === "done") items.push(...sb.failures.map(f => el("li", "failed", `  ${f.test}: ${f.message}`)));
+  $("tests").replaceChildren(...items); $("tests").scrollTop = $("tests").scrollHeight;
+  $("rescan").textContent = !t || t.rescan === undefined ? "—" : t.rescan === true ? "The scanner still reports the problem." : t.rescan === false ? "The warning is gone." : "The scanner could not re-check this one.";
+  // gates
+  if (t && t.gates) {
+    $("gates").replaceChildren(...GATES.map(([code, name]) => { const bad = t.gates.violations.includes(code);
+      const li = el("li", bad ? "no" : "ok"); li.append(el("span", "i", bad ? "✕" : "✓"), el("span", null, name)); return li; }));
+    t.gates.details.forEach(d => $("gates").append(el("li", "no", "  " + d)));
+  } else {
+    const why = t && t.stop ? `Not reached: ${STOP[t.stop.label] || t.stop.label}. ${t.stop.message || ""}` : "";
+    $("gates").replaceChildren(...(why ? [el("li", "no", why)] : []), ...GATES.map(([, name]) => { const li = el("li"); li.append(el("span", "i", "·"), el("span", null, name)); return li; }));
+  }
+  $("next").textContent = !t ? "Shown when a try fails." : t.next ? t.next : t.result && t.result.offered ? "Nothing: this try was offered to you." : t.stop && t.stop.label === "STUCK" ? "Nothing: AeroPatch stopped asking this model." : (t.result || t.stop) ? "No next try for this model." : "Shown when a try fails.";
+  renderOutcome(p);
+}
+
+function renderOutcome(p) {
+  const box = $("outcome");
+  if (p.error) { const r = el("div", "result fail"); r.append(el("p", "label", "Stopped"), el("p", null, p.error)); return box.replaceChildren(r); }
+  if (!p.done) return box.replaceChildren();
+  const d = p.done, r = el("div", "result " + (d.offered ? "ok" : "fail"));
+  r.append(el("p", "label", d.label));
+  if (d.offered) {
+    r.append(el("p", null, d.precision || "This label's hit rate was measured for the local model, not for this one."),
+             el("p", "small", `Written by ${d.model}. ${d.level === "suggest" ? "Nothing of your project ran: read it carefully." : "Your tests ran on it in the sandbox."} ` +
+               (p.applied ? "It is applied to your folder; Undo puts the old files back." : p.undone ? "Undone: your folder is as it was." : "Nothing in your folder has changed yet.")));
+    const diff = el("pre", "code"); diff.replaceChildren(...d.diff.split("\n").map(l => el("span", l.startsWith("+") && !l.startsWith("+++") ? "add" : l.startsWith("-") && !l.startsWith("---") ? "del" : "", l)));
+    r.append(diff, actions(p));
+  } else {
+    const n = p.tries.length;
+    r.append(el("p", null, `${n} tr${n === 1 ? "y" : "ies"} by ${[...new Set(p.tries.map(t => t.model))].join(", ")}; none passed every check. The warning stays on the card.`));
+  }
+  if (p.prepNote) r.append(el("p", "small muted", p.prepNote));
+  box.replaceChildren(r);
+}
+
+function actions(p) {
+  const row = el("div", "row");
+  const patch = el("a", "btn ghost", "Save as .patch");
+  patch.href = `/api/patch?${q({folder: checked.folder, n: p.n, t: token})}`; patch.setAttribute("download", `aeropatch-fix-${p.n}.patch`);
+  if (p.applied) {
+    const u = el("button", "btn ghost", "Undo"); u.type = "button";
+    u.addEventListener("click", () => apply(p, "undo", row));
+    row.append(el("span", "small", `Applied. The old files are kept in ${p.applied}`), u);
+    return row;
+  }
+  if (p.undone) { row.append(el("span", "small", "Undone. Your files are back exactly as they were."), patch); return row; }
+  if (!checked.link) {
+    const a = el("button", "btn", "Apply to my folder"); a.type = "button";
+    a.addEventListener("click", () => apply(p, "apply", row));
+    row.append(a);
+  }
+  const s = el("button", "btn ghost", "Skip"); s.type = "button";
+  s.addEventListener("click", () => row.replaceChildren(el("span", "small", "Skipped. The warning stays on the card."), patch));
+  row.append(s, patch);
+  if (checked.link) row.append(el("span", "small muted", "This is AeroPatch's copy of a link, so apply the patch in your own copy."));
+  return row;
+}
+async function apply(p, what, row) {
+  try {
+    const r = await api(`/api/${what}`, {folder: checked.folder, n: p.n});
+    p.applied = what === "apply" ? r.backup : "";
+    p.undone = what === "undo";
+    renderLive();
+  } catch (e) { row.append(el("span", "small", e.message)); }
+}
+
+async function pollFix(id, since) {
+  let r;
+  try { r = await api(`/api/job/${id}?since=${since}`); }
+  catch (e) { $("send-msg").textContent = e.message; setBusy(false); return; }
+  r.events.forEach(onFixEvent);
+  if (r.events.length) { renderLive(); renderHandoff(); }
+  if (r.status === "running") return setTimeout(() => pollFix(id, r.next), 500);
+  setBusy(false); renderLive(); renderHandoff();
+}
+
+$("fix").addEventListener("click", async () => {
+  if (busy || !picked.size) return;
+  const numbers = [...picked].sort((a, b) => a - b);
+  numbers.forEach(n => { const p = problem(n); p.status = "waiting"; if (!fx.order.includes(n)) fx.order.push(n); });
+  fx.order.sort((a, b) => a - b);
+  setBusy(true); renderLive();
+  $("live").scrollIntoView({behavior: "smooth", block: "start"});
+  try { const r = await api("/api/fix", {folder: checked.folder, numbers, think: $("think").checked}); pollFix(r.id, 0); }
+  catch (e) { setBusy(false); problem(numbers[0]).error = e.message; renderLive(); }
+});
+
+/* ================= Hand-off ================= */
+let provs = null;
+async function loadProviders(force) {
+  if (provs && !force) return provs;
+  try { provs = (await api("/api/models")).providers; } catch (e) { provs = []; }
+  renderModels();
+  return provs;
+}
+const modelCache = {};
+async function modelsOf(p) {
+  if (p.models) return p.models;
+  if (!modelCache[p.id]) { try { modelCache[p.id] = (await api(`/api/models/list?provider=${p.id}`)).models; } catch (e) { modelCache[p.id] = []; } }
+  return modelCache[p.id];
+}
+
+async function renderHandoff() {
+  const p = fx.sel && fx.problems[fx.sel];
+  const show = p && !busy && ((p.done && !p.done.offered) || (p.error && p.tries.length));
+  $("handoff").hidden = !show;
+  if (!show || $("handoff").dataset.n === String(p.n)) return;
+  $("handoff").dataset.n = String(p.n);
+  const last = p.tries[p.tries.length - 1];
+  $("ho-why").textContent = `Problem ${p.n}: ${p.tries.length} tr${p.tries.length === 1 ? "y" : "ies"} did not pass every check${last && last.stop ? ` (last: ${STOP[last.stop.label] || last.stop.label})` : ""}. Another model continues from where these stopped. Nothing is sent until you press the button.`;
+  const list = await loadProviders();
+  const order = {subscription: 0, paid: 1, custom: 2, local: 3};  // the strongest choices first
+  const ready = list.filter(x => x.ready).sort((a, b) => order[a.kind] - order[b.kind]);
+  const opts = [];
+  for (const x of ready) opts.push({id: x.id, name: x.name, kind: x.kind, note: x.kind === "local" ? "Free, stays on this computer." : x.kind === "subscription" ? "Your Claude plan. No per-token charge." : x.kind === "paid" ? "Your key; billed per token by the provider." : "Your own server."});
+  opts.push({id: "any", name: "Any AI tool", kind: "copy", note: "Copy the request into ChatGPT, Gemini, Copilot or any chat, then paste its answer back. AeroPatch checks it like any other try."});
+  $("routes").replaceChildren(...opts.map((o, i) => {
+    const lab = el("label", "route");
+    const r = el("input"); r.type = "radio"; r.name = "route"; r.value = o.id; r.checked = i === 0;
+    const where = o.kind === "local" ? el("span", "tag ok", "stays here") : o.kind === "copy" ? el("span", "tag cloud", "you carry it") : el("span", "tag cloud", "leaves this computer");
+    const top = el("span", "rt"); top.append(r, document.createTextNode(o.name), where);
+    lab.append(top, el("span", "rd", o.note));
+    if (o.id !== "any") { const s = el("select"); s.id = "model-" + o.id; s.setAttribute("aria-label", o.name + " model"); lab.append(s); fillModels(o.id, s); s.addEventListener("change", refreshPreview); }
+    r.addEventListener("change", refreshPreview);
+    return lab;
+  }));
+  refreshPreview();
+}
+async function fillModels(pid, select) {
+  const p = provs.find(x => x.id === pid);
+  const models = await modelsOf(p);
+  // For Ollama, a different model from the one that just tried, and not one of its fine-tunes.
+  const preferred = {"claude-code": "claude-opus-5-5",
+                     ollama: models.find(m => m !== "qwen3.5:4b" && !m.startsWith("aeropatch")) || models[0]}[pid];
+  select.replaceChildren(...models.map(m => { const o = el("option", null, m); o.value = m; o.selected = m === preferred; return o; }));
+  refreshPreview();
+}
+const chosen = () => { const r = document.querySelector('input[name="route"]:checked'); if (!r) return {pid: "", model: ""}; const s = $("model-" + r.value); return {pid: r.value, model: s ? s.value : ""}; };
+let previewText = "";
+async function refreshPreview() {
+  const p = fx.problems[fx.sel]; const {pid, model} = chosen();
+  if (!p || !pid) return;
+  $("paste-box").hidden = pid !== "any"; $("copy-req").hidden = pid !== "any";
+  $("send").textContent = pid === "any" ? "Check this answer" : `Send to ${model || "the model"}`;
+  const leaves = pid !== "any" && provs.find(x => x.id === pid)?.kind !== "local";
+  $("send").className = "btn" + (leaves ? " cloud" : "");
+  $("pv-h").textContent = pid === "any" ? "The request to copy into your AI tool" : leaves ? "Exactly what would be sent" : "What the other local model gets (it stays on this computer)";
+  try {
+    const pv = await api(`/api/handoff?${q({folder: checked.folder, n: p.n, provider: pid, model})}`);
+    previewText = pv.text; $("preview").textContent = pv.text;
+    $("facts").replaceChildren(el("span", pv.blocked ? "tag bad" : "tag ok", pv.blocked || "Secrets check passed"),
+      el("span", null, `${pv.chars.toLocaleString()} characters, about ${pv.tokens.toLocaleString()} tokens`), ...(pv.cost ? [el("span", null, pv.cost)] : []));
+    $("consent-row").hidden = !leaves;
+    $("consent-text").textContent = `Send the text above to ${provs.find(x => x.id === pid)?.name || pid}${provs.find(x => x.id === pid)?.kind === "paid" ? ", which may cost money on your key" : ""}.`;
+    $("consent").checked = false;
+    $("send").disabled = !!pv.blocked;
+  } catch (e) { $("preview").textContent = e.message; $("send").disabled = true; }
+}
+$("copy-req").addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText(previewText); $("send-msg").textContent = "Copied. Paste it into your AI tool, then paste its answer below."; }
+  catch (e) { const r = document.createRange(); r.selectNodeContents($("preview")); getSelection().removeAllRanges(); getSelection().addRange(r); $("send-msg").textContent = "Selected: press Ctrl+C."; }
+});
+$("send").addEventListener("click", async () => {
+  const p = fx.problems[fx.sel]; const {pid, model} = chosen();
+  if (!$("consent-row").hidden && !$("consent").checked) { $("send-msg").textContent = "Tick the box above to confirm the text may leave this computer."; return; }
+  if (busy) return;
+  try {
+    setBusy(true); $("send-msg").textContent = "";
+    const r = await api("/api/handoff", {folder: checked.folder, n: p.n, provider: pid, model, pasted: pid === "any" ? $("answer").value : undefined});
+    $("handoff").hidden = true; $("handoff").dataset.n = "";
+    $("live").scrollIntoView({behavior: "smooth", block: "start"});
+    pollFix(r.id, 0);
+  } catch (e) { setBusy(false); $("send-msg").textContent = e.message; }
+});
+
+/* ================= Models section ================= */
+const GROUPS = [["On this computer (free)", "local"], ["Your Claude subscription", "subscription"], ["Paid APIs (your key, billed by the provider)", "paid"], ["Any other OpenAI-compatible server", "custom"]];
+function renderModels() {
+  if (!provs) return;
+  $("model-groups").replaceChildren(...GROUPS.map(([title, kind]) => {
+    const g = el("div"); g.append(el("h3", null, title));
+    provs.filter(p => p.kind === kind).forEach(p => g.append(providerRow(p)));
+    return g;
+  }));
+}
+function providerRow(p) {
+  const row = el("div", "prov");
+  const name = el("div", "pname"); name.append(el("b", null, p.name), el("span", p.ready ? "tag ok" : "tag off", p.ready ? "ready" : "not set up"));
+  const act = el("div", "pact");
+  act.append(el("span", "small muted", p.says + (p.note ? ` · ${p.note}` : "")));
+  const msg = el("span", "small");
+  if (p.kind === "custom") {
+    const base = el("input"); base.type = "text"; base.placeholder = "https://your-server/v1"; base.value = p.base || ""; base.setAttribute("aria-label", "Server address");
+    const save = el("button", "btn ghost small", "Save address"); save.type = "button";
+    save.addEventListener("click", async () => { try { await api("/api/models/custom", {provider: p.id, base: base.value}); await loadProviders(true); } catch (e) { msg.textContent = e.message; } });
+    const r = el("div", "row"); r.append(base, save); act.append(r);
+  }
+  if (p.needs_key) {
+    const key = el("input"); key.type = "password"; key.autocomplete = "off"; key.placeholder = p.key_end ? `saved key ends in ${p.key_end}` : "paste your API key"; key.setAttribute("aria-label", p.name + " API key");
+    const save = el("button", "btn ghost small", "Save key"); save.type = "button";
+    save.addEventListener("click", async () => { try { await api("/api/models/key", {provider: p.id, key: key.value}); key.value = ""; await loadProviders(true); } catch (e) { msg.textContent = e.message; } });
+    const r = el("div", "row"); r.append(key, save);
+    if (p.key_end) { const f = el("button", "btn ghost small", "Forget key"); f.type = "button"; f.addEventListener("click", async () => { await api("/api/models/forget", {provider: p.id}); await loadProviders(true); }); r.append(f); }
+    if (p.keys_url) { const a = el("a", "small", "Get a key"); a.href = p.keys_url; a.target = "_blank"; a.rel = "noopener"; r.append(a); }
+    act.append(r);
+  }
+  if (p.ready) {
+    const model = el("input"); model.type = "text"; model.placeholder = "model name"; model.setAttribute("aria-label", p.name + " model");
+    const dl = el("datalist"); dl.id = "dl-" + p.id; model.setAttribute("list", dl.id);
+    modelsOf(p).then(ms => { dl.replaceChildren(...ms.map(m => { const o = el("option"); o.value = m; return o; })); if (!model.value && ms.length) model.value = ms.includes("qwen3.5:4b") ? "qwen3.5:4b" : ms[0]; });
+    const test = el("button", "btn ghost small", "Test"); test.type = "button";
+    test.addEventListener("click", async () => { msg.textContent = "Asking…"; try { const r = await api("/api/models/test", {provider: p.id, model: model.value}); msg.textContent = r.says; msg.className = "small " + (r.ok ? "status ok" : "status bad"); } catch (e) { msg.textContent = e.message; } });
+    const r = el("div", "row"); r.append(model, dl, test); act.append(r);
+  }
+  act.append(msg);
+  row.append(name, act);
+  return row;
+}
+$("models").addEventListener("toggle", () => { if ($("models").open) loadProviders(true); });
+
+// A reload draws the last check and its fixes again from the server, and picks up a running job.
+async function restore() {
+  let s;
+  try { s = await api("/api/state"); } catch (e) { return; }
+  if (!s.check) return;
+  const c = s.check;
+  $("source").value = c.source; showKind();
+  lookupOn = c.lookup; $("lookup").checked = c.lookup;
+  states = STEPS.map(() => "todo");
+  $("progress").hidden = false;
+  c.events.forEach(e => { addLog(e); advance(e.step); });
+  $("log-sum").textContent = `Everything that happened (${c.events.length} lines)`;
+  if (c.status === "running") { renderRail(); setBusy(true); return pollCheck(c.id, c.events.length); }
+  checkEnded({status: c.status, events: c.events, result: c.result}, c.id);
+  for (const f of s.fixes) f.events.forEach(e => {
+    if (e.kind === "problem" && e.state === "start" && !fx.order.includes(e.n)) fx.order.push(e.n);
+    onFixEvent(e);
+  });
+  fx.order.sort((a, b) => a - b);
+  renderLive(); renderHandoff();
+  const running = s.fixes.find(f => f.status === "running");
+  if (running) { setBusy(true); pollFix(running.id, running.events.length); }
+}
+
+showKind();
+loadDoctor();
+restore();
+</script>
+</body>
+</html>

@@ -40,7 +40,15 @@ def _save(dirpath: Path | None, name: str, text: str) -> None:
     (dirpath / name).write_text(text, encoding="utf-8")
 
 
-def run(task: Task, cfg: dict, run_dir: Path | None = None) -> RunResult:
+def run(task: Task, cfg: dict, run_dir: Path | None = None, on_event=None,
+        history: list[dict] | None = None) -> RunResult:
+    """`on_event(kind, data)`: optional; told of each step as it happens (the `ui` page's live
+    view). `history`: an earlier run's conversation to continue from (a hand-off), in place of
+    the first message. Neither changes what the loop does."""
+    emit = on_event or (lambda _kind, _data: None)
+    # Only passed when watched, so a plain run calls router.generate exactly as before.
+    stream = {"on_token": lambda kind, piece: emit("thinking" if kind == "thinking" else "token", {"text": piece})
+              } if on_event else {}
     start = time.monotonic()
     sdir = scenario_dir(task.id) if "oracle" in cfg["attempt_plan"] else None
     task_dir = run_dir / task.id if run_dir else None
@@ -56,7 +64,8 @@ def run(task: Task, cfg: dict, run_dir: Path | None = None) -> RunResult:
         hits0 = None if hits is None else len(hits)
     # Week 1 uses oracle localization: the finding location is given (doc 11 §7).
     context = get_context(task.repo_path, task.finding.path, task.finding.line, task.allowed_paths)
-    messages = [{"role": "user", "content": prompts.first_user_message(task, context, cfg.get("fix_recipes", False))}]
+    messages = [dict(m) for m in history] if history else [
+        {"role": "user", "content": prompts.first_user_message(task, context, cfg.get("fix_recipes", False))}]
     attempts: list[Attempt] = []
     older: list[str] = []
     seen: set[str] = set()  # hashes of edits already tried
@@ -82,13 +91,15 @@ def run(task: Task, cfg: dict, run_dir: Path | None = None) -> RunResult:
                 continue
             temperature = cfg["temperature_first"] if n == 0 else cfg["temperature_repair"]
             prompt_text = prompts.SYSTEM_PROMPT + "\n\n" + "\n\n".join(m["content"] for m in messages)
+            emit("try", {"route": route, "model": router.model_name(route, cfg), "prompt": prompt_text})
             if route != "oracle":
                 try:
                     prompts.check_no_secrets(prompt_text)
                 except prompts.SecretInPrompt as e:
                     attempts.append(Attempt(n=0, route=route, label="SECRET_BLOCKED", apply_error=str(e)))
+                    emit("stop", {"label": "SECRET_BLOCKED", "message": str(e)})
                     break
-            gen = router.generate(route, messages, prompts.SYSTEM_PROMPT, cfg, temperature, sdir)
+            gen = router.generate(route, messages, prompts.SYSTEM_PROMPT, cfg, temperature, sdir, **stream)
             spent += gen.cost_usd
             if gen.refusal or gen.error:
                 # Refusals and provider errors use up the plan entry but are not numbered attempts.
@@ -96,15 +107,19 @@ def run(task: Task, cfg: dict, run_dir: Path | None = None) -> RunResult:
                 attempts.append(Attempt(n=0, route=route, model=gen.model, label=label,
                                         latency_s=round(gen.latency_s, 2), cost_usd=gen.cost_usd,
                                         refusal=gen.refusal, apply_error=gen.error))
+                emit("stop", {"label": label, "message": gen.error or (gen.refusal or {}).get("explanation", "")})
                 continue
             proposal, digest = propose(gen.text)
+            emit("answer", {"text": gen.text, "rationale": proposal.rationale, "latency_s": round(gen.latency_s, 2),
+                            "usage": gen.usage, "cost_usd": gen.cost_usd, "model": gen.model})
             if digest in seen:
                 # Same edit as an earlier attempt: one hotter retry, then give up on this route
                 # (doc 08 part 1, §7). A different route later in the plan still gets its turn:
                 # in a cascade the local attempts are used up (doc 04 §5). Until 2026-10-03 this
                 # ended the run, so a stuck local model was never escalated (A-078-03).
+                emit("retry", {"message": "Same edit as an earlier try. Asking once more, a little more freely."})
                 retry = router.generate(route, messages, prompts.SYSTEM_PROMPT, cfg,
-                                        cfg["stuck_retry_temperature"], sdir)
+                                        cfg["stuck_retry_temperature"], sdir, **stream)
                 spent += retry.cost_usd
                 retry.cost_usd += gen.cost_usd
                 retry.latency_s += gen.latency_s
@@ -113,8 +128,13 @@ def run(task: Task, cfg: dict, run_dir: Path | None = None) -> RunResult:
                 if gen.refusal or gen.error or digest in seen:
                     attempts.append(Attempt(n=0, route=route, model=gen.model, label="STUCK",
                                             latency_s=round(gen.latency_s, 2), cost_usd=gen.cost_usd))
+                    emit("stop", {"label": "STUCK", "message": "It wrote the same edit as an earlier try again, so "
+                                  "AeroPatch stopped asking this model."})
                     stuck = route
                     continue
+                emit("answer", {"text": gen.text, "rationale": proposal.rationale,
+                                "latency_s": round(gen.latency_s, 2), "usage": gen.usage,
+                                "cost_usd": gen.cost_usd, "model": gen.model})
             if digest:
                 seen.add(digest)
             tried += proposal.edits  # stored rebased, so a chain of on-top repairs still resolves
@@ -132,6 +152,7 @@ def run(task: Task, cfg: dict, run_dir: Path | None = None) -> RunResult:
                 att.label = "FORMAT_FAIL"
                 # The bare error was not actionable: A-601 repeated the same marker-less output 3 times.
                 feedback = f"{proposal.parse_error}\nUse exactly this layout:\n{edits.FORMAT_EXAMPLE}"
+                emit("stop", {"label": "FORMAT_FAIL", "message": proposal.parse_error})
             else:
                 try:
                     paths = sorted({e.path for e in proposal.edits})
@@ -139,12 +160,15 @@ def run(task: Task, cfg: dict, run_dir: Path | None = None) -> RunResult:
                     changed = edits.apply_edits(current, proposal.edits)
                 except edits.ApplyError as e:
                     att.label, att.apply_error, feedback = e.code, e.message, e.message
+                    emit("stop", {"label": e.code, "message": e.message})
                 except PathError as e:
                     att.label, att.apply_error = "GATE_REJECT", str(e)
                     feedback = f"FORBIDDEN_PATH: {e}"
+                    emit("gates", {"ok": False, "violations": ["FORBIDDEN_PATH"], "details": [feedback]})
                 else:
                     before = {**current}
                     att.gate = gates.check(before, changed, task.allowed_paths, cfg, task.allow_imports)
+                    emit("gates", {"ok": att.gate.ok, "violations": att.gate.violations, "details": att.gate.details})
                     if not att.gate.ok:
                         att.label = "GATE_REJECT"
                         feedback = "Rejected by safety gates:\n" + "\n".join(att.gate.details)
@@ -152,14 +176,25 @@ def run(task: Task, cfg: dict, run_dir: Path | None = None) -> RunResult:
                         ws.write(changed)
                         att.diff = ws.diff()
                         _save(adir, "diff.patch", att.diff)
+                        emit("diff", {"diff": att.diff})
                         if run_tests:
+                            emit("sandbox", {"state": "start"})
                             att.sandbox = sandbox.run_tests(
-                                task.image, ws.src, cfg, adir / "sandbox_raw.log" if adir else None)
+                                task.image, ws.src, cfg, adir / "sandbox_raw.log" if adir else None,
+                                on_test=(lambda outcome, name: emit("test", {"outcome": outcome, "name": name}))
+                                if on_event else None)
                         else:  # the Suggest level: gates and re-scan only, nothing of the repo runs
                             att.sandbox = SandboxResult(applied=True, label="NOT_RUN")
                         att.sandbox.original_rule_present = scanners.original_rule_present(
                             ws.repo, task.finding, hits0)
                         _save(adir, "sandbox.json", att.sandbox.to_json())
+                        shown_suites = labels.visible_suites(att.sandbox, hidden)
+                        emit("sandbox", {"state": "done" if run_tests else "skipped",
+                                         "duration_s": att.sandbox.duration_s, "timed_out": att.sandbox.timed_out,
+                                         "total": att.sandbox.regression_total if "regression" in shown_suites else 0,
+                                         "failures": [{"test": f.test_id, "message": f.message[:300]}
+                                                      for f in labels.visible_failures(att.sandbox, hidden)]})
+                        emit("rescan", {"still": att.sandbox.original_rule_present})
                         att.label = att.sandbox.label
                         feedback = prompts.redact(junit.summarize(
                             labels.visible_failures(att.sandbox, hidden), cfg["feedback_token_cap"] * 4))
@@ -173,18 +208,23 @@ def run(task: Task, cfg: dict, run_dir: Path | None = None) -> RunResult:
             shown = labels.model_label(att.sandbox, hidden, rescan_feedback) if att.sandbox else att.label
             # A truly RESOLVED attempt whose rule still fires does not stop an offer-mode run: the
             # hidden PoC must not decide when the loop ends.
-            if (att.user_label in labels.OFFERED) if offer_mode else (att.label == "RESOLVED"):
+            offered = (att.user_label in labels.OFFERED) if offer_mode else (att.label == "RESOLVED")
+            emit("result", {"user_label": att.user_label, "offered": offered, "shown_to_model": shown})
+            if offered:
                 final_diff = att.diff
                 stopped = True
                 break
             older.append(f"attempt {n}: {shown}")
             messages.append({"role": "assistant", "content": gen.text or "(empty)"})
             messages.append({"role": "user", "content": prompts.repair_message(shown, feedback, older[:-1])})
+            emit("next", {"text": messages[-1]["content"]})
             if spent >= cfg["max_usd_per_scenario"] and i < len(cfg["attempt_plan"]) - 1:
                 attempts.append(Attempt(n=0, route="-", label="BUDGET_EXHAUSTED"))
+                emit("stop", {"label": "BUDGET_EXHAUSTED", "message": "The spending cap for this problem is reached."})
                 break
             if time.monotonic() - start > cfg["scenario_wallclock_s"]:
                 attempts.append(Attempt(n=0, route="-", label="BUDGET_EXHAUSTED"))
+                emit("stop", {"label": "BUDGET_EXHAUSTED", "message": "The time limit for this problem is reached."})
                 break
 
     # Truth is the stopping attempt's sandbox label. Without offer mode this is the old rule:
@@ -201,6 +241,7 @@ def run(task: Task, cfg: dict, run_dir: Path | None = None) -> RunResult:
     if task_dir:
         _save(task_dir, "result.json", json.dumps(result.to_dict(), default=str, indent=2))
         _save(task_dir, "report.md", report_md(task, result))
+    emit("end", {"user_label": result.user_label, "diff": final_diff, "messages": messages})
     return result
 
 

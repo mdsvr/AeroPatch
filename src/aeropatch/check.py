@@ -279,18 +279,33 @@ def python_files(folder: Path) -> list[str]:
     return out
 
 
-def check_folder(folder: Path, offline: bool = False, extra_rules: bool = False, use_judge: bool = False) -> CheckResult:
+def check_folder(folder: Path, offline: bool = False, extra_rules: bool = False, use_judge: bool = False,
+                 progress=None) -> CheckResult:
     """`offline`: skip the advisory lookup, the one step that uses the network (package names and
-    versions only). `extra_rules`: also run rules-extra/ with taint analysis. `use_judge`: Phase C."""
+    versions only). `extra_rules`: also run rules-extra/ with taint analysis. `use_judge`: Phase C.
+    `progress`: optional callable given (step, plain sentence) as each step starts or ends; the
+    `ui` page lights up its step rail from the step names (files, scan, sort, lookup, report)."""
+    say = progress or (lambda _step, _msg: None)
     folder = Path(folder).resolve()
-    scan = scanners.scan(folder, extra=extra_rules)
     py = python_files(folder)
+    say("files", f"Found {len(py)} Python files." if py else
+        "Found no Python files. AeroPatch only checks Python, so there is nothing to check here.")
+    say("scan", "Running Opengrep and Bandit on the code. This reads the files; it does not run them.")
+    scan = scanners.scan(folder, extra=extra_rules)
+    say("scan", f"The scanners reported {len(scan['findings'])} possible problems"
+        + ("" if scan["opengrep"] else " (Opengrep was not found, so only Bandit ran)") + ".")
+    say("sort", "Checking for regular-expression slowdowns, then sorting the findings.")
     result = triage(folder, scan["findings"] + redos.scan(folder, py), scan["opengrep"], use_judge)
+    say("sort", f"Sorted them: {len(result.shown)} to explain, {len(result.parked)} set aside as tests, tools "
+        f"or likely false alarms, {len(result.dismissed)} dismissed earlier.")
     if not offline:
+        say("lookup", "Looking up the pinned packages at osv.dev (names and versions only).")
         result.advisories, n, error = advisories.audit(folder, py)
         result.notes.insert(0, error or (f"Looked up {n} pinned packages in the OSV advisory database at osv.dev "
                                          "(package names and versions only; no code was sent)." if n else ""))
         result.notes = [x for x in result.notes if x]
+        say("lookup", result.notes[0] if result.notes else "No pinned packages to look up.")
+    say("report", "Writing the report.")
     result.run_dir.mkdir(parents=True, exist_ok=True)
     (result.run_dir / "check.json").write_text(json.dumps(asdict(result), indent=2, default=str) + "\n",
                                                encoding="utf-8")
@@ -438,6 +453,29 @@ def render_html(result: CheckResult) -> str:
                 f"<li><code>{e(f.path)}:{f.line}</code> {e(f.rule_id)}: {e(f.message)} ({e(r)})</li>"
                 for f, r in items) + "</ul></details>")
     return PAGE.substitute(css=CSS, folder=e(str(result.folder)), body="\n".join(body))
+
+
+def page_data(result: CheckResult) -> dict:
+    """The check as plain data for the `ui` page, with the same texts and the same secret
+    handling as the HTML report: a secret card never carries its code line."""
+    def card(c: Card) -> dict:
+        f = c.finding
+        code = "" if c.kind == "secret" else prompts.redact(scanners._snippet(result.folder, f.path, f.line)).strip()
+        return {"n": c.n, "kind": c.kind, "headline": c.headline, "path": f.path, "line": f.line,
+                "fields": _fields(c), "try_yourself": c.try_yourself, "note": c.note,
+                "message": f.message if c.generic else "", "rule": f"{f.tool} {f.rule_id}", "cwe": f.cwe,
+                "also": [f"{a.tool} {a.rule_id} (line {a.line})" for a in c.also], "code": code}
+
+    def aside(items: list[tuple[Finding, str]]) -> list[dict]:
+        return [{"path": f.path, "line": f.line, "rule": f.rule_id, "message": f.message, "reason": r} for f, r in items]
+
+    return {"folder": str(result.folder), "run_dir": str(result.run_dir), "opengrep": result.opengrep,
+            "no_opengrep": "" if result.opengrep else NO_OPENGREP, "notes": result.notes,
+            "advisories": [{"headline": f"{ADVISORY_HEADLINE}: {a.pin.name} {a.pin.version}",
+                            "where": f"{a.pin.path}:{a.pin.line}", "fields": advisory_fields(a)}
+                           for a in result.advisories],
+            "cards": [card(c) for c in result.shown], "parked": aside(result.parked),
+            "dismissed": aside(result.dismissed)}
 
 
 def write_html(result: CheckResult) -> Path:

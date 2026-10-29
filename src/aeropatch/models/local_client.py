@@ -12,11 +12,32 @@ from aeropatch.config import ROOT
 from aeropatch.models.base import Generation, LocalServerDown
 
 
-def generate(messages: list[dict], system: str, cfg: dict, temperature: float) -> Generation:
+def _stream(url: str, body: dict, on_token) -> tuple[int, dict, str]:
+    """Ollama's streamed /api/chat: hand each piece to on_token("thinking" | "text", piece) and
+    return (status, the final chunk with the counts, the whole answer)."""
+    parts, last = [], {}
+    with httpx.stream("POST", url, json=body, timeout=600) as r:
+        if r.status_code != 200:
+            return r.status_code, {"error": r.read().decode("utf-8", "replace")[:300]}, ""
+        for line in r.iter_lines():
+            if not line.strip():
+                continue
+            last = json.loads(line)
+            msg = last.get("message") or {}
+            if msg.get("thinking"):
+                on_token("thinking", msg["thinking"])
+            if msg.get("content"):
+                parts.append(msg["content"])
+                on_token("text", msg["content"])
+    return 200, last, "".join(parts)
+
+
+def generate(messages: list[dict], system: str, cfg: dict, temperature: float, on_token=None) -> Generation:
+    """`on_token`: optional callable; when given, the answer is streamed to it as it is written."""
     body = {
         "model": cfg["local_model"],
         "messages": [{"role": "system", "content": system}, *messages],
-        "stream": False,
+        "stream": on_token is not None,
         "think": cfg.get("local_think", False),
         "options": {
             "temperature": temperature,
@@ -40,23 +61,29 @@ def generate(messages: list[dict], system: str, cfg: dict, temperature: float) -
             prefill = prefill.replace("{plan}", plans[re.search(r"^Finding: .*$", first, re.MULTILINE).group(0)])
         body["messages"].append({"role": "assistant", "content": prefill})
     start = time.monotonic()
+    url = f"{cfg['local_host'].rstrip('/')}/api/chat"
     try:
-        r = httpx.post(f"{cfg['local_host'].rstrip('/')}/api/chat", json=body, timeout=600)
+        if on_token:
+            status, data, content = _stream(url, body, on_token)
+            text = data.get("error", "")
+        else:
+            r = httpx.post(url, json=body, timeout=600)
+            status, text = r.status_code, r.text
+            data = r.json() if status == 200 else {}
+            content = data.get("message", {}).get("content", "")
     except httpx.ConnectError as e:
         raise LocalServerDown(f"cannot reach {cfg['local_host']}: {e}") from e
     except httpx.HTTPError as e:
         return Generation(text="", model=cfg["local_model"], error=f"PROVIDER_ERROR: {e}",
                           latency_s=time.monotonic() - start)
     latency = time.monotonic() - start
-    if r.status_code != 200:
+    if status != 200:
         return Generation(text="", model=cfg["local_model"], latency_s=latency,
-                          error=f"PROVIDER_ERROR: HTTP {r.status_code}: {r.text[:300]}")
-    data = r.json()
+                          error=f"PROVIDER_ERROR: HTTP {status}: {text[:300]}")
     eval_ns = data.get("eval_duration") or 0
     usage = {
         "input_tokens": data.get("prompt_eval_count", 0),
         "output_tokens": data.get("eval_count", 0),
         "decode_tok_s": round(data.get("eval_count", 0) / (eval_ns / 1e9), 1) if eval_ns else None,
     }
-    return Generation(text=prefill + data.get("message", {}).get("content", ""),
-                      model=cfg["local_model"], usage=usage, latency_s=latency)
+    return Generation(text=prefill + content, model=cfg["local_model"], usage=usage, latency_s=latency)
