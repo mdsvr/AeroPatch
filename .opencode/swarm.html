@@ -1,0 +1,663 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AeroPatch · model swarm</title>
+<style>
+  :root{
+    --bg:#080b0d; --panel:#0e1418; --panel-2:#11191e;
+    --line:#22303a; --line-soft:#1a252c;
+    --text:#c9d6dd; --dim:#6b7f8b; --dimmer:#455661;
+    --lead:#f0a35e; --swarm:#58a6e0; --advisor:#a97ce0;
+    --bad:#e05a5a; --good:#4fd08a;
+    --mono:"JetBrains Mono","SFMono-Regular",Consolas,"Liberation Mono",monospace;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; min-height:100vh;
+    background:radial-gradient(1200px 600px at 50% -10%, #10202a 0%, transparent 60%), var(--bg);
+    color:var(--text); font-family:var(--mono); font-size:12.5px; line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{max-width:1180px;margin:0 auto;padding:22px 22px 40px}
+
+  .topbar{display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:14px}
+  .brand{letter-spacing:.16em;font-weight:700;color:#e8f1f6;font-size:12px}
+  .brand span{color:var(--lead)}
+  .path{color:var(--dim);font-size:11px}
+  .stamp{margin-left:auto;font-size:10.5px;border:1px solid var(--line-soft);border-radius:999px;padding:2px 9px;letter-spacing:.06em;color:var(--dimmer)}
+  .stamp.on{color:var(--good);border-color:#1e4433}
+  .stamp.off{color:var(--bad);border-color:#4a2222}
+
+  .legend{display:flex;flex-wrap:wrap;gap:18px;margin:0 0 20px;color:var(--dim);font-size:11px}
+  .legend i{display:inline-block;width:7px;height:7px;border-radius:2px;margin-right:7px;vertical-align:1px}
+  .d-lead{background:var(--lead)} .d-swarm{background:var(--swarm)}
+  .d-advisor{background:var(--advisor)} .d-bad{background:var(--bad)}
+
+  .stage{display:grid;grid-template-columns:292px minmax(0,1fr);gap:26px;align-items:start}
+  .rail{position:relative}
+  .rail::after{content:"";position:absolute;top:96px;right:-20px;width:20px;height:1px;
+    background:repeating-linear-gradient(90deg,var(--line) 0 3px,transparent 3px 6px)}
+  .flow{display:flex;flex-direction:column;align-items:stretch}
+
+  .card{background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--line);
+    border-radius:9px;padding:13px 15px;position:relative}
+  .card h2{margin:0 0 8px;font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;
+    font-weight:700;display:flex;align-items:center;gap:8px}
+  .card p{margin:0 0 3px;color:var(--dim);font-size:11.5px}
+  .mono-id{color:var(--dimmer);font-size:10.5px;word-break:break-all;display:block;margin-top:6px}
+  .tag{margin-left:auto;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
+    border:1px solid currentColor;border-radius:4px;padding:1px 6px;opacity:.9}
+
+  .c-lead{border-color:#4a3520;box-shadow:0 0 0 1px #2a1d10 inset,0 8px 28px -20px var(--lead)}
+  .c-lead h2{color:var(--lead)}
+  .c-swarm{border-color:#1d3648} .c-swarm h2{color:var(--swarm)}
+  .c-advisor{border-color:#3a2b52}  .c-advisor h2{color:var(--advisor)}
+  .c-bad{border-color:#4a2222;background:repeating-linear-gradient(135deg,#120d0d 0 8px,#0e0b0b 8px 16px)}
+  .c-bad h2{color:var(--bad)}
+  .card.live{box-shadow:0 0 0 1px #1e3644 inset,0 0 22px -14px var(--swarm)}
+
+  .node-main{max-width:520px;width:100%;margin:0 auto;text-align:center}
+  .node-main p{color:var(--text);opacity:.72}
+  .node-main .mono-id{color:#6d5644}
+
+  .router{max-width:560px;width:100%;margin:0 auto}
+  .router .kv{display:grid;grid-template-columns:1fr auto 1fr;gap:6px 10px;align-items:center;
+    margin-top:9px;font-size:11px;color:var(--dim)}
+  .router .kv b{color:#8b5f5f;font-weight:500;text-align:right}
+  .router .kv em{color:var(--swarm);font-style:normal}
+  .router .kv i{color:var(--dimmer);font-style:normal;text-align:right}
+  .router .note{margin-top:10px;color:var(--dimmer);font-size:10.5px;border-top:1px solid #2a1a1a;padding-top:8px}
+
+  .agents{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+  .agents .card{padding:12px 13px}
+  .agents h2{font-size:11px;margin-bottom:6px}
+  .agents .role{color:var(--text);font-size:11.5px;margin-bottom:7px}
+  .specs{list-style:none;margin:0;padding:0;font-size:10.5px;color:var(--dim)}
+  .specs li{display:flex;gap:6px;padding:1px 0}
+  .specs li::before{content:"·";color:var(--dimmer)}
+  .specs .no{color:#8a5a5a}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--dimmer);display:inline-block;margin-right:6px}
+  .dot.run{background:var(--good);box-shadow:0 0 8px var(--good);animation:pulse 1.4s infinite}
+  .dot.done{background:#3f6b58}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+  .livebox{margin-top:9px;border-top:1px solid #182730;padding-top:7px;font-size:10.5px;color:var(--dim)}
+  .livebox .row{display:flex;justify-content:space-between;gap:8px}
+  .livebox .row b{color:var(--text);font-weight:500}
+  .livebox .last{margin-top:4px;color:var(--dimmer);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mdl{color:var(--dimmer);font-size:10.5px;margin-top:5px;display:block;word-break:break-all}
+  .mdl b{color:#7d94a1;font-weight:500}
+
+  .node-return{max-width:420px;width:100%;margin:0 auto;text-align:center}
+  .node-return p{color:var(--text);opacity:.72}
+
+  .wire{height:34px;position:relative}
+  .wire::before{content:"";position:absolute;left:50%;top:0;bottom:6px;width:1px;
+    background:linear-gradient(180deg,var(--line),#2d3d47)}
+  .wire::after{content:"";position:absolute;left:50%;bottom:0;transform:translateX(-50%);
+    border-left:4px solid transparent;border-right:4px solid transparent;border-top:5px solid #2d3d47}
+  .split,.merge{height:46px;position:relative;display:grid;grid-template-columns:repeat(3,1fr)}
+  .split::before,.merge::before{content:"";position:absolute;height:1px;background:var(--line);left:16.667%;right:16.667%}
+  .split::before{top:0} .merge::before{bottom:0}
+  .split span,.merge span{position:relative}
+  .split span::before,.merge span::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--line)}
+  .split span::after{content:"";position:absolute;left:50%;bottom:-1px;transform:translateX(-50%);
+    border-left:4px solid transparent;border-right:4px solid transparent;border-top:5px solid var(--line)}
+
+  .panels{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:30px}
+  .panels .card h2{color:var(--dim);font-size:10.5px;letter-spacing:.12em}
+  .panels ul{margin:0;padding:0;list-style:none;font-size:11.5px}
+  .panels li{padding:2px 0 2px 14px;position:relative;color:var(--dim)}
+  .panels li::before{content:"›";position:absolute;left:0;color:var(--dimmer)}
+  .panels li b{color:var(--text);font-weight:500}
+
+  .logbox{margin-top:26px}
+  .logbox h2{margin:0 0 8px;font-size:10.5px;letter-spacing:.12em;color:var(--dim);
+    text-transform:uppercase;font-weight:600;display:flex;gap:10px;align-items:baseline}
+  .logbox h2 small{color:var(--dimmer);letter-spacing:.04em;text-transform:none;font-size:10px}
+  table{width:100%;border-collapse:collapse;font-size:11.5px}
+  th{text-align:left;color:var(--dimmer);font-weight:500;font-size:10px;letter-spacing:.08em;
+    text-transform:uppercase;padding:0 10px 6px;border-bottom:1px solid var(--line-soft)}
+  td{padding:5px 10px;border-bottom:1px solid #131b20;color:var(--dim);vertical-align:top}
+  td.t{color:var(--dimmer);white-space:nowrap;width:66px}
+  td.who{white-space:nowrap;width:96px}
+  .w-build,.w-lead{color:var(--lead)}
+  .w-search,.w-grep,.w-audit,.w-explore,.w-general{color:var(--swarm)}
+  .w-advisor{color:var(--advisor)}
+  td.msg{color:var(--text);opacity:.8}
+  .empty td{color:var(--dimmer);font-style:italic}
+
+  .statusbar{margin-top:26px;padding-top:11px;border-top:1px solid var(--line);
+    display:flex;flex-wrap:wrap;gap:16px;font-size:10.5px;color:var(--dimmer);letter-spacing:.05em}
+  .statusbar .s-on{color:var(--good)} .statusbar .s-off{color:var(--bad)}
+  .statusbar .right{margin-left:auto}
+
+  /* ---- capybara bodies ------------------------------------------------
+     Five art forms, one per role. Each is a group of primitives so the
+     shapes stay editable; colour comes from the --cap-* vars below.     */
+  .cap{display:block;overflow:visible;--cap-speed:1}
+  .card.live .cap{--cap-speed:.42}
+  .cap *{transform-box:fill-box;transform-origin:center}
+
+  .cap-fill,.cap-ear{fill:var(--cap-body);stroke:var(--cap-line);stroke-width:2.5}
+  .cap-muzzle{fill:var(--cap-muzzle)}
+  .cap-eye{fill:#0a1014}
+  .cap-nose{fill:var(--cap-line)}
+  .cap-paw{fill:var(--cap-muzzle);stroke:var(--cap-line);stroke-width:2}
+  .cap-shadow{fill:#000;opacity:.38}
+  .cap-prop-line{fill:none;stroke:var(--cap-line);stroke-width:2.5;stroke-linecap:round}
+  .cap-prop-fill{fill:var(--cap-accent);stroke:var(--cap-line);stroke-width:2.5}
+  .cap-lens{fill:rgba(88,166,224,.22);stroke:var(--cap-line);stroke-width:3}
+  .cap-halo{fill:none;stroke:var(--cap-accent);stroke-width:3;opacity:.85;stroke-dasharray:7 5}
+  .cap-beard{fill:#e8f1f6;opacity:.9}
+  .cap-offset rect,.cap-offset circle{fill:#000;opacity:.3}
+
+  .cap-lead{--cap-body:#f0a35e;--cap-line:#5e3410;--cap-muzzle:#ffd7b0;--cap-accent:#f0a35e}
+  /* cups must contrast with the orange head or the headphones disappear */
+  .cap-lead .cap-prop-fill{fill:#2b1a08}
+  .cap-lead .cap-prop-line{stroke-width:4}
+  .cap-search{--cap-body:#58a6e0;--cap-line:#123044;--cap-muzzle:#a9d4f2;--cap-accent:#9ecbf0}
+  .cap-grep{--cap-body:#58a6e0;--cap-line:#123044;--cap-muzzle:#a9d4f2;--cap-accent:#7fbfe8}
+  .cap-audit{--cap-body:#58a6e0;--cap-line:#123044;--cap-muzzle:#a9d4f2;--cap-accent:#cfe8f8}
+  .cap-advisor{--cap-body:#a97ce0;--cap-line:#33204f;--cap-muzzle:#dcc5f5;--cap-accent:#a97ce0}
+
+  /* search borrows a dashed, blueprinted outline */
+  .cap-search .cap-fill,.cap-search .cap-ear{stroke-dasharray:7 4}
+  /* grep is pixel art: no strokes, hard steps */
+  .cap-grep .cap-fill,.cap-grep .cap-ear,.cap-grep .cap-muzzle{stroke:none}
+
+  .cap-lead{width:92px;height:90px}
+  .cap-advisor{width:62px;height:61px}
+  .cap-search,.cap-grep,.cap-audit{width:66px;height:65px}
+  .cap-small{width:46px;height:45px}
+  .cap-center{margin:0 auto 6px}
+  .cap-row{display:flex;align-items:center;gap:11px;margin-bottom:8px}
+  .cap-row h2{margin:0 0 3px}
+  .cap-row .role{margin:0}
+
+  @keyframes cap-breathe{0%,100%{transform:translateY(0) scaleY(1)}50%{transform:translateY(-1.2px) scaleY(1.025)}}
+  @keyframes cap-blink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+  @keyframes cap-ear{0%,86%,100%{transform:rotate(0)}90%{transform:rotate(-10deg)}94%{transform:rotate(5deg)}}
+  @keyframes cap-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+  @keyframes cap-sway{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg)}}
+  @keyframes cap-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-4.5px)}}
+  @keyframes cap-halo{to{transform:rotate(360deg)}}
+  @keyframes cap-tilt{0%,100%{transform:rotate(-1.6deg)}50%{transform:rotate(1.6deg)}}
+
+  .cap-breathe{animation:cap-breathe calc(3.6s * var(--cap-speed)) ease-in-out infinite}
+  .cap-eye{animation:cap-blink calc(5.2s * var(--cap-speed)) ease-in-out infinite}
+  .cap-ear{animation:cap-ear calc(6.4s * var(--cap-speed)) ease-in-out infinite}
+  .cap-search .cap-magnifier{animation:cap-sway calc(3.2s * var(--cap-speed)) ease-in-out infinite}
+  .cap-search .cap-eye{animation-delay:calc(.9s * var(--cap-speed))}
+  .cap-grep .cap-bob{animation:cap-bob calc(.9s * var(--cap-speed)) steps(2,end) infinite}
+  .cap-grep .cap-eye{animation:cap-blink calc(2.4s * var(--cap-speed)) steps(1,end) infinite}
+  .cap-audit .cap-paper{animation:cap-breathe calc(5s * var(--cap-speed)) ease-in-out infinite}
+  .cap-audit .cap-glasses{animation:cap-tilt calc(4.2s * var(--cap-speed)) ease-in-out infinite}
+  .cap-advisor .cap-float{animation:cap-float calc(4.6s * var(--cap-speed)) ease-in-out infinite}
+  .cap-advisor .cap-halo{animation:cap-halo calc(11s * var(--cap-speed)) linear infinite}
+  .cap-advisor .cap-eye{animation-delay:calc(1.6s * var(--cap-speed))}
+
+  @media (prefers-reduced-motion:reduce){
+    .cap,.cap *{animation:none !important}
+  }
+
+  @media (max-width:820px){
+    .stage{grid-template-columns:1fr}
+    .rail::after{display:none}
+    .agents{grid-template-columns:1fr}
+    .split,.merge{height:30px}
+    .panels{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="topbar">
+    <div class="brand">AEROPATCH <span>·</span> MODEL SWARM</div>
+    <div class="path">F:\AeroPatch</div>
+    <div class="stamp" id="stamp">connecting…</div>
+  </div>
+
+  <div class="legend">
+    <span><i class="d-lead"></i><span id="legend-lead">lead · free</span></span>
+    <span><i class="d-swarm"></i><span id="legend-swarm">swarm · free</span></span>
+    <span><i class="d-advisor"></i><span id="legend-advisor">advisor · free</span></span>
+    <span><i class="d-bad"></i>jev · unavailable</span>
+  </div>
+
+  <div class="stage">
+
+    <aside class="rail">
+      <div class="card c-advisor" id="card-advisor">
+
+        <!-- sage capybara: floats, worn halo -->
+        <svg class="cap cap-advisor cap-center" viewBox="0 0 120 118" aria-hidden="true">
+          <ellipse class="cap-shadow" cx="60" cy="111" rx="26" ry="4"/>
+          <g class="cap-float">
+            <ellipse class="cap-halo" cx="60" cy="9" rx="19" ry="4.6"/>
+            <circle class="cap-ear" cx="38" cy="26" r="7"/>
+            <circle class="cap-ear" cx="82" cy="26" r="7"/>
+            <rect class="cap-fill" x="28" y="66" width="64" height="38" rx="18"/>
+            <rect class="cap-fill" x="34" y="24" width="52" height="48" rx="18"/>
+            <rect class="cap-muzzle" x="48" y="44" width="24" height="16" rx="8"/>
+            <circle class="cap-eye" cx="48" cy="40" r="2.8"/>
+            <circle class="cap-eye" cx="72" cy="40" r="2.8"/>
+            <circle class="cap-nose" cx="56" cy="51" r="1.8"/>
+            <circle class="cap-nose" cx="64" cy="51" r="1.8"/>
+            <path class="cap-beard" d="M44 54 Q60 84 76 54 Z"/>
+            <line class="cap-prop-line" x1="97" y1="98" x2="101" y2="44"/>
+            <circle class="cap-prop-fill" cx="101" cy="37" r="6"/>
+          </g>
+        </svg>
+
+        <h2><span id="adv-name">advisor</span> <span class="tag" style="color:var(--advisor)" id="adv-badge">on call</span></h2>
+        <p style="color:var(--text);opacity:.85">invoked, never resident</p>
+
+        <div style="margin:11px 0 0;border-top:1px solid #2a2140;padding-top:10px">
+          <div style="color:var(--dim);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">called at</div>
+          <ul class="specs" style="font-size:11px">
+            <li style="color:#b79de0">before a plan locks</li>
+            <li style="color:#b79de0">same error ×2</li>
+            <li style="color:#b79de0">before sign-off</li>
+          </ul>
+        </div>
+
+        <p style="margin-top:11px;color:var(--dim);font-size:11px">reads the delegation message, not the session transcript.</p>
+        <p style="color:#8a5a5a;font-size:10.5px">cannot edit · cannot run · 15-line cap</p>
+
+        <div style="margin-top:11px;border-top:1px solid #2a2140;padding-top:9px">
+          <div style="color:var(--dim);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px">this session</div>
+          <p style="color:var(--dimmer)">calls <b id="adv-calls" style="color:var(--text);font-weight:500">0</b> · tokens <b id="adv-tok" style="color:var(--text);font-weight:500">0</b></p>
+          <p style="color:var(--dimmer);margin-top:3px" id="adv-last">no triggers fired yet</p>
+        </div>
+
+        <span class="mono-id" id="adv-model">reading config…</span>
+        <p style="color:var(--dimmer);font-size:10.5px;margin-top:2px">free tier · no credits spent</p>
+      </div>
+    </aside>
+
+    <section class="flow">
+
+      <div class="card c-lead node-main" id="card-main">
+
+        <!-- storybook lead: headphones on, running the session -->
+        <svg class="cap cap-lead cap-center" viewBox="0 0 120 118" aria-hidden="true">
+          <ellipse class="cap-shadow" cx="60" cy="111" rx="30" ry="4.5"/>
+          <g class="cap-breathe">
+            <circle class="cap-ear" cx="38" cy="20" r="8"/>
+            <circle class="cap-ear" cx="82" cy="20" r="8"/>
+            <rect class="cap-fill" x="24" y="62" width="72" height="44" rx="20"/>
+            <rect class="cap-fill" x="32" y="20" width="56" height="50" rx="20"/>
+            <rect class="cap-muzzle" x="47" y="42" width="26" height="18" rx="9"/>
+            <circle class="cap-eye" cx="47" cy="37" r="3.2"/>
+            <circle class="cap-eye" cx="73" cy="37" r="3.2"/>
+            <circle class="cap-nose" cx="55.5" cy="51" r="1.9"/>
+            <circle class="cap-nose" cx="64.5" cy="51" r="1.9"/>
+            <rect class="cap-paw" x="34" y="99" width="18" height="11" rx="5"/>
+            <rect class="cap-paw" x="68" y="99" width="18" height="11" rx="5"/>
+            <g class="cap-prop">
+              <path class="cap-prop-line" d="M28 30 Q60 2 92 30"/>
+              <rect class="cap-prop-fill" x="18" y="25" width="12" height="21" rx="6"/>
+              <rect class="cap-prop-fill" x="90" y="25" width="12" height="21" rx="6"/>
+            </g>
+          </g>
+        </svg>
+
+        <h2><span id="lead-name">lead</span> <span class="tag" style="color:var(--lead)">lead</span><span class="dot" id="main-dot" style="margin-left:6px"></span></h2>
+        <p>main session · edits files · runs tests</p>
+        <p id="main-state">waiting for state…</p>
+        <span class="mono-id" id="lead-model">reading config…</span>
+        <div class="livebox" style="text-align:left">
+          <div class="row"><span>tokens</span><b id="main-tok">—</b></div>
+          <div class="row"><span>cost</span><b id="main-cost">—</b></div>
+        </div>
+      </div>
+
+      <div class="wire"></div>
+
+      <div class="card c-bad router">
+        <h2>JEV fork layer <span class="tag" style="color:var(--bad)">unavailable</span></h2>
+        <p style="color:#8b5f5f">opencode has no deterministic fork classifier.</p>
+        <div class="kv">
+          <b>which file</b><em>→ search</em><i>model call</i>
+          <b>which tool</b><em>→ grep</em><i>model call</i>
+          <b>retry or stop</b><em>→ advisor</em><i>model call</i>
+        </div>
+        <div class="note">every branch is a round trip, not microseconds.<br>substitute: fewer, larger delegations + read-only subagents.</div>
+      </div>
+
+      <div class="split"><span></span><span></span><span></span></div>
+
+      <div class="agents">
+
+        <div class="card c-swarm" id="card-search">
+          <div class="cap-row">
+
+            <!-- blueprint capybara: dashed outline, sweeping lens -->
+            <svg class="cap cap-search" viewBox="0 0 120 118" aria-hidden="true">
+              <ellipse class="cap-shadow" cx="60" cy="111" rx="26" ry="4"/>
+              <g class="cap-breathe">
+                <circle class="cap-ear" cx="40" cy="22" r="7"/>
+                <circle class="cap-ear" cx="80" cy="22" r="7"/>
+                <circle class="cap-fill" cx="60" cy="82" r="28"/>
+                <rect class="cap-fill" x="36" y="22" width="48" height="44" rx="18"/>
+                <rect class="cap-muzzle" x="49" y="42" width="22" height="16" rx="8"/>
+                <circle class="cap-eye" cx="50" cy="37" r="3"/>
+                <circle class="cap-eye" cx="70" cy="37" r="3"/>
+                <circle class="cap-nose" cx="56" cy="50" r="1.7"/>
+                <circle class="cap-nose" cx="64" cy="50" r="1.7"/>
+              </g>
+              <g class="cap-magnifier">
+                <circle class="cap-lens" cx="95" cy="58" r="15"/>
+                <line class="cap-prop-line" x1="84" y1="70" x2="74" y2="82"/>
+              </g>
+            </svg>
+
+            <div>
+              <h2>search <span class="dot" id="search-dot"></span></h2>
+              <div class="role">maps the repo</div>
+            </div>
+          </div>
+          <ul class="specs"><li>read · grep · glob</li><li class="no">no edit · no bash</li><li>40-line cap</li></ul>
+          <div class="livebox">
+            <div class="row"><span id="search-state">not run</span><b id="search-tok">—</b></div>
+            <div class="last" id="search-last">—</div>
+          </div>
+          <span class="mdl"><b id="search-model">reading config…</b></span>
+        </div>
+
+        <div class="card c-swarm" id="card-grep">
+          <div class="cap-row">
+
+            <!-- pixel capybara: hard steps, two-frame bob -->
+            <svg class="cap cap-grep" viewBox="0 0 120 118" aria-hidden="true" shape-rendering="crispEdges">
+              <ellipse class="cap-shadow" cx="60" cy="111" rx="28" ry="4"/>
+              <g class="cap-bob">
+                <rect class="cap-fill" x="44" y="14" width="32" height="10"/>
+                <rect class="cap-fill" x="26" y="52" width="68" height="42"/>
+                <rect class="cap-fill" x="34" y="94" width="12" height="8"/>
+                <rect class="cap-fill" x="74" y="94" width="12" height="8"/>
+                <rect class="cap-fill" x="36" y="24" width="48" height="40"/>
+                <rect class="cap-fill" x="30" y="30" width="8" height="8"/>
+                <rect class="cap-fill" x="82" y="30" width="8" height="8"/>
+                <rect class="cap-muzzle" x="48" y="48" width="24" height="12"/>
+                <rect class="cap-eye" x="44" y="34" width="8" height="8"/>
+                <rect class="cap-eye" x="68" y="34" width="8" height="8"/>
+                <rect class="cap-nose" x="54" y="52" width="4" height="4"/>
+                <rect class="cap-nose" x="62" y="52" width="4" height="4"/>
+              </g>
+            </svg>
+
+            <div>
+              <h2>grep <span class="dot" id="grep-dot"></span></h2>
+              <div class="role">finds call sites</div>
+            </div>
+          </div>
+          <ul class="specs"><li>read · grep · glob</li><li class="no">no edit · no bash</li><li>25 hits max</li></ul>
+          <div class="livebox">
+            <div class="row"><span id="grep-state">not run</span><b id="grep-tok">—</b></div>
+            <div class="last" id="grep-last">—</div>
+          </div>
+          <span class="mdl"><b id="grep-model">reading config…</b></span>
+        </div>
+
+        <div class="card c-swarm" id="card-audit">
+          <div class="cap-row">
+
+            <!-- paper-cut capybara: flat fill, hard offset shadow, spectacles -->
+            <svg class="cap cap-audit" viewBox="0 0 120 118" aria-hidden="true">
+              <ellipse class="cap-shadow" cx="60" cy="111" rx="28" ry="4"/>
+              <g class="cap-paper">
+                <g class="cap-offset" aria-hidden="true">
+                  <circle cx="42" cy="23" r="7"/>
+                  <circle cx="82" cy="23" r="7"/>
+                  <rect x="29" y="67" width="68" height="42" rx="8"/>
+                  <rect x="37" y="23" width="52" height="48" rx="8"/>
+                </g>
+                <circle class="cap-ear" cx="40" cy="22" r="7"/>
+                <circle class="cap-ear" cx="80" cy="22" r="7"/>
+                <rect class="cap-fill" x="26" y="65" width="68" height="42" rx="8"/>
+                <rect class="cap-fill" x="34" y="22" width="52" height="48" rx="8"/>
+                <rect class="cap-muzzle" x="48" y="44" width="24" height="16" rx="6"/>
+                <circle class="cap-eye" cx="48" cy="38" r="3"/>
+                <circle class="cap-eye" cx="72" cy="38" r="3"/>
+                <circle class="cap-nose" cx="56" cy="52" r="1.8"/>
+                <circle class="cap-nose" cx="64" cy="52" r="1.8"/>
+                <g class="cap-glasses">
+                  <circle class="cap-prop-line" cx="48" cy="38" r="8.5"/>
+                  <circle class="cap-prop-line" cx="72" cy="38" r="8.5"/>
+                  <line class="cap-prop-line" x1="56.5" y1="38" x2="63.5" y2="38"/>
+                </g>
+              </g>
+            </svg>
+
+            <div>
+              <h2>audit <span class="dot" id="audit-dot"></span></h2>
+              <div class="role">reviews the diff</div>
+            </div>
+          </div>
+          <ul class="specs"><li>bash: git diff/status/log/show</li><li class="no">edit denied</li><li>30-line cap</li></ul>
+          <div class="livebox">
+            <div class="row"><span id="audit-state">not run</span><b id="audit-tok">—</b></div>
+            <div class="last" id="audit-last">—</div>
+          </div>
+          <span class="mdl"><b id="audit-model">reading config…</b></span>
+        </div>
+      </div>
+
+      <div class="merge"><span></span><span></span><span></span></div>
+
+      <div class="card c-lead node-return">
+        <svg class="cap cap-lead cap-small cap-center" viewBox="0 0 120 118" aria-hidden="true">
+          <ellipse class="cap-shadow" cx="60" cy="111" rx="30" ry="4.5"/>
+          <g class="cap-breathe">
+            <circle class="cap-ear" cx="38" cy="20" r="8"/>
+            <circle class="cap-ear" cx="82" cy="20" r="8"/>
+            <rect class="cap-fill" x="24" y="62" width="72" height="44" rx="20"/>
+            <rect class="cap-fill" x="32" y="20" width="56" height="50" rx="20"/>
+            <rect class="cap-muzzle" x="47" y="42" width="26" height="18" rx="9"/>
+            <circle class="cap-eye" cx="47" cy="37" r="3.2"/>
+            <circle class="cap-eye" cx="73" cy="37" r="3.2"/>
+            <circle class="cap-nose" cx="55.5" cy="51" r="1.9"/>
+            <circle class="cap-nose" cx="64.5" cy="51" r="1.9"/>
+            <rect class="cap-paw" x="34" y="99" width="18" height="11" rx="5"/>
+            <rect class="cap-paw" x="68" y="99" width="18" height="11" rx="5"/>
+            <g class="cap-prop">
+              <path class="cap-prop-line" d="M28 30 Q60 2 92 30"/>
+              <rect class="cap-prop-fill" x="18" y="25" width="12" height="21" rx="6"/>
+              <rect class="cap-prop-fill" x="90" y="25" width="12" height="21" rx="6"/>
+            </g>
+          </g>
+        </svg>
+        <h2>back to <span id="return-name">lead</span> <span class="tag" style="color:var(--lead)">lead</span></h2>
+        <p>applies edits · runs tests · reports</p>
+      </div>
+
+    </section>
+  </div>
+
+  <div class="panels">
+    <div class="card">
+      <h2>why the split still pays</h2>
+      <ul>
+        <li><b>Zero marginal cost.</b> every role runs on a free tier — the only budget is rate limits.</li>
+        <li><b>Rate limits stay separate.</b> swarm sits on a different model than the lead, so a throttle hits one role, not all.</li>
+        <li><b>Context stays small.</b> search output never enters the lead's window.</li>
+        <li><b>Writes stay in one place.</b> only the lead can touch the tree.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h2>what you don't get</h2>
+      <ul>
+        <li><b>No JEV.</b> routing is a model decision, not a classifier.</li>
+        <li><b>No passive advisor.</b> triggers are prompt rules, not enforcement.</li>
+        <li><b>No worktree isolation.</b> audit is read-only instead.</li>
+        <li><b>No priority.</b> free tiers queue behind paid traffic and cap throughput.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="logbox">
+    <h2>live trace <small id="feed-note">reading opencode.db · refreshes every 1.5s</small></h2>
+    <table>
+      <thead><tr><th>ago</th><th>agent</th><th>activity</th></tr></thead>
+      <tbody id="feed">
+        <tr class="empty"><td colspan="3">no activity yet</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="statusbar">
+    <span id="s-main">● lead</span>
+    <span id="s-swarm">● swarm 0/3</span>
+    <span id="s-advisor">● advisor 0</span>
+    <span class="s-off">● jev [not available]</span>
+    <span class="right" id="s-totals">—</span>
+  </div>
+
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+function ago(ms){
+  if (ms < 0) ms = 0;
+  const s = ms / 1000;
+  if (s < 60) return s.toFixed(1) + "s";
+  if (s < 3600) return Math.floor(s / 60) + "m" + String(Math.floor(s % 60)).padStart(2,"0") + "s";
+  return Math.floor(s / 3600) + "h" + String(Math.floor((s % 3600) / 60)).padStart(2,"0") + "m";
+}
+const num = (n) => n >= 1000 ? (n / 1000).toFixed(1) + "k" : String(n);
+const cost = (n) => !n ? "free" : "$" + n.toFixed(4);
+const cls = (a) => "w-" + (a || "?").replace(/[^a-z]/gi, "");
+
+// Model names come from config, never from literals in this file.
+const NAMES = {
+  "deepseek-v4.1-flash": "DeepSeek V4.1 Flash",
+  "glm-5.3-flash": "GLM-5.3 Flash",
+  "mimo-v2.6-flash": "MiMo-V2.6 Flash",
+  "nemotron-3.5-super-vl": "Nemotron 3.5 Super VL",
+  "beam": "Beam",
+  "flint-40b": "Flint 40B"
+};
+function short(model){
+  const id = String(model || "?").split("/").pop().replace(/-free$/, "");
+  return NAMES[id] || id || "?";
+}
+function setText(id, value){
+  const el = $(id);
+  if (el) el.textContent = value;
+}
+
+function setCard(agent, row, model){
+  const dot = $(agent + "-dot"), st = $(agent + "-state"),
+        tok = $(agent + "-tok"), last = $(agent + "-last"),
+        card = $("card-" + agent);
+  if (!dot) return;
+  // Show what the role is *configured* to use; flag when the last run predates it.
+  const configured = model || "";
+  const ran = (row && row.model) || "";
+  const stale = ran && configured && ran !== configured;
+  setText(agent + "-model", short(configured) + (stale ? " · last run " + short(ran) : ""));
+  const modelEl = $(agent + "-model");
+  if (modelEl) modelEl.style.color = stale ? "var(--bad)" : "";
+  if (!row){
+    dot.className = "dot";
+    st.textContent = "not run";
+    tok.textContent = "—";
+    last.textContent = "—";
+    card.classList.remove("live");
+    return;
+  }
+  dot.className = "dot " + (row.status === "running" ? "run" : "done");
+  st.textContent = row.status === "running" ? "running" : "idle " + ago(row.age_ms);
+  tok.textContent = num(row.tokens_in) + " in / " + num(row.tokens_out) + " out";
+  last.textContent = cost(row.cost) + " · " + row.title;
+  card.classList.toggle("live", row.status === "running");
+}
+
+function render(s){
+  const cfg = s.config || {};
+  const agentsCfg = cfg.agents || {};
+
+  const lead = short(cfg.lead);
+  setText("lead-name", lead);
+  setText("return-name", lead);
+  setText("lead-model", cfg.lead || "unset");
+  setText("adv-name", short(agentsCfg.advisor));
+  setText("adv-model", agentsCfg.advisor || "unset");
+  setText("legend-lead", lead + " · lead");
+  setText("legend-swarm", short(agentsCfg.search) + " · swarm");
+  setText("legend-advisor", short(agentsCfg.advisor) + " · advisor");
+
+  const stamp = $("stamp");
+  stamp.className = "stamp on";
+  stamp.textContent = "live · " + new Date(s.now).toLocaleTimeString();
+
+  const root = s.root || {};
+  $("main-dot").className = "dot " + (root.status === "running" ? "run" : "done");
+  $("main-state").textContent = root.status === "running"
+    ? "busy · last activity " + ago(root.age_ms) + " ago"
+    : "idle · last activity " + ago(root.age_ms) + " ago";
+  $("main-tok").textContent = num(root.tokens_in || 0) + " in / " + num(root.tokens_out || 0) + " out";
+  $("main-cost").textContent = cost(root.cost || 0);
+
+  const agents = s.agents || [];
+  const by = {};
+  for (const a of agents) (by[a.agent] = by[a.agent] || []).push(a);
+  const latest = (name) => (by[name] || []).sort((x,y) => x.age_ms - y.age_ms)[0] || null;
+
+  ["search","grep","audit"].forEach((n) => setCard(n, latest(n), agentsCfg[n]));
+
+  const adv = by["advisor"] || [];
+  $("adv-calls").textContent = adv.length;
+  $("adv-tok").textContent = num(adv.reduce((t,a) => t + a.tokens_in + a.tokens_out, 0));
+  $("adv-last").textContent = adv.length
+    ? "last " + ago(Math.min(...adv.map(a=>a.age_ms))) + " ago"
+    : "no triggers fired yet";
+  $("adv-badge").textContent = adv.some(a => a.status === "running") ? "answering" : "on call";
+
+  const running = agents.filter(a => a.status === "running").length;
+  const present = ["search","grep","audit"].filter(n => by[n]).length;
+  $("s-main").className = root.status === "running" ? "s-on" : "";
+  $("s-main").textContent = "● lead " + (root.status === "running" ? "busy" : "idle");
+  $("s-swarm").className = running ? "s-on" : "";
+  $("s-swarm").textContent = "● swarm " + present + "/3" + (running ? " · " + running + " running" : "");
+  $("s-advisor").className = adv.length ? "s-on" : "";
+  $("s-advisor").textContent = "● advisor " + adv.length;
+  const t = s.totals || {};
+  $("s-totals").textContent = num(t.tokens_in || 0) + " in · " + num(t.tokens_out || 0) + " out · " + cost(t.cost || 0);
+
+  const feed = $("feed");
+  const items = (s.feed || []).slice().reverse();
+  if (!items.length){
+    feed.innerHTML = '<tr class="empty"><td colspan="3">no activity yet</td></tr>';
+  } else {
+    feed.innerHTML = items.map(f =>
+      '<tr><td class="t">' + ago(s.now - f.t) + '</td>' +
+      '<td class="who ' + cls(f.who) + '">' + f.who + '</td>' +
+      '<td class="msg">' + f.text.replace(/[<>&]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;"}[c])) + '</td></tr>'
+    ).join("");
+  }
+  $("feed-note").textContent = "reading opencode.db · " + (s.totals?.sessions || 0) + " sessions in tree";
+}
+
+async function tick(){
+  try{
+    const r = await fetch("api/state", {cache: "no-store"});
+    if (!r.ok) throw new Error("http " + r.status);
+    render(await r.json());
+  } catch (e){
+    const stamp = $("stamp");
+    stamp.className = "stamp off";
+    stamp.textContent = "offline · start swarm_live.py";
+  }
+}
+tick();
+setInterval(tick, 1500);
+</script>
+</body>
+</html>
