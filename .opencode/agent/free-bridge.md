@@ -4,6 +4,7 @@ mode: primary
 model: opencode/glm-5.3-flash-free
 temperature: 0.1
 tools:
+  task: false
   write: false
   edit: false
   patch: false

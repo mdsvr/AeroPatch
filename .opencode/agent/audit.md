@@ -4,6 +4,7 @@ mode: all
 model: opencode/mimo-v2.6-flash-free
 temperature: 0.1
 tools:
+  task: false
   write: false
   edit: false
   patch: false
@@ -16,6 +17,7 @@ permission:
     "git status*": allow
     "git log*": allow
     "git show*": allow
+    "*--output*": deny
 ---
 
 You audit diffs. You never modify the working tree.

@@ -187,11 +187,19 @@ def build_state() -> dict:
         con.close()
 
 
+def allowed_host(host: str | None, port: int) -> bool:
+    return host in (f"127.0.0.1:{port}", f"localhost:{port}")
+
+
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *a, **kw):
         super().__init__(*a, directory=HERE, **kw)
 
     def do_GET(self):
+        # Refuse DNS rebinding: a page on another site that resolves to 127.0.0.1 sends its own Host.
+        if not allowed_host(self.headers.get("Host"), self.server.server_port):
+            self.send_error(403)
+            return
         if self.path.split("?")[0] == "/api/state":
             try:
                 body = json.dumps(build_state()).encode("utf-8")

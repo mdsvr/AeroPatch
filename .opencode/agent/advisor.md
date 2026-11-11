@@ -1,9 +1,10 @@
 ---
 description: Senior architectural advisor, invoked sparingly on a separate model from the implementer. Call before a plan is locked, when the same error appears twice, and before declaring work complete. It advises; it never edits code.
-mode: subagent
+mode: all
 model: opencode/beam-free
 temperature: 0.2
 tools:
+  task: false
   write: false
   edit: false
   patch: false

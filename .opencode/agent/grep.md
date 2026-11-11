@@ -1,9 +1,10 @@
 ---
 description: Finds definitions, call sites, and usages of a symbol across the repo and reports them as a compact list. Use instead of running broad greps in the main context.
-mode: subagent
+mode: all
 model: opencode/glm-5.3-flash-free
 temperature: 0.1
 tools:
+  task: false
   write: false
   edit: false
   bash: false
