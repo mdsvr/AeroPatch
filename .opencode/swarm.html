@@ -633,13 +633,14 @@ function render(s){
 
   const feed = $("feed");
   const items = (s.feed || []).slice().reverse();
+  const esc = (v) => String(v).replace(/[<>&]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;"}[c]));
   if (!items.length){
     feed.innerHTML = '<tr class="empty"><td colspan="3">no activity yet</td></tr>';
   } else {
     feed.innerHTML = items.map(f =>
       '<tr><td class="t">' + ago(s.now - f.t) + '</td>' +
-      '<td class="who ' + cls(f.who) + '">' + f.who + '</td>' +
-      '<td class="msg">' + f.text.replace(/[<>&]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;"}[c])) + '</td></tr>'
+      '<td class="who ' + cls(f.who) + '">' + esc(f.who) + '</td>' +
+      '<td class="msg">' + esc(f.text) + '</td></tr>'
     ).join("");
   }
   $("feed-note").textContent = "reading opencode.db · " + (s.totals?.sessions || 0) + " sessions in tree";

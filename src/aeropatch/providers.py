@@ -197,7 +197,3 @@ def route_cfg(pid: str, model: str) -> dict:
     if api == "anthropic":
         return {"attempt_plan": ["frontier"], "frontier_model": model}
     return {"attempt_plan": ["openai"], "api_provider": pid, "api_model": model}
-
-
-def needs_preview_cost(pid: str) -> bool:
-    return PROVIDERS[pid]["kind"] in ("paid", "subscription", "custom")

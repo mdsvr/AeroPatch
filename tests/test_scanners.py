@@ -26,3 +26,8 @@ def test_bandit_does_not_import_or_cache_modules_from_the_scanned_folder(tmp_pat
     found = scanners.run_bandit(tmp_path)
     assert found is not None and any(f.rule_id == "B307" for f in found)
     assert not (tmp_path / "__pycache__").exists()
+
+
+def test_snippet_of_a_cp1252_file_does_not_crash(tmp_path):
+    (tmp_path / "old.py").write_bytes(b"# caf\xe9\nx = eval(s)\n")
+    assert scanners._snippet(tmp_path, "old.py", 2) == "x = eval(s)"

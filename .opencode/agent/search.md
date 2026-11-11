@@ -1,9 +1,10 @@
 ---
 description: Maps the repository layout and returns a compact index of directories, entry points, and config files. Use when a question is about "where does X live" and answering it directly would flood the main context with directory listings.
-mode: subagent
+mode: all
 model: opencode/glm-5.3-flash-free
 temperature: 0.1
 tools:
+  task: false
   write: false
   edit: false
   bash: false

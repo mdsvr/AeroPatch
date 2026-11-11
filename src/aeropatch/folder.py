@@ -94,7 +94,8 @@ def stage(folder: Path, dest: Path) -> Path:
     folder = Path(folder).resolve()
     if dest.exists():
         shutil.rmtree(dest)
-    shutil.copytree(folder, dest, ignore=lambda d, names: [n for n in names if _skip(n)], symlinks=False)
+    shutil.copytree(folder, dest, ignore=lambda d, names: [n for n in names if _skip(n)], symlinks=False,
+                    ignore_dangling_symlinks=True)
     size = sum(p.stat().st_size for p in dest.rglob("*") if p.is_file())
     if size > MAX_STAGED_BYTES:
         raise FolderError("TOO_BIG")
