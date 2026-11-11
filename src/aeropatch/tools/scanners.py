@@ -42,7 +42,7 @@ def opengrep_binary() -> str | None:
 
 def _snippet(repo: Path, path: str, line: int) -> str:
     try:
-        return (repo / path).read_text(encoding="utf-8").split("\n")[line - 1]
+        return (repo / path).read_text(encoding="utf-8", errors="replace").split("\n")[line - 1]
     except (OSError, IndexError):
         return ""
 

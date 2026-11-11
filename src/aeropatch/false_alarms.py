@@ -45,11 +45,6 @@ class _File:
                 best = n
         return best
 
-    def function_name(self, line: int) -> str:
-        names = [n.name for n in ast.walk(self.tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
-                 and n.lineno <= line <= n.end_lineno]
-        return names[-1] if names else ""
-
 
 def _text(node) -> str | None:
     """A string written out in full: a literal, or an f-string with no {placeholders}."""

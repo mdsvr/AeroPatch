@@ -62,7 +62,7 @@ def load(sid: str) -> Task:
 def list_ids(split: str | None = None) -> list[str]:
     ids = sorted(p.parent.name for p in SCENARIOS_DIR.glob("*/scenario.json"))
     if split:
-        splits = json.loads((SCENARIOS_DIR / "split.json").read_text())
+        splits = json.loads((SCENARIOS_DIR / "split.json").read_text(encoding="utf-8"))
         ids = [i for i in ids if i in splits.get(split, [])]
     return ids
 

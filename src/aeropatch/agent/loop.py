@@ -161,7 +161,7 @@ def run(task: Task, cfg: dict, run_dir: Path | None = None, on_event=None,
                 except edits.ApplyError as e:
                     att.label, att.apply_error, feedback = e.code, e.message, e.message
                     emit("stop", {"label": e.code, "message": e.message})
-                except PathError as e:
+                except (PathError, UnicodeDecodeError) as e:  # a non-UTF-8 file is not editable either
                     att.label, att.apply_error = "GATE_REJECT", str(e)
                     feedback = f"FORBIDDEN_PATH: {e}"
                     emit("gates", {"ok": False, "violations": ["FORBIDDEN_PATH"], "details": [feedback]})
